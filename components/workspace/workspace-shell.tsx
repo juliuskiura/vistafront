@@ -227,17 +227,17 @@ export function WorkspaceShell({
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <header className="flex h-14 shrink-0 items-center gap-3 border-b bg-card px-4 md:px-6">
-          <Button
+          <Fab
             type="button"
             variant="outline"
-            size="icon"
-            className="size-9 md:hidden"
+            size="sm"
+            className="md:hidden"
             onClick={() => setMobileOpen(true)}
             aria-label="Open navigation"
             title="Open navigation"
           >
-            <Menu className="size-4" />
-          </Button>
+            <Menu className="size-5" />
+          </Fab>
           <Button
             type="button"
             variant="ghost"
