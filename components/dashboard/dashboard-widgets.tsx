@@ -1,11 +1,13 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo } from "react";
-import { ArrowRight, ListChecks, Sparkles, type LucideIcon } from "lucide-react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { resolveIcon } from "@/lib/nav-icons";
+import { StatCard } from "@/components/dashboard/stat-card";
 import type {
   DashboardActionData,
   DashboardRecentData,
@@ -17,126 +19,99 @@ interface Props {
   widgets: DashboardWidget[];
 }
 
-const ICON_MAP: Record<string, LucideIcon> = {
-  Sparkles,
-  ListChecks,
-};
+function StatWidgetCard({ widget }: { widget: DashboardWidget }) {
+  const router = useRouter();
+  const Icon = resolveIcon(widget.icon);
+  const data = widget.data as DashboardStatData;
 
-const ACCENT_BG: Record<string, string> = {
-  default: "bg-primary/10 text-primary",
-  amber: "bg-amber-100 text-amber-900",
-  emerald: "bg-emerald-100 text-emerald-900",
-  sky: "bg-sky-100 text-sky-900",
-  rose: "bg-rose-100 text-rose-900",
-};
-
-function accentClass(accent: string) {
-  return ACCENT_BG[accent] ?? ACCENT_BG.default;
-}
-
-function iconFor(name: string): LucideIcon {
-  return ICON_MAP[name] ?? Sparkles;
-}
-
-function StatCard({ widget, data }: { widget: DashboardWidget; data: DashboardStatData }) {
-  const Icon = iconFor(widget.icon);
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-3">
-          <span
-            aria-hidden
-            className={cn(
-              "flex size-9 items-center justify-center rounded-lg",
-              accentClass(widget.accent),
-            )}
-          >
-            <Icon className="size-4" />
-          </span>
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            {widget.label}
-          </CardTitle>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <p className="text-3xl font-semibold tracking-tight">{data.value}</p>
-        {data.subtitle && (
-          <p className="mt-1 text-xs text-muted-foreground">{data.subtitle}</p>
-        )}
-      </CardContent>
-    </Card>
+    <StatCard
+      title={widget.label}
+      value={data.value}
+      icon={<Icon size={20} />}
+      accent={widget.accent}
+      hint={data.subtitle ?? undefined}
+      onClick={widget.to ? () => router.push(widget.to!) : undefined}
+    />
   );
 }
 
-function RecentCard({ widget, data }: { widget: DashboardWidget; data: DashboardRecentData }) {
+function RecentWidgetCard({ widget }: { widget: DashboardWidget }) {
+  const router = useRouter();
+  const data = widget.data as DashboardRecentData;
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{data.title || widget.label}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {data.items.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nothing recent.</p>
-        ) : (
-          <ul className="divide-y">
-            {data.items.map((item) => (
-              <li key={`${item.to}-${item.label}`}>
-                <Link
-                  href={item.to}
-                  className="flex items-center justify-between gap-3 py-2.5 text-sm hover:text-primary"
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate font-medium">{item.label}</span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                      {item.subtitle}
-                    </span>
-                  </span>
-                  <ArrowRight className="size-4 shrink-0 text-muted-foreground" />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function ActionsCard({ widget, data }: { widget: DashboardWidget; data: DashboardActionData }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{data.title || widget.label}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-col gap-2">
-          {data.items.map((item) => (
-            <Link
-              key={item.to}
-              href={item.to}
-              className="flex items-center justify-between rounded-lg border bg-background/60 px-3 py-2.5 text-sm font-medium transition-colors hover:bg-accent"
+    <Card className="relative overflow-hidden rounded-xl border bg-card p-6 shadow-sm">
+      <div className="absolute inset-x-0 top-0 h-1 bg-primary" />
+      <h2 className="mb-1 text-base font-semibold">{data.title || widget.label}</h2>
+      {data.items.length === 0 ? (
+        <p className="mt-3 text-sm text-muted-foreground">Nothing here yet.</p>
+      ) : (
+        <div className="mt-3 space-y-2">
+          {data.items.map((item, i) => (
+            <div
+              key={`${widget.id}-${i}`}
+              role="button"
+              tabIndex={0}
+              onClick={() => router.push(item.to)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  router.push(item.to);
+                }
+              }}
+              className="flex cursor-pointer items-center justify-between rounded-lg border p-3 text-sm transition-colors hover:border-primary/30 hover:bg-primary/5"
             >
-              <span className="truncate">{item.label}</span>
-              <ArrowRight className="size-4 text-muted-foreground" />
-            </Link>
+              <div>
+                <p className="font-medium">{item.label}</p>
+                <p className="text-xs text-muted-foreground">{item.subtitle}</p>
+              </div>
+            </div>
           ))}
         </div>
-      </CardContent>
+      )}
     </Card>
   );
 }
 
-function WidgetCard({ widget }: { widget: DashboardWidget }) {
-  switch (widget.kind) {
-    case "stat":
-      return <StatCard widget={widget} data={widget.data as DashboardStatData} />;
-    case "recent":
-      return <RecentCard widget={widget} data={widget.data as DashboardRecentData} />;
-    case "actions":
-      return <ActionsCard widget={widget} data={widget.data as DashboardActionData} />;
-    default:
-      return null;
-  }
+function ActionWidgetCard({
+  widget,
+  actions,
+}: {
+  widget: DashboardWidget;
+  actions: DashboardActionData["items"];
+}) {
+  const router = useRouter();
+  return (
+    <Card className="relative overflow-hidden rounded-xl border bg-card p-6 shadow-sm">
+      <div className="absolute inset-x-0 top-0 h-1 bg-accent" />
+      <h2 className="mb-1 text-base font-semibold">
+        {widget.data && (widget.data as DashboardActionData).title
+          ? (widget.data as DashboardActionData).title
+          : widget.label}
+      </h2>
+      <div className="mt-3 space-y-2">
+        {actions.map((item, i) => (
+          <Button
+            key={`${item.label}-${i}`}
+            type="button"
+            variant={
+              (item.variant as
+                | "default"
+                | "secondary"
+                | "outline"
+                | "ghost"
+                | "destructive"
+                | "link") ?? "default"
+            }
+            className={cn("w-full justify-start rounded-lg text-sm font-medium")}
+            onClick={() => router.push(item.to)}
+          >
+            {item.label}
+          </Button>
+        ))}
+      </div>
+    </Card>
+  );
 }
 
 export function DashboardWidgets({ widgets }: Props) {
@@ -147,23 +122,46 @@ export function DashboardWidgets({ widgets }: Props) {
 
   if (ordered.length === 0) {
     return (
-      <Card>
-        <CardContent className="px-6 py-12 text-center">
-          <p className="text-base font-medium">Your dashboard is getting ready</p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Once your team starts using Vistasolve, you&apos;ll see live
-            project, social, and pipeline insights here.
-          </p>
-        </CardContent>
+      <Card className="rounded-xl border bg-card p-10 text-center shadow-sm">
+        <h2 className="text-lg font-semibold">Your dashboard is empty</h2>
+        <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+          Add an app from the workspace app catalog to start tracking your
+          business from here.
+        </p>
       </Card>
     );
   }
 
+  const stats = ordered.filter((w) => w.kind === "stat");
+  const recents = ordered.filter((w) => w.kind === "recent");
+  const actions = ordered.filter((w) => w.kind === "actions");
+  const allActionItems = actions.flatMap(
+    (w) => (w.data as DashboardActionData).items,
+  );
+
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {ordered.map((widget) => (
-        <WidgetCard key={widget.id} widget={widget} />
-      ))}
+    <div className="space-y-6">
+      {stats.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {stats.map((w) => (
+            <StatWidgetCard key={w.id} widget={w} />
+          ))}
+        </div>
+      )}
+
+      {(recents.length > 0 || actions.length > 0) && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {recents.map((w) => (
+            <RecentWidgetCard key={w.id} widget={w} />
+          ))}
+          {actions.length > 0 && (
+            <ActionWidgetCard
+              widget={actions[0]}
+              actions={allActionItems}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }
