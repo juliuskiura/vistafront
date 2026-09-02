@@ -1,31 +1,52 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { LogOut, User as UserIcon } from "lucide-react";
+import { LogOut, UserRound, ChevronDown } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/lib/context";
 import { logoutAction } from "@/app/(auth)/logout/action";
 
 interface Props {
-  user: { firstName: string | null; email: string | null };
+  user: { firstName: string | null; lastName?: string | null; email: string | null };
+  /**
+   * Path (relative to the current workspace) the "Account settings" item
+   * navigates to. Pass `null` to hide that item.
+   */
+  settingsHref?: string | null;
 }
 
-function initials(name: string | null | undefined, email: string | null | undefined) {
-  const source = (name || email || "?").trim();
-  if (!source) return "?";
-  const parts = source.split(/\s+|@/).filter(Boolean);
-  const first = parts[0]?.[0] ?? source[0];
-  const second = parts[1]?.[0] ?? "";
-  return (first + second).toUpperCase();
+function initials(
+  firstName: string | null | undefined,
+  lastName: string | null | undefined,
+) {
+  return [firstName, lastName]
+    .filter(Boolean)
+    .map((n) => n?.[0])
+    .join("")
+    .toUpperCase();
+}
+
+function fullName(
+  firstName: string | null | undefined,
+  lastName: string | null | undefined,
+) {
+  if (firstName) return `${firstName} ${lastName ?? ""}`.trim();
+  return "User";
 }
 
 /**
- * Top-navbar user menu. The sign-out action lives here (per the original
- * AppLayout: UserAccountMenu in the top-right of the navbar), not in the
- * sidebar footer.
+ * Top-navbar user account menu.
+ *
+ * The trigger is an avatar circle (initials) with a chevron — matching
+ * the original UserAccountMenu. The popover shows the user's full name
+ * and email as a label, an "Account settings" row (when a settings path
+ * is provided), and a "Sign out" row that calls the logout Server
+ * Action.
  */
-export function UserAccountMenu({ user }: Props) {
+export function UserAccountMenu({ user, settingsHref }: Props) {
+  const router = useRouter();
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -69,51 +90,53 @@ export function UserAccountMenu({ user }: Props) {
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label="Account menu"
-        className="flex items-center gap-2 rounded-full border bg-card/60 px-1.5 py-1 text-sm transition-colors hover:bg-accent"
+        aria-label="Open account menu"
+        className="flex items-center gap-2 rounded-lg border border-border bg-card px-2 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
-        <span
-          aria-hidden
-          className="flex size-7 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary"
-        >
-          {initials(user.firstName, user.email)}
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+          {initials(user.firstName, user.lastName ?? null) || "?"}
         </span>
-        <span className="hidden text-left leading-tight md:flex md:flex-col">
-          <span className="truncate text-xs font-semibold">
-            {user.firstName ?? user.email ?? "You"}
-          </span>
-          {user.firstName && user.email && (
-            <span className="truncate text-[10px] font-normal text-muted-foreground">
-              {user.email}
-            </span>
-          )}
-        </span>
+        <ChevronDown className="hidden size-4 text-muted-foreground sm:block" />
       </button>
 
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-50 mt-2 w-64 rounded-xl border bg-popover p-1 text-popover-foreground shadow-lg"
+          className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
         >
-          <div className="px-3 py-2 text-xs text-muted-foreground">
-            <p className="truncate text-sm font-semibold text-foreground">
-              {user.firstName ?? user.email ?? "You"}
-            </p>
+          <div className="flex flex-col gap-0.5 px-2 py-1.5">
+            <span className="truncate text-sm font-semibold">
+              {fullName(user.firstName, user.lastName ?? null)}
+            </span>
             {user.email && (
-              <p className="truncate text-xs">{user.email}</p>
+              <span className="truncate text-xs font-normal text-muted-foreground">
+                {user.email}
+              </span>
             )}
           </div>
-          <div className="sidebar-divider mx-2 my-1" />
+          <div className="my-1 h-px bg-border" />
+          {settingsHref ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                router.push(settingsHref);
+              }}
+              className="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground"
+            >
+              <UserRound className="size-4" />
+              Account settings
+            </button>
+          ) : null}
           <button
             type="button"
             role="menuitem"
             onClick={handleLogout}
-            className="sidebar-item w-full text-left"
+            className="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-destructive outline-none transition-colors hover:bg-destructive/10 focus-visible:bg-destructive/10"
           >
-            <span aria-hidden className="sidebar-icon">
-              <LogOut className="size-4" />
-            </span>
-            <span className="truncate">Log out</span>
+            <LogOut className="size-4" />
+            Sign out
           </button>
         </div>
       )}

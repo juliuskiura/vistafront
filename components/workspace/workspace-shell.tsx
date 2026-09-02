@@ -15,7 +15,11 @@ interface Props {
   workspace: Pick<Workspace, "nanoid" | "name" | "domain">;
   workspaces: Array<Pick<Workspace, "nanoid" | "name" | "domain">>;
   nav: NavItem[];
-  user: { firstName: string | null; email: string | null };
+  user: {
+    firstName: string | null;
+    lastName?: string | null;
+    email: string | null;
+  };
   children: React.ReactNode;
 }
 

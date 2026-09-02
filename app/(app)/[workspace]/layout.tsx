@@ -37,6 +37,7 @@ export default async function WorkspaceLayout({
       nav={nav}
       user={{
         firstName: user.first_name,
+        lastName: user.last_name,
         email: user.email,
       }}
     >
