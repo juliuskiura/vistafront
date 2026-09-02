@@ -1,4 +1,6 @@
-import { LoginForm } from "@/components/login-form";
+import Link from "next/link";
+
+import { Button } from "@/components/ui/button";
 
 const partners = [
   {
@@ -75,9 +77,32 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Right: Form panel */}
+        {/* Right: Call-to-action panel */}
         <section className="flex flex-1 items-center justify-center bg-[radial-gradient(ellipse_at_top_right,rgba(63,0,255,0.08),transparent_50%),var(--color-background)] p-6 sm:p-10 md:p-12">
-          <LoginForm />
+          <div className="flex w-full max-w-sm flex-col items-start gap-6">
+            <div>
+              <h2 className="font-display text-2xl font-semibold tracking-tight text-foreground">
+                Ready when you are
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                Sign in to pick up where your team left off, or create an
+                account in under a minute and let us walk you through the
+                rest.
+              </p>
+            </div>
+            <div className="flex w-full flex-col gap-3 sm:flex-row">
+              <Button asChild className="h-11 flex-1 rounded-xl">
+                <Link href="/login">Sign in</Link>
+              </Button>
+              <Button
+                asChild
+                variant="outline"
+                className="h-11 flex-1 rounded-xl border-primary/30 text-primary hover:bg-primary/5 hover:text-primary"
+              >
+                <Link href="/signup">Create account</Link>
+              </Button>
+            </div>
+          </div>
         </section>
       </div>
     </main>

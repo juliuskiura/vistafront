@@ -1,16 +1,16 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { Mail, Lock, Eye, EyeOff, User } from "lucide-react";
 import Link from "next/link";
-import { Mail, Lock, Eye, EyeOff, ExternalLink } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { AuthActionState } from "@/lib/auth/action-state";
-import { loginAction } from "@/app/(auth)/login/actions";
+import { initialAuthState } from "@/lib/auth/action-state";
+import { signupAction } from "@/app/(auth)/signup/actions";
 
 function VSButton({
   className,
@@ -40,17 +40,13 @@ function VSButton({
 
 const LOGO_URL = "https://vsregmedia.s3.amazonaws.com/branding/logo_5MuHLkV.svg";
 
-interface Props {
-  /** Initial Server Action state. Pages pass `initialAuthState`. */
-  action: AuthActionState;
-}
-
-export function LoginForm({ action }: Props) {
-  const [state, formAction, pending] = useActionState(loginAction, action);
+export function SignupForm() {
+  const [state, formAction, pending] = useActionState(
+    signupAction,
+    initialAuthState,
+  );
   const [showPassword, setShowPassword] = useState(false);
   const errors = state.status === "error" ? state.fieldErrors ?? {} : {};
-  const emailError = errors.email?.[0];
-  const passwordError = errors.password?.[0];
   const formError = state.status === "error" ? state.message : null;
 
   return (
@@ -61,15 +57,45 @@ export function LoginForm({ action }: Props) {
           <img src={LOGO_URL} alt="Vistasolve" className="h-8" />
           <div className="text-center">
             <h1 className="text-2xl font-bold tracking-tight text-primary">
-              Welcome back
+              Create your account
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Sign in to your Vistasolve workspace
+              We&apos;ll send a confirmation link to your email.
             </p>
           </div>
         </div>
 
         <form action={formAction} className="space-y-4" noValidate>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="first_name">First name</Label>
+              <div className="relative">
+                <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="first_name"
+                  name="first_name"
+                  required
+                  autoComplete="given-name"
+                  className="bg-white/70 pl-10"
+                />
+              </div>
+              {errors.first_name?.[0] && (
+                <p className="text-xs text-destructive">
+                  {errors.first_name[0]}
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="last_name">Last name</Label>
+              <Input
+                id="last_name"
+                name="last_name"
+                autoComplete="family-name"
+                className="bg-white/70"
+              />
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <div className="relative">
@@ -78,37 +104,26 @@ export function LoginForm({ action }: Props) {
                 id="email"
                 name="email"
                 type="email"
-                placeholder="name@example.com"
                 required
                 autoComplete="email"
-                autoFocus
                 className="bg-white/70 pl-10"
               />
             </div>
-            {emailError && (
-              <p className="text-xs text-destructive">{emailError}</p>
+            {errors.email?.[0] && (
+              <p className="text-xs text-destructive">{errors.email[0]}</p>
             )}
           </div>
 
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
-              <Link
-                href="/password/reset"
-                className="text-xs font-medium text-primary hover:underline underline-offset-4"
-              >
-                Forgot password?
-              </Link>
-            </div>
+            <Label htmlFor="password">Password</Label>
             <div className="relative">
               <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 id="password"
                 name="password"
                 type={showPassword ? "text" : "password"}
-                placeholder="Enter your password"
                 required
-                autoComplete="current-password"
+                autoComplete="new-password"
                 className="bg-white/70 pl-10 pr-10"
               />
               <VSButton
@@ -125,14 +140,58 @@ export function LoginForm({ action }: Props) {
                 )}
               </VSButton>
             </div>
-            {passwordError && (
-              <p className="text-xs text-destructive">{passwordError}</p>
+            {errors.password?.[0] && (
+              <p className="text-xs text-destructive">
+                {errors.password[0]}
+              </p>
             )}
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="re_password">Confirm password</Label>
+            <Input
+              id="re_password"
+              name="re_password"
+              type={showPassword ? "text" : "password"}
+              required
+              autoComplete="new-password"
+              className="bg-white/70"
+            />
+            {errors.re_password?.[0] && (
+              <p className="text-xs text-destructive">
+                {errors.re_password[0]}
+              </p>
+            )}
+          </div>
+
+          <label className="flex items-start gap-2 text-sm text-muted-foreground">
+            <input
+              id="agree_terms"
+              name="agree_terms"
+              type="checkbox"
+              required
+              className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+            />
+            <span>
+              I agree to the Vistasolve{" "}
+              <Link href="/terms" className="text-primary hover:underline">
+                terms
+              </Link>{" "}
+              and{" "}
+              <Link href="/privacy" className="text-primary hover:underline">
+                privacy policy
+              </Link>
+              .
+            </span>
+          </label>
+          {errors.agree_terms?.[0] && (
+            <p className="text-xs text-destructive">
+              {errors.agree_terms[0]}
+            </p>
+          )}
+
           {formError && (
             <div
-              id="login-error"
               role="alert"
               className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive"
             >
@@ -146,32 +205,17 @@ export function LoginForm({ action }: Props) {
             className="w-full"
             disabled={pending}
           >
-            {pending ? "Signing in…" : "Sign in"}
+            {pending ? "Creating your account…" : "Create account"}
           </VSButton>
         </form>
       </Card>
 
-      <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-white/40 bg-white/50 p-4 backdrop-blur-xl sm:flex-row sm:items-center">
-        <Button
-          asChild
-          variant="secondary"
-          size="sm"
-          className="flex-1 shrink gap-1.5"
-        >
-          <Link href="/signup">Create your account</Link>
-        </Button>
-        <Button
-          asChild
-          variant="outline"
-          size="sm"
-          className="flex-1 shrink gap-1.5 border-primary/30 text-primary hover:bg-primary/5 hover:text-primary"
-        >
-          <a href="https://vistasolve.com">
-            Vistasolve Home
-            <ExternalLink className="h-3.5 w-3.5" />
-          </a>
-        </Button>
-      </div>
+      <p className="mt-4 text-center text-sm text-muted-foreground">
+        Already have an account?{" "}
+        <Link href="/login" className="font-medium text-primary hover:underline">
+          Sign in
+        </Link>
+      </p>
     </div>
   );
 }

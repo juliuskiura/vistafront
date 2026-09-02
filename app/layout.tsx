@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import StoreProvider from "@/lib/redux/StoreProvider";
 import "./globals.css";
 
 const inter = localFont({
@@ -38,7 +37,11 @@ export const metadata: Metadata = {
     "Vistafront is the calm, organized CRM built for teams who run projects and social media side by side. Plan launches, track every task, schedule and respond across every channel, and trust that nothing slips — all in one reassuring place.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html
       lang="en"
@@ -62,7 +65,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         />
       </head>
       <body className="min-h-full flex flex-col">
-        <StoreProvider>{children}</StoreProvider>
+        {children}
       </body>
     </html>
   );
