@@ -7,6 +7,14 @@ import { ChevronsLeft, ChevronsRight, Menu, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Fab } from "@/components/ui/fab";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { resolveIcon } from "@/lib/nav-icons";
 import type { NavItem, Workspace } from "@/lib/api";
 import { WorkspaceSwitcher } from "@/components/workspace/workspace-switcher";
@@ -227,17 +235,59 @@ export function WorkspaceShell({
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <header className="flex h-14 shrink-0 items-center gap-3 border-b bg-card px-4 md:px-6">
-          <Fab
-            type="button"
-            variant="outline"
-            size="sm"
-            className="md:hidden"
-            onClick={() => setMobileOpen(true)}
-            aria-label="Open navigation"
-            title="Open navigation"
-          >
-            <Menu className="size-5" />
-          </Fab>
+          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+            <SheetTrigger
+              asChild
+              className="md:hidden"
+            >
+              <Fab
+                type="button"
+                variant="outline"
+                size="sm"
+                aria-label="Open navigation"
+                title="Open navigation"
+              >
+                <Menu className="size-5" />
+              </Fab>
+            </SheetTrigger>
+            <SheetContent
+              side="left"
+              showCloseButton={false}
+              className="w-72 max-w-[85vw] gap-0"
+            >
+              <SheetHeader className="flex-row items-center justify-between gap-2 border-b border-sidebar-divider px-3">
+                <SheetTitle className="sr-only">Navigation</SheetTitle>
+                <Link
+                  href="/onboarding"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex min-w-0 flex-1 items-center gap-2.5 overflow-hidden"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={FULL_LOGO}
+                    alt="Vistasolve"
+                    className="h-6 w-auto opacity-95"
+                  />
+                </Link>
+                <SheetClose asChild>
+                  <Fab
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    aria-label="Close navigation"
+                    title="Close"
+                  >
+                    <X className="size-5" />
+                  </Fab>
+                </SheetClose>
+              </SheetHeader>
+              <SidebarBody
+                nav={nav}
+                collapsed={false}
+                onNavigate={() => setMobileOpen(false)}
+              />
+            </SheetContent>
+          </Sheet>
           <Button
             type="button"
             variant="ghost"
@@ -263,56 +313,6 @@ export function WorkspaceShell({
         <main className="scrollbar-premium min-h-0 flex-1 overflow-y-auto p-4 animate-in fade-in duration-300 md:p-6">
           {children}
         </main>
-      </div>
-
-      {/* Mobile navigation drawer */}
-      <div
-        className={`fixed inset-0 z-50 md:hidden ${
-          mobileOpen ? "pointer-events-auto" : "pointer-events-none"
-        }`}
-        aria-hidden={!mobileOpen}
-      >
-        <div
-          onClick={() => setMobileOpen(false)}
-          className={`absolute inset-0 bg-foreground/40 transition-opacity duration-300 ${
-            mobileOpen ? "opacity-100" : "opacity-0"
-          }`}
-        />
-        <div
-          className={`sidebar-surface absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col border-r border-sidebar-divider transition-transform duration-300 ${
-            mobileOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
-        >
-          <div className="flex h-14 items-center justify-between gap-2 border-b border-sidebar-divider px-3">
-            <Link
-              href="/onboarding"
-              onClick={() => setMobileOpen(false)}
-              className="flex min-w-0 flex-1 items-center gap-2.5 overflow-hidden"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={FULL_LOGO}
-                alt="Vistasolve"
-                className="h-6 w-auto opacity-95"
-              />
-            </Link>
-            <Fab
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setMobileOpen(false)}
-              aria-label="Close navigation"
-              title="Close"
-            >
-              <X className="size-5" />
-            </Fab>
-          </div>
-          <SidebarBody
-            nav={nav}
-            collapsed={false}
-            onNavigate={() => setMobileOpen(false)}
-          />
-        </div>
       </div>
     </div>
   );

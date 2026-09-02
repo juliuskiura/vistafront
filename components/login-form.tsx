@@ -6,9 +6,10 @@ import { Mail, Lock, Eye, EyeOff, ExternalLink } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { AuthShell } from "@/components/auth/auth-shell";
+import { AuthCard } from "@/components/auth/auth-card";
 import type { AuthActionState } from "@/lib/auth/action-state";
 import { loginAction } from "@/app/(auth)/login/actions";
 
@@ -54,9 +55,9 @@ export function LoginForm({ action }: Props) {
   const formError = state.status === "error" ? state.message : null;
 
   return (
-    <div className="flex w-full max-w-md flex-col">
-      <Card className="w-full border-none bg-white/60 p-8">
-        <div className="mb-6 flex flex-col items-center gap-3">
+    <AuthShell>
+      <AuthCard>
+        <div className="mb-6 flex animate-in fade-in slide-in-from-bottom-2 flex-col items-center gap-3 duration-500 delay-75">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={LOGO_URL} alt="Vistasolve" className="h-8" />
           <div className="text-center">
@@ -69,11 +70,15 @@ export function LoginForm({ action }: Props) {
           </div>
         </div>
 
-        <form action={formAction} className="space-y-4" noValidate>
+        <form
+          action={formAction}
+          className="animate-in fade-in slide-in-from-bottom-2 space-y-4 duration-500 delay-150"
+          noValidate
+        >
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <div className="relative">
-              <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Mail className="absolute left-3 top-2.5 z-10 h-4 w-4 text-muted-foreground" />
               <Input
                 id="email"
                 name="email"
@@ -82,7 +87,7 @@ export function LoginForm({ action }: Props) {
                 required
                 autoComplete="email"
                 autoFocus
-                className="bg-white/70 pl-10"
+                className="glass-input pl-10"
               />
             </div>
             {emailError && (
@@ -101,7 +106,7 @@ export function LoginForm({ action }: Props) {
               </Link>
             </div>
             <div className="relative">
-              <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Lock className="absolute left-3 top-2.5 z-10 h-4 w-4 text-muted-foreground" />
               <Input
                 id="password"
                 name="password"
@@ -109,12 +114,12 @@ export function LoginForm({ action }: Props) {
                 placeholder="Enter your password"
                 required
                 autoComplete="current-password"
-                className="bg-white/70 pl-10 pr-10"
+                className="glass-input pl-10 pr-10"
               />
               <VSButton
                 type="button"
                 appearance="ghost"
-                className="absolute right-0 top-0 h-full w-11 rounded-none border-transparent p-0 text-muted-foreground hover:bg-transparent hover:text-foreground"
+                className="absolute right-0 top-0 z-10 h-full w-11 rounded-none border-transparent p-0 text-muted-foreground hover:bg-transparent hover:text-foreground"
                 onClick={() => setShowPassword((v) => !v)}
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
@@ -149,29 +154,34 @@ export function LoginForm({ action }: Props) {
             {pending ? "Signing in…" : "Sign in"}
           </VSButton>
         </form>
-      </Card>
+      </AuthCard>
 
-      <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-white/40 bg-white/50 p-4 backdrop-blur-xl sm:flex-row sm:items-center">
-        <Button
-          asChild
-          variant="secondary"
-          size="sm"
-          className="flex-1 shrink gap-1.5"
-        >
-          <Link href="/signup">Create your account</Link>
-        </Button>
-        <Button
-          asChild
-          variant="outline"
-          size="sm"
-          className="flex-1 shrink gap-1.5 border-primary/30 text-primary hover:bg-primary/5 hover:text-primary"
-        >
-          <a href="https://vistasolve.com">
-            Vistasolve Home
-            <ExternalLink className="h-3.5 w-3.5" />
-          </a>
-        </Button>
-      </div>
-    </div>
+      <AuthCard
+        motion="bottom"
+        className="mt-4 rounded-2xl p-4"
+      >
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <Button
+            asChild
+            variant="secondary"
+            size="sm"
+            className="flex-1 shrink gap-1.5"
+          >
+            <Link href="/signup">Create your account</Link>
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="flex-1 shrink gap-1.5 border-primary/30 text-primary hover:bg-primary/5 hover:text-primary"
+          >
+            <a href="https://vistasolve.com">
+              Vistasolve Home
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          </Button>
+        </div>
+      </AuthCard>
+    </AuthShell>
   );
 }

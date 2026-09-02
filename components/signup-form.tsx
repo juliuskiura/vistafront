@@ -6,20 +6,19 @@ import Link from "next/link";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { AuthShell } from "@/components/auth/auth-shell";
+import { AuthCard } from "@/components/auth/auth-card";
 import { initialAuthState } from "@/lib/auth/action-state";
 import { signupAction } from "@/app/(auth)/signup/actions";
 
 function VSButton({
   className,
   appearance = "solid",
-  variant = "primary",
   ...props
 }: React.ComponentProps<"button"> & {
   appearance?: "solid" | "ghost" | "outline" | "threeD";
-  variant?: "primary" | "secondary";
 }) {
   return (
     <Button
@@ -27,10 +26,6 @@ function VSButton({
         "h-11 rounded-xl px-4 font-medium",
         appearance === "threeD" &&
           "bg-primary text-primary-foreground shadow-[0_4px_0_0_var(--primary-700)] transition-all hover:translate-y-[1px] hover:shadow-[0_3px_0_0_var(--primary-700)] active:translate-y-[4px] active:shadow-none",
-        appearance === "outline" &&
-          variant === "primary" &&
-          "border border-primary/30 bg-transparent text-primary hover:bg-primary/5",
-        appearance === "ghost" && "bg-transparent shadow-none",
         className,
       )}
       {...props}
@@ -50,9 +45,9 @@ export function SignupForm() {
   const formError = state.status === "error" ? state.message : null;
 
   return (
-    <div className="flex w-full max-w-md flex-col">
-      <Card className="w-full border-none bg-white/60 p-8">
-        <div className="mb-6 flex flex-col items-center gap-3">
+    <AuthShell>
+      <AuthCard>
+        <div className="mb-6 flex animate-in fade-in slide-in-from-bottom-2 flex-col items-center gap-3 duration-500 delay-75">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={LOGO_URL} alt="Vistasolve" className="h-8" />
           <div className="text-center">
@@ -65,18 +60,22 @@ export function SignupForm() {
           </div>
         </div>
 
-        <form action={formAction} className="space-y-4" noValidate>
+        <form
+          action={formAction}
+          className="animate-in fade-in slide-in-from-bottom-2 space-y-4 duration-500 delay-150"
+          noValidate
+        >
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="first_name">First name</Label>
               <div className="relative">
-                <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <User className="absolute left-3 top-2.5 z-10 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="first_name"
                   name="first_name"
                   required
                   autoComplete="given-name"
-                  className="bg-white/70 pl-10"
+                  className="glass-input pl-10"
                 />
               </div>
               {errors.first_name?.[0] && (
@@ -91,7 +90,7 @@ export function SignupForm() {
                 id="last_name"
                 name="last_name"
                 autoComplete="family-name"
-                className="bg-white/70"
+                className="glass-input"
               />
             </div>
           </div>
@@ -99,14 +98,14 @@ export function SignupForm() {
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <div className="relative">
-              <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Mail className="absolute left-3 top-2.5 z-10 h-4 w-4 text-muted-foreground" />
               <Input
                 id="email"
                 name="email"
                 type="email"
                 required
                 autoComplete="email"
-                className="bg-white/70 pl-10"
+                className="glass-input pl-10"
               />
             </div>
             {errors.email?.[0] && (
@@ -117,19 +116,19 @@ export function SignupForm() {
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
             <div className="relative">
-              <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Lock className="absolute left-3 top-2.5 z-10 h-4 w-4 text-muted-foreground" />
               <Input
                 id="password"
                 name="password"
                 type={showPassword ? "text" : "password"}
                 required
                 autoComplete="new-password"
-                className="bg-white/70 pl-10 pr-10"
+                className="glass-input pl-10 pr-10"
               />
               <VSButton
                 type="button"
                 appearance="ghost"
-                className="absolute right-0 top-0 h-full w-11 rounded-none border-transparent p-0 text-muted-foreground hover:bg-transparent hover:text-foreground"
+                className="absolute right-0 top-0 z-10 h-full w-11 rounded-none border-transparent p-0 text-muted-foreground hover:bg-transparent hover:text-foreground"
                 onClick={() => setShowPassword((v) => !v)}
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
@@ -155,7 +154,7 @@ export function SignupForm() {
               type={showPassword ? "text" : "password"}
               required
               autoComplete="new-password"
-              className="bg-white/70"
+              className="glass-input"
             />
             {errors.re_password?.[0] && (
               <p className="text-xs text-destructive">
@@ -208,7 +207,7 @@ export function SignupForm() {
             {pending ? "Creating your account…" : "Create account"}
           </VSButton>
         </form>
-      </Card>
+      </AuthCard>
 
       <p className="mt-4 text-center text-sm text-muted-foreground">
         Already have an account?{" "}
@@ -216,6 +215,6 @@ export function SignupForm() {
           Sign in
         </Link>
       </p>
-    </div>
+    </AuthShell>
   );
 }

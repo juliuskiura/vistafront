@@ -3,7 +3,8 @@
 import { useActionState, useEffect, useRef } from "react";
 import Link from "next/link";
 
-import { initialAuthState } from "@/lib/auth/action-state";
+import { AuthShell } from "@/components/auth/auth-shell";
+import { AuthCard } from "@/components/auth/auth-card";
 import {
   activateAndLoginAction,
   type ActivationResult,
@@ -38,16 +39,16 @@ export function ActivationForm({ uid, token }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const heading = pending
+    ? "Activating your account…"
+    : state.status === "ok"
+      ? "Activating your account…"
+      : "We could not activate your account";
+
   return (
-    <section className="flex w-full max-w-md flex-col gap-6 rounded-2xl border border-border bg-card p-8 text-center shadow-lg">
-      <div>
-        <h1 className="text-xl font-semibold">
-          {pending
-            ? "Activating your account…"
-            : state.status === "ok"
-              ? "Activating your account…"
-              : "We could not activate your account"}
-        </h1>
+    <AuthShell>
+      <AuthCard className="text-center">
+        <h1 className="text-xl font-semibold">{heading}</h1>
         {state.status === "error" && (
           <p className="mt-2 text-sm text-destructive">{state.message}</p>
         )}
@@ -56,30 +57,24 @@ export function ActivationForm({ uid, token }: Props) {
             This will only take a moment.
           </p>
         )}
-      </div>
 
-      <form ref={formRef} action={formAction} className="sr-only">
-        <input type="hidden" name="uid" value={uid} />
-        <input type="hidden" name="token" value={token} />
-        <button type="submit" aria-label="Activate" />
-      </form>
+        <form ref={formRef} action={formAction} className="sr-only">
+          <input type="hidden" name="uid" value={uid} />
+          <input type="hidden" name="token" value={token} />
+          <button type="submit" aria-label="Activate" />
+        </form>
 
-      {state.status === "error" && (
-        <div className="flex flex-col gap-2 text-sm">
-          <Link
-            href="/login"
-            className="font-medium text-primary hover:underline"
-          >
-            Back to sign in
-          </Link>
-        </div>
-      )}
-
-      {/* Reference the import to satisfy `no-unused-vars` if the helper is
-          tree-shaken away during the success path. */}
-      <span hidden aria-hidden>
-        {initialAuthState.status}
-      </span>
-    </section>
+        {state.status === "error" && (
+          <div className="mt-6 flex flex-col gap-2 text-sm">
+            <Link
+              href="/login"
+              className="font-medium text-primary hover:underline"
+            >
+              Back to sign in
+            </Link>
+          </div>
+        )}
+      </AuthCard>
+    </AuthShell>
   );
 }
