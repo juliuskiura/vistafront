@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/features/accounts/lib/auth";
+import { parseApiError } from "@/lib/apiErrors";
 
 function VSButton({
   className,
@@ -37,6 +39,7 @@ function VSButton({
 const LOGO_URL = "https://vsregmedia.s3.amazonaws.com/branding/logo_5MuHLkV.svg";
 
 export function LoginForm() {
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -47,9 +50,12 @@ export function LoginForm() {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
-    // TODO: wire up real API login against the backend.
-    await new Promise((r) => setTimeout(r, 800));
-    setSubmitting(false);
+    try {
+      await login(email, password);
+    } catch (err) {
+      setError(parseApiError(err) || "Sign in failed");
+      setSubmitting(false);
+    }
   }
 
   return (

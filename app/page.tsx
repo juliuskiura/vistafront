@@ -38,14 +38,26 @@ export default function Home() {
           {/* Headline */}
           <div className="relative z-10">
             <h1 className="font-display text-xl font-bold leading-snug tracking-tight text-white sm:text-2xl md:text-3xl lg:leading-[1.15]">
-              You can easily Speed up your work with our Web App
+              Welcome home to the CRM that finally has your back.
             </h1>
+            <p className="mt-4 max-w-md text-sm leading-relaxed text-white/80 sm:text-base">
+              Take a breath. Every project, every post, every conversation
+              your team needs is waiting for you in one calm, organized place.
+              From the first kickoff meeting to the final celebratory reply,
+              Vistasolve quietly keeps everything on track so you can focus on
+              the work that actually matters.
+            </p>
+            <p className="mt-3 max-w-md text-sm leading-relaxed text-white/70 sm:text-base">
+              Plan projects with confidence, schedule and respond across every
+              social channel without the chaos, and trust that nothing will
+              slip through the cracks. You are in good hands.
+            </p>
           </div>
 
           {/* Partners */}
           <div className="relative z-10 mt-auto pt-10">
             <p className="mb-5 text-center text-sm font-medium tracking-wide text-white/60">
-              Our partners
+              Trusted by teams who rely on
             </p>
             <div className="flex items-center justify-center gap-6 opacity-60 sm:gap-8">
               {partners.map((p) => (

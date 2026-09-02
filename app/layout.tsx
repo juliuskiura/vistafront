@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import StoreProvider from "@/lib/redux/StoreProvider";
 import "./globals.css";
 
 const inter = localFont({
@@ -32,39 +33,37 @@ const jakarta = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Vista",
-  description: "Vista",
+  title: "Vistasolve — The CRM Where Your Work Finally Feels at Home",
+  description:
+    "Vistafront is the calm, organized CRM built for teams who run projects and social media side by side. Plan launches, track every task, schedule and respond across every channel, and trust that nothing slips — all in one reassuring place.",
 };
-
-function DarkModeInit() {
-  return (
-    <script
-      dangerouslySetInnerHTML={{
-        __html: `
-          (function() {
-            try {
-              var theme = localStorage.getItem('theme');
-              if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                document.documentElement.classList.add('dark');
-              }
-            } catch(e) {}
-          })();
-        `,
-      }}
-    />
-  );
-}
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${outfit.variable} ${jakarta.variable} h-full antialiased`}      suppressHydrationWarning
+      className={`${inter.variable} ${outfit.variable} ${jakarta.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
       <head>
-        <DarkModeInit />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var theme = localStorage.getItem('theme');
+                  if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                    document.documentElement.classList.add('dark');
+                  }
+                } catch(e) {}
+              })();
+            `,
+          }}
+        />
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <StoreProvider>{children}</StoreProvider>
+      </body>
     </html>
   );
 }
