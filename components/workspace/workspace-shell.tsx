@@ -8,6 +8,7 @@ import { ChevronDown, LogOut, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useSidebar, useToast } from "@/lib/context";
+import { resolveIcon } from "@/lib/nav-icons";
 import { logoutAction } from "@/app/(auth)/logout/action";
 import type { NavItem, Workspace } from "@/lib/api";
 
@@ -38,6 +39,7 @@ function NavLink({ item }: { item: NavItem }) {
     item.end === true
       ? pathname === item.to
       : pathname === item.to || pathname.startsWith(`${item.to}/`);
+  const Icon = resolveIcon(item.icon);
 
   return (
     <Link
@@ -49,12 +51,13 @@ function NavLink({ item }: { item: NavItem }) {
           : "text-muted-foreground hover:bg-accent hover:text-foreground",
       )}
     >
-      <span
+      <Icon
         aria-hidden
-        className="inline-flex h-5 w-5 items-center justify-center rounded bg-primary/10 text-[10px] font-semibold text-primary"
-      >
-        {item.label.slice(0, 1).toUpperCase()}
-      </span>
+        className={cn(
+          "size-4 shrink-0",
+          active ? "text-primary" : "text-muted-foreground",
+        )}
+      />
       <span className="truncate">{item.label}</span>
     </Link>
   );
