@@ -258,6 +258,61 @@ export async function serverFetch<T>(path: string): Promise<T> {
 
 ---
 
+## FEATURE PORTS (Sidebar & Dashboard Routes)
+
+The sidebar nav returned by the backend (`getNavigationSidebar()`) maps to many feature routes that all live under the active workspace segment:
+
+```
+/[workspace]/dashboard/<feature>/...
+```
+
+Every one of those routes **must** be implemented using the same three-layer pattern. No feature is exempt — adding a sidebar link without a matching route is a bug.
+
+### The required structure
+
+1. **Server Component page** — the route entry. Path:
+   ```
+   app/(app)/[workspace]/dashboard/<feature>/page.tsx
+   ```
+   For routes with dynamic segments (e.g. `/projects/:id`), also add:
+   ```
+   app/(app)/[workspace]/dashboard/<feature>/[id]/page.tsx
+   ```
+
+2. **Server Actions** — colocated next to the page:
+   ```
+   app/(app)/[workspace]/dashboard/<feature>/actions.ts
+   ```
+   `"use server"` at the top. All mutations (create / update / delete / invite / move / etc.) call `serverMutate` and end with `redirect(...)` or `revalidatePath(...)`. Never use a client-side `fetch` for mutations.
+
+3. **Client Components** — only where interactivity is genuinely required:
+   ```
+   app/(app)/[workspace]/dashboard/<feature>/<feature>-client.tsx
+   ```
+   Use `"use client"` only when you need hooks (`useState`, `useActionState`, `useRouter`), browser APIs, or `onClick`/`onChange` event handlers. Render the bulk of the UI as Server Components, then drop a Client Component in for the interactive slice (dialogs, forms, drag-and-drop, etc.).
+
+### Per-feature checklist
+
+Before merging a feature port, verify:
+
+- [ ] `app/(app)/[workspace]/dashboard/<feature>/page.tsx` exists and is a Server Component (no `"use client"`).
+- [ ] The page calls `requireWorkspace(slug)` (or relies on the `[workspace]/layout.tsx` guard already in place) before fetching.
+- [ ] Data is fetched via `lib/api/<feature>.ts` → `serverFetch`, **never** in `useEffect`.
+- [ ] All mutations are Server Actions in `actions.ts`; no client-side `POST`/`PUT`/`DELETE`.
+- [ ] Client Components are scoped to the smallest subtree that needs interactivity.
+- [ ] `npm run build` passes for the new route.
+- [ ] No `window.location`, no Redux, no RTK Query, no client-side token reads.
+
+### Reference implementation
+
+See `app/(app)/[workspace]/dashboard/workspaces/` for a working example: Server Component page, Server Actions file, Client Component for the invite dialog, all bound through `useActionState` and `revalidatePath`.
+
+### Why a catch-all is NOT a substitute
+
+`app/(app)/[workspace]/dashboard/[...rest]/page.tsx` exists as a safety net for truly unknown paths — it redirects to `/dashboard`. It is **not** a stand-in for a real route. Every backend-issued sidebar `to` must have a real `page.tsx` behind it.
+
+---
+
 ## Explaining Technical Concepts
 
 When the user asks you to explain how something works — a technical decision, a pattern, an architectural choice, a bug, or a piece of code — explain it like you're teaching someone who is NEW to React and Next.js. Assume they understand programming basics but not the specific framework concepts. Follow these rules:
