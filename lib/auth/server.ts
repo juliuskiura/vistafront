@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { serverFetch } from "@/lib/api/server-fetch";
+import { listWorkspaces, type Workspace } from "@/lib/api";
 import {
   clearAuthCookies as clearAuthCookiesFromStore,
   getAccessToken,
@@ -22,15 +22,10 @@ export interface User {
   redirect_url?: string;
 }
 
-export interface WorkspaceItem {
-  nanoid: string;
-  name: string;
-  domain: string;
-  is_active: boolean;
-  my_role: "owner" | "admin" | "member" | null;
-  url: string;
-  app_access: string[];
-}
+/**
+ * @deprecated import `Workspace` from `@/lib/api` instead.
+ */
+export type WorkspaceItem = Workspace;
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:8000";
 
@@ -99,11 +94,9 @@ export async function requireWorkspace(slug: string): Promise<WorkspaceItem> {
     redirect("/onboarding");
   }
 
-  let workspaces: WorkspaceItem[];
+  let workspaces: Workspace[];
   try {
-    workspaces = await serverFetch<WorkspaceItem[]>(
-      "/apis/workspaces/workspaces/",
-    );
+    workspaces = await listWorkspaces();
   } catch (error) {
     console.error("Failed to load workspaces for requireWorkspace:", error);
     redirect("/restricted");

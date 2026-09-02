@@ -2,11 +2,35 @@ import { cookies } from "next/headers";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:8000";
 
-interface RequestOptions {
+export interface RequestOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   cache?: RequestCache;
   next?: { revalidate?: number | false; tags?: string[] };
+}
+
+/**
+ * Serialize a flat object into a URL-encoded query string. Values that are
+ * `null` or `undefined` are skipped; arrays are repeated. Safe for simple
+ * JSON-encodable values; do not pass nested objects.
+ */
+export function toQueryString(params: Record<string, unknown> = {}): string {
+  const parts: string[] = [];
+  for (const [key, value] of Object.entries(params)) {
+    if (value === null || value === undefined) continue;
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        parts.push(
+          `${encodeURIComponent(key)}=${encodeURIComponent(String(item))}`,
+        );
+      }
+    } else {
+      parts.push(
+        `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`,
+      );
+    }
+  }
+  return parts.length === 0 ? "" : `?${parts.join("&")}`;
 }
 
 /**
@@ -25,7 +49,6 @@ export async function serverFetch<T>(
     "Content-Type": "application/json",
   };
 
-  // Forward auth cookies to Django
   const cookieHeader = [
     accessToken ? `access=${accessToken.value}` : null,
     refreshToken ? `refresh=${refreshToken.value}` : null,
@@ -50,7 +73,11 @@ export async function serverFetch<T>(
     throw new ServerFetchError(response.status, errorText, path);
   }
 
-  return response.json();
+  if (response.status === 204) {
+    return {} as T;
+  }
+
+  return (await response.json()) as T;
 }
 
 /**
@@ -71,7 +98,6 @@ export async function serverMutate<T>(
     "Content-Type": "application/json",
   };
 
-  // Forward auth cookies
   const cookieHeader = [
     accessToken ? `access=${accessToken.value}` : null,
     refreshToken ? `refresh=${refreshToken.value}` : null,
@@ -83,7 +109,6 @@ export async function serverMutate<T>(
     headers.Cookie = cookieHeader;
   }
 
-  // Include CSRF token for Django
   if (csrfToken) {
     headers["X-CSRFToken"] = csrfToken.value;
   }
@@ -100,12 +125,11 @@ export async function serverMutate<T>(
     throw new ServerFetchError(response.status, errorText, path);
   }
 
-  // Handle empty responses (204 No Content)
   if (response.status === 204) {
     return {} as T;
   }
 
-  return response.json();
+  return (await response.json()) as T;
 }
 
 export class ServerFetchError extends Error {
