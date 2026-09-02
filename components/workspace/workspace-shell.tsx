@@ -44,10 +44,12 @@ function NavLink({
   item,
   collapsed,
   onNavigate,
+  workspaceDomain,
 }: {
   item: NavItem;
   collapsed: boolean;
   onNavigate?: () => void;
+  workspaceDomain: string;
 }) {
   const pathname = usePathname();
   // The backend issues nav targets relative to the workspace root
@@ -87,10 +89,15 @@ function NavLink({
     </span>
   ) : null;
 
+  // Scope the backend-issued relative target under the active workspace so
+  // Next.js routes it through the [workspace] segment (and its
+  // requireWorkspace guard) instead of escaping to a sibling app route.
+  const scopedHref = `/${workspaceDomain}${target}`;
+
   return (
     <li>
       <Link
-        href={item.to}
+        href={scopedHref}
         onClick={onNavigate}
         title={collapsed ? item.label : undefined}
         aria-current={active ? "page" : undefined}
@@ -130,10 +137,12 @@ function SidebarBody({
   nav,
   collapsed,
   onNavigate,
+  workspaceDomain,
 }: {
   nav: NavItem[];
   collapsed: boolean;
   onNavigate?: () => void;
+  workspaceDomain: string;
 }) {
   return (
     <>
@@ -155,6 +164,7 @@ function SidebarBody({
                 item={item}
                 collapsed={collapsed}
                 onNavigate={onNavigate}
+                workspaceDomain={workspaceDomain}
               />
             ))
           )}
@@ -230,7 +240,7 @@ export function WorkspaceShell({
         }`}
       >
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/60 to-transparent dark:via-white/10" />
-        <SidebarBody nav={nav} collapsed={collapsed} />
+        <SidebarBody nav={nav} collapsed={collapsed} workspaceDomain={workspace.domain} />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
@@ -285,6 +295,7 @@ export function WorkspaceShell({
                 nav={nav}
                 collapsed={false}
                 onNavigate={() => setMobileOpen(false)}
+                workspaceDomain={workspace.domain}
               />
             </SheetContent>
           </Sheet>

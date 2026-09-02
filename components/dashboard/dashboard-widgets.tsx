@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { resolveIcon } from "@/lib/nav-icons";
 import { StatCard } from "@/components/dashboard/stat-card";
+import { DashboardError } from "@/components/dashboard/dashboard-error";
 import type {
   DashboardActionData,
   DashboardRecentData,
@@ -15,8 +16,19 @@ import type {
   DashboardWidget,
 } from "@/lib/api";
 
+/**
+ * What the dashboard page passes down. `widgets` is the success path
+ * (an array — possibly empty). `error` is the failure path with a
+ * developer-friendly message. We never collapse an error into `widgets=[]`
+ * because that would silently render the "empty" state when the API
+ * actually failed.
+ */
+type DashboardData =
+  | { kind: "ok"; widgets: DashboardWidget[] }
+  | { kind: "error"; title: string; message: string; hint?: string };
+
 interface Props {
-  widgets: DashboardWidget[];
+  data: DashboardData;
 }
 
 function StatWidgetCard({ widget }: { widget: DashboardWidget }) {
@@ -114,22 +126,36 @@ function ActionWidgetCard({
   );
 }
 
-export function DashboardWidgets({ widgets }: Props) {
+function EmptyState() {
+  return (
+    <Card className="rounded-xl border bg-card p-10 text-center shadow-sm">
+      <h2 className="text-lg font-semibold">Your dashboard is empty</h2>
+      <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+        Add an app from the workspace app catalog to start tracking your
+        business from here.
+      </p>
+    </Card>
+  );
+}
+
+export function DashboardWidgets({ data }: Props) {
+  if (data.kind === "error") {
+    return (
+      <DashboardError
+        title={data.title}
+        message={data.message}
+        hint={data.hint}
+      />
+    );
+  }
+
   const ordered = useMemo(
-    () => [...widgets].sort((a, b) => a.order - b.order),
-    [widgets],
+    () => [...data.widgets].sort((a, b) => a.order - b.order),
+    [data.widgets],
   );
 
   if (ordered.length === 0) {
-    return (
-      <Card className="rounded-xl border bg-card p-10 text-center shadow-sm">
-        <h2 className="text-lg font-semibold">Your dashboard is empty</h2>
-        <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-          Add an app from the workspace app catalog to start tracking your
-          business from here.
-        </p>
-      </Card>
-    );
+    return <EmptyState />;
   }
 
   const stats = ordered.filter((w) => w.kind === "stat");

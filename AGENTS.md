@@ -278,6 +278,9 @@ When the user asks you to explain how something works — a technical decision, 
 
 8. **Define framework-specific terms on first use.** When you say "hook," "Server Component," "middleware," "interceptor," "hydration," — add a one-line plain definition in parentheses the first time you use it in an explanation.
 
+### 7. Django Backend code is read-only. Should NEVER be changed
+
+Do not change the backend code. Your is to call the endpoint and ensure the frontend and nextjs use the backend as-is
 ---
 
 ## Verification Checklist
