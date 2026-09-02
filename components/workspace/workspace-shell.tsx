@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
-import { ChevronDown, LogOut, Check, LayoutGrid } from "lucide-react";
+import { useEffect, useState, type ComponentType, type SVGProps } from "react";
+import { Menu, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { useSidebar, useToast } from "@/lib/context";
 import { resolveIcon } from "@/lib/nav-icons";
-import { logoutAction } from "@/app/(auth)/logout/action";
 import type { NavItem, Workspace } from "@/lib/api";
+import { WorkspaceSwitcher } from "@/components/workspace/workspace-switcher";
+import { UserAccountMenu } from "@/components/workspace/user-account-menu";
 
 interface Props {
   workspace: Pick<Workspace, "nanoid" | "name" | "domain">;
@@ -19,34 +19,126 @@ interface Props {
   children: React.ReactNode;
 }
 
-function initials(name: string | null | undefined, email: string | null | undefined) {
-  const source = (name || email || "?").trim();
-  if (!source) return "?";
-  const parts = source.split(/\s+|@/).filter(Boolean);
-  const first = parts[0]?.[0] ?? source[0];
-  const second = parts[1]?.[0] ?? "";
-  return (first + second).toUpperCase();
-}
+const SIDEBAR_COLLAPSED_KEY = "vs:sidebar:collapsed";
+const FULL_LOGO =
+  "https://vsregmedia.s3.amazonaws.com/branding/logo_5MuHLkV.svg";
+const ICON_LOGO =
+  "https://vsregmedia.s3.amazonaws.com/branding/icon_tn0FNHi.svg";
 
-function NavLink({ item }: { item: NavItem }) {
+type IconComponent = ComponentType<SVGProps<SVGSVGElement> & { size?: number | string }>;
+
+function NavLink({
+  item,
+  collapsed,
+  onNavigate,
+}: {
+  item: NavItem;
+  collapsed: boolean;
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
   const active =
     item.end === true
       ? pathname === item.to
       : pathname === item.to || pathname.startsWith(`${item.to}/`);
-  const Icon = resolveIcon(item.icon);
+  const Icon = resolveIcon(item.icon) as IconComponent;
+
+  const className = [
+    "sidebar-item",
+    active ? "is-active" : "",
+    collapsed ? "is-collapsed" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const icon = (
+    <span aria-hidden className="sidebar-icon">
+      <Icon size={18} />
+    </span>
+  );
+  const label = (
+    <span className={`sidebar-label${collapsed ? " is-collapsed" : ""}`}>
+      {item.label}
+    </span>
+  );
+  const tooltip = collapsed ? (
+    <span className="sidebar-tooltip" role="tooltip">
+      {item.label}
+    </span>
+  ) : null;
 
   return (
-    <Link
-      href={item.to}
-      className={`sidebar-item${active ? " is-active" : ""}`}
-      aria-current={active ? "page" : undefined}
-    >
-      <span aria-hidden className="sidebar-icon">
-        <Icon className="size-4" />
-      </span>
-      <span className="truncate">{item.label}</span>
-    </Link>
+    <li>
+      <Link
+        href={item.to}
+        onClick={onNavigate}
+        title={collapsed ? item.label : undefined}
+        aria-current={active ? "page" : undefined}
+        className={className}
+      >
+        {icon}
+        {label}
+        {tooltip}
+      </Link>
+    </li>
+  );
+}
+
+function SidebarBody({
+  nav,
+  collapsed,
+  onNavigate,
+}: {
+  nav: NavItem[];
+  collapsed: boolean;
+  onNavigate?: () => void;
+}) {
+  return (
+    <>
+      <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-sidebar-divider px-5">
+        <Link
+          href="/onboarding"
+          className="flex cursor-pointer items-center gap-2.5 overflow-hidden"
+          title="Vistasolve"
+        >
+          {collapsed ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={ICON_LOGO} alt="" className="size-8 shrink-0" />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={FULL_LOGO}
+              alt="Vistasolve"
+              className="h-6 w-auto opacity-95 transition-opacity duration-300"
+            />
+          )}
+        </Link>
+      </div>
+      <nav
+        className="scrollbar-premium min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-4"
+        aria-label="Primary"
+      >
+        <p className="sidebar-section-label">Menu</p>
+        <ul className="sidebar-nav-list">
+          {nav.length === 0 ? (
+            <li>
+              <p className="px-3 py-4 text-xs text-sidebar-muted-foreground">
+                No navigation items yet.
+              </p>
+            </li>
+          ) : (
+            nav.map((item) => (
+              <NavLink
+                key={item.to}
+                item={item}
+                collapsed={collapsed}
+                onNavigate={onNavigate}
+              />
+            ))
+          )}
+        </ul>
+      </nav>
+    </>
   );
 }
 
@@ -57,165 +149,153 @@ export function WorkspaceShell({
   user,
   children,
 }: Props) {
-  const { isOpen, toggle } = useSidebar();
-  const router = useRouter();
-  const toast = useToast();
-  const [switcherOpen, setSwitcherOpen] = useState(false);
+  const pathname = usePathname();
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  async function handleLogout() {
+  // Persist the desktop collapsed preference.
+  useEffect(() => {
     try {
-      await logoutAction();
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Could not sign out.";
-      toast.push({ variant: "error", message });
+      const stored = window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
+      if (stored === "true") setCollapsed(true);
+    } catch {
+      /* ignore */
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        SIDEBAR_COLLAPSED_KEY,
+        collapsed ? "true" : "false",
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [collapsed]);
+
+  // Contain all scrolling inside the dashboard shell (sidebar + main) so
+  // modal dialogs (which toggle <body> overflow via react-remove-scroll) never
+  // introduce a document-level scrollbar. Scoped to the dashboard route so
+  // auth/login pages keep their own natural scrolling.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  // Close the mobile sheet on navigation.
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  const currentNav = nav.find((item) =>
+    item.end
+      ? pathname === item.to
+      : pathname.startsWith(item.to),
+  );
+  const pageTitle = currentNav?.label ?? "Dashboard";
 
   return (
-    <div className="flex min-h-screen w-full bg-background text-foreground">
+    <div className="flex h-screen overflow-hidden bg-background">
       <aside
-        data-open={isOpen}
-        className={`sidebar-surface scrollbar-premium fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-sidebar-border ${
-          isOpen
-            ? "translate-x-0"
-            : "-translate-x-full md:w-0 md:overflow-hidden md:border-0"
-        } md:relative md:translate-x-0`}
+        className={`sidebar-surface relative hidden h-full shrink-0 flex-col border-r border-sidebar-divider transition-[width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] md:flex ${
+          collapsed ? "w-[72px]" : "w-64"
+        }`}
       >
-        <div className="px-3 pt-4 pb-2">
-          <button
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/60 to-transparent dark:via-white/10" />
+        <SidebarBody nav={nav} collapsed={collapsed} />
+      </aside>
+
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <header className="flex h-14 shrink-0 items-center gap-3 border-b bg-card px-4 md:px-6">
+          <Button
             type="button"
-            onClick={() => setSwitcherOpen((v) => !v)}
-            aria-haspopup="listbox"
-            aria-expanded={switcherOpen}
-            className="sidebar-item is-active w-full"
+            variant="outline"
+            size="icon"
+            className="size-9 md:hidden"
+            onClick={() => setMobileOpen(true)}
+            aria-label="Open navigation"
+            title="Open navigation"
           >
-            <span aria-hidden className="sidebar-icon">
-              <LayoutGrid className="size-4" />
-            </span>
-            <span className="flex min-w-0 flex-1 flex-col items-start leading-tight">
-              <span className="truncate text-sm">{workspace.name}</span>
-              <span className="truncate text-[11px] font-normal opacity-80">
-                /{workspace.domain}
-              </span>
-            </span>
-            <ChevronDown
-              className={`size-4 shrink-0 transition-transform ${
-                switcherOpen ? "rotate-180" : ""
-              }`}
-            />
-          </button>
-        </div>
-
-        {switcherOpen && (
-          <div className="px-3 pb-2">
-            <div className="sidebar-divider" />
-            <p className="sidebar-section-label pt-2">Switch workspace</p>
-            <ul role="listbox" className="sidebar-nav-list">
-              {workspaces.map((ws) => {
-                const active = ws.nanoid === workspace.nanoid;
-                return (
-                  <li key={ws.nanoid}>
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={active}
-                      onClick={() => {
-                        setSwitcherOpen(false);
-                        if (!active) router.push(`/${ws.domain}/dashboard`);
-                      }}
-                      className={`sidebar-item w-full text-left${
-                        active ? " is-active" : ""
-                      }`}
-                    >
-                      <span aria-hidden className="sidebar-icon">
-                        <span className="text-[11px] font-semibold">
-                          {ws.name.slice(0, 1).toUpperCase()}
-                        </span>
-                      </span>
-                      <span className="min-w-0 flex-1 truncate">{ws.name}</span>
-                      {active && <Check className="size-4 shrink-0" />}
-                    </button>
-                  </li>
-                );
-              })}
-              {workspaces.length <= 1 && (
-                <li className="px-3 py-2 text-[11px] text-sidebar-muted-foreground">
-                  You only belong to this workspace.
-                </li>
-              )}
-            </ul>
-          </div>
-        )}
-
-        <div className="sidebar-divider mx-3" />
-
-        <nav className="flex-1 overflow-y-auto px-3 py-3 scrollbar-premium">
-          {nav.length === 0 ? (
-            <p className="px-3 py-4 text-xs text-sidebar-muted-foreground">
-              No navigation items yet.
-            </p>
-          ) : (
-            <ul className="sidebar-nav-list">
-              {nav.map((item) => (
-                <li key={item.to}>
-                  <NavLink item={item} />
-                </li>
-              ))}
-            </ul>
-          )}
-        </nav>
-
-        <div className="sidebar-divider mx-3" />
-
-        <div className="px-3 py-3">
-          <div className="sidebar-item">
+            <Menu className="size-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="hidden size-9 md:inline-flex"
+            onClick={() => setCollapsed((c) => !c)}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
             <span
               aria-hidden
-              className="sidebar-icon text-sm font-semibold"
+              className="block h-4 w-4 rounded border-l-2 border-r-2 border-primary-400"
+            />
+          </Button>
+          <h1 className="text-lg font-semibold">{pageTitle}</h1>
+          <div className="ml-auto flex items-center gap-2">
+            <WorkspaceSwitcher active={workspace} workspaces={workspaces} />
+            <UserAccountMenu user={user} />
+          </div>
+        </header>
+
+        <main className="scrollbar-premium min-h-0 flex-1 overflow-y-auto p-4 animate-in fade-in duration-300 md:p-6">
+          {children}
+        </main>
+      </div>
+
+      {/* Mobile navigation drawer */}
+      <div
+        className={`fixed inset-0 z-50 md:hidden ${
+          mobileOpen ? "pointer-events-auto" : "pointer-events-none"
+        }`}
+        aria-hidden={!mobileOpen}
+      >
+        <div
+          onClick={() => setMobileOpen(false)}
+          className={`absolute inset-0 bg-foreground/40 transition-opacity duration-300 ${
+            mobileOpen ? "opacity-100" : "opacity-0"
+          }`}
+        />
+        <div
+          className={`sidebar-surface absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col border-r border-sidebar-divider transition-transform duration-300 ${
+            mobileOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          <div className="flex h-14 items-center justify-between border-b border-sidebar-divider px-3">
+            <Link
+              href="/onboarding"
+              onClick={() => setMobileOpen(false)}
+              className="flex items-center gap-2.5 overflow-hidden"
             >
-              {initials(user.firstName, user.email)}
-            </span>
-            <div className="min-w-0 flex-1 leading-tight">
-              <p className="truncate text-sm">
-                {user.firstName ?? user.email ?? "You"}
-              </p>
-              {user.firstName && user.email && (
-                <p className="truncate text-[11px] font-normal opacity-80">
-                  {user.email}
-                </p>
-              )}
-            </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={FULL_LOGO}
+                alt="Vistasolve"
+                className="h-6 w-auto opacity-95"
+              />
+            </Link>
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              onClick={handleLogout}
-              aria-label="Log out"
-              className="size-8"
+              onClick={() => setMobileOpen(false)}
+              aria-label="Close navigation"
+              title="Close"
             >
-              <LogOut className="size-4" />
+              <X className="size-4" />
             </Button>
           </div>
+          <SidebarBody
+            nav={nav}
+            collapsed={false}
+            onNavigate={() => setMobileOpen(false)}
+          />
         </div>
-      </aside>
-
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center gap-3 border-b bg-card/50 px-4 py-3 md:hidden">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={toggle}
-            aria-label="Toggle navigation"
-          >
-            Menu
-          </Button>
-          <span className="truncate text-sm font-semibold">{workspace.name}</span>
-        </header>
-        <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
-          {children}
-        </main>
       </div>
     </div>
   );
