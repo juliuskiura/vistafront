@@ -1,12 +1,34 @@
-export default function OnboardingHomePage() {
+import Link from "next/link";
+
+import { listWorkspaces } from "@/lib/api";
+import { getAuthUser } from "@/lib/auth/server";
+import { OnboardingHomeClient } from "@/components/onboarding/onboarding-home-client";
+
+/**
+ * Onboarding home (Server Component).
+ *
+ * Branches the UI based on what we know about the signed-in user:
+ *  - has at least one workspace → show "Open your workspace" + a switcher
+ *  - no workspaces → show "Create a business" / "Join with a code" CTAs
+ */
+export default async function OnboardingHomePage() {
+  const [user, workspaces] = await Promise.all([
+    getAuthUser(),
+    listWorkspaces().catch(() => []),
+  ]);
+
+  const hasWorkspace = workspaces.length > 0;
+  const firstName = user?.first_name?.trim() || user?.email?.split("@")[0] || "there";
+
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-lg">
-        <h1 className="text-xl font-semibold">Welcome to Vistasolve</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          (Onboarding flow lands in a later stage.)
-        </p>
-      </div>
-    </main>
+    <OnboardingHomeClient
+      firstName={firstName}
+      hasWorkspace={hasWorkspace}
+      workspaces={workspaces.map((ws) => ({
+        nanoid: ws.nanoid,
+        name: ws.name,
+        domain: ws.domain,
+      }))}
+    />
   );
 }
