@@ -6,6 +6,7 @@ import { useEffect, useState, type ComponentType, type SVGProps } from "react";
 import { ChevronsLeft, ChevronsRight, Menu, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Fab } from "@/components/ui/fab";
 import { resolveIcon } from "@/lib/nav-icons";
 import type { NavItem, Workspace } from "@/lib/api";
 import { WorkspaceSwitcher } from "@/components/workspace/workspace-switcher";
@@ -95,6 +96,28 @@ function NavLink({
   );
 }
 
+function SidebarLogo({ collapsed }: { collapsed: boolean }) {
+  return (
+    <Link
+      href="/onboarding"
+      className="flex h-16 shrink-0 cursor-pointer items-center gap-2.5 overflow-hidden border-b border-sidebar-divider px-5"
+      title="Vistasolve"
+    >
+      {collapsed ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={ICON_LOGO} alt="" className="size-8 shrink-0" />
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={FULL_LOGO}
+          alt="Vistasolve"
+          className="h-6 w-auto opacity-95 transition-opacity duration-300"
+        />
+      )}
+    </Link>
+  );
+}
+
 function SidebarBody({
   nav,
   collapsed,
@@ -106,30 +129,10 @@ function SidebarBody({
 }) {
   return (
     <>
-      <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-sidebar-divider px-5">
-        <Link
-          href="/onboarding"
-          className="flex cursor-pointer items-center gap-2.5 overflow-hidden"
-          title="Vistasolve"
-        >
-          {collapsed ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={ICON_LOGO} alt="" className="size-8 shrink-0" />
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={FULL_LOGO}
-              alt="Vistasolve"
-              className="h-6 w-auto opacity-95 transition-opacity duration-300"
-            />
-          )}
-        </Link>
-      </div>
       <nav
         className="scrollbar-premium min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-4"
         aria-label="Primary"
       >
-        <p className="sidebar-section-label">Menu</p>
         <ul className="sidebar-nav-list">
           {nav.length === 0 ? (
             <li>
@@ -280,11 +283,11 @@ export function WorkspaceShell({
             mobileOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
-          <div className="flex h-14 items-center justify-between border-b border-sidebar-divider px-3">
+          <div className="flex h-14 items-center justify-between gap-2 border-b border-sidebar-divider px-3">
             <Link
               href="/onboarding"
               onClick={() => setMobileOpen(false)}
-              className="flex items-center gap-2.5 overflow-hidden"
+              className="flex min-w-0 flex-1 items-center gap-2.5 overflow-hidden"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -293,16 +296,16 @@ export function WorkspaceShell({
                 className="h-6 w-auto opacity-95"
               />
             </Link>
-            <Button
+            <Fab
               type="button"
-              variant="ghost"
-              size="icon"
+              variant="outline"
+              size="sm"
               onClick={() => setMobileOpen(false)}
               aria-label="Close navigation"
               title="Close"
             >
-              <X className="size-4" />
-            </Button>
+              <X className="size-5" />
+            </Fab>
           </div>
           <SidebarBody
             nav={nav}
