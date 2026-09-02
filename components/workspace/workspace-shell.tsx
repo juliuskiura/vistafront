@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ComponentType, type SVGProps } from "react";
-import { Menu, X } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, Menu, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { resolveIcon } from "@/lib/nav-icons";
@@ -41,10 +41,17 @@ function NavLink({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
+  // The backend issues nav targets relative to the workspace root
+  // (e.g. "/dashboard", "/crm/companies"), but the URL is prefixed with
+  // /{workspace} ("/acme/dashboard"). Strip the workspace prefix so the
+  // active match is meaningful and works for both the workspace root
+  // (pathname === "/{workspace}" with end=true) and nested routes.
+  const trimmed = pathname.replace(/^\/[^/]+/, "") || "/";
+  const target = item.to.startsWith("/") ? item.to : `/${item.to}`;
   const active =
     item.end === true
-      ? pathname === item.to
-      : pathname === item.to || pathname.startsWith(`${item.to}/`);
+      ? trimmed === target || trimmed === target.replace(/\/$/, "")
+      : trimmed === target || trimmed.startsWith(`${target}/`);
   const Icon = resolveIcon(item.icon) as IconComponent;
 
   const className = [
@@ -195,11 +202,13 @@ export function WorkspaceShell({
     setMobileOpen(false);
   }, [pathname]);
 
-  const currentNav = nav.find((item) =>
-    item.end
-      ? pathname === item.to
-      : pathname.startsWith(item.to),
-  );
+  const currentNav = nav.find((item) => {
+    const target = item.to.startsWith("/") ? item.to : `/${item.to}`;
+    const trimmed = pathname.replace(/^\/[^/]+/, "") || "/";
+    return item.end
+      ? trimmed === target || trimmed === target.replace(/\/$/, "")
+      : trimmed === target || trimmed.startsWith(`${target}/`);
+  });
   const pageTitle = currentNav?.label ?? "Dashboard";
 
   return (
@@ -235,10 +244,11 @@ export function WorkspaceShell({
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
-            <span
-              aria-hidden
-              className="block h-4 w-4 rounded border-l-2 border-r-2 border-primary-400"
-            />
+            {collapsed ? (
+              <ChevronsRight className="size-4 text-primary-400" />
+            ) : (
+              <ChevronsLeft className="size-4 text-primary-400" />
+            )}
           </Button>
           <h1 className="text-lg font-semibold">{pageTitle}</h1>
           <div className="ml-auto flex items-center gap-2">
