@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+
+import { SidebarProvider, ToastProvider } from "@/lib/context";
 import "./globals.css";
 
 const inter = localFont({
@@ -65,7 +67,9 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col">
-        {children}
+        <ToastProvider>
+          <SidebarProvider>{children}</SidebarProvider>
+        </ToastProvider>
       </body>
     </html>
   );
