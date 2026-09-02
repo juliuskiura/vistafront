@@ -547,6 +547,155 @@
   60%, 100% { transform: translateX(100%); }
 }
 
+/* Premium sidebar: layered surface, refined items, section labels.
+ * Mirrors the original Vistasolve frontapp design (sidebar-premium.css
+ * in regwakes/frontend/frontapp). Tokens come from the --sidebar-*
+ * variables defined in :root / .dark above so the look stays in
+ * lockstep with the rest of the design system. */
+
+:root {
+  --sidebar-space-1: 0.125rem; /* 2px  hairline between items */
+  --sidebar-space-2: 0.25rem;  /* 4px  refined micro-gap */
+  --sidebar-space-3: 0.5rem;   /* 8px  item vertical padding */
+  --sidebar-space-4: 0.75rem;  /* 12px item horizontal padding */
+  --sidebar-space-5: 1rem;     /* 16px section / outer rhythm */
+}
+
+.sidebar-surface {
+  background-color: var(--sidebar);
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--sidebar) 100%, var(--primary-500) 1.5%) 0%,
+    color-mix(in oklab, var(--sidebar) 97%, var(--primary-900) 3%) 100%
+  );
+}
+.dark .sidebar-surface {
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--sidebar) 100%, var(--primary-400) 4%) 0%,
+    color-mix(in oklab, var(--sidebar) 96%, #000000 6%) 100%
+  );
+}
+
+.sidebar-section-label {
+  padding: 0 var(--sidebar-space-4) var(--sidebar-space-2);
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--sidebar-section);
+}
+
+.sidebar-nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sidebar-space-1);
+}
+
+.sidebar-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  border-radius: 0.625rem;
+  padding: var(--sidebar-space-3) var(--sidebar-space-4);
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: -0.011em;
+  text-decoration: none;
+  color: var(--sidebar-muted-foreground);
+  cursor: pointer;
+  transition:
+    background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.sidebar-item:hover {
+  background-color: var(--sidebar-hover);
+  color: var(--sidebar-foreground);
+}
+.sidebar-item:active {
+  transform: scale(0.985);
+}
+.sidebar-item:focus-visible {
+  outline: none;
+  color: var(--sidebar-foreground);
+  box-shadow:
+    0 0 0 2px var(--sidebar-ring),
+    0 0 0 4px color-mix(in oklab, var(--sidebar-ring) 22%, transparent);
+}
+
+.sidebar-item.is-active {
+  color: var(--sidebar-primary-foreground);
+  background-image: linear-gradient(
+    135deg,
+    var(--sidebar-primary) 0%,
+    color-mix(in oklab, var(--sidebar-primary) 76%, #000 24%) 100%
+  );
+  box-shadow:
+    0 1px 2px color-mix(in oklab, var(--sidebar-primary) 35%, transparent),
+    0 8px 18px -8px color-mix(in oklab, var(--sidebar-primary) 60%, transparent);
+}
+.sidebar-item.is-active::before {
+  content: "";
+  position: absolute;
+  left: 0.375rem;
+  top: 0.5rem;
+  bottom: 0.5rem;
+  width: 3px;
+  border-radius: 9999px;
+  background: var(--sidebar-primary-foreground);
+  box-shadow: 0 0 10px color-mix(in oklab, var(--sidebar-primary-foreground) 65%, transparent);
+}
+
+.sidebar-icon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.625rem;
+  background-color: var(--sidebar-icon-idle);
+  color: var(--sidebar-muted-foreground);
+  transition:
+    background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.sidebar-item:hover .sidebar-icon {
+  background-color: var(--sidebar-icon-hover);
+  color: var(--sidebar-foreground);
+  transform: scale(1.05);
+}
+.sidebar-item.is-active .sidebar-icon {
+  background-color: color-mix(in oklab, var(--sidebar-primary-foreground) 18%, transparent);
+  color: var(--sidebar-primary-foreground);
+  transform: scale(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-item,
+  .sidebar-icon {
+    transition-duration: 0.01ms !important;
+  }
+  .sidebar-item:active {
+    transform: none;
+  }
+}
+
+/* Sidebar divider: a hairline that picks up the brand-tinted divider token. */
+.sidebar-divider {
+  height: 1px;
+  width: 100%;
+  background-color: var(--sidebar-divider);
+  margin: var(--sidebar-space-2) 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .auth-glow { animation: none !important; }
   .glass-card,

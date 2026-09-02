@@ -3,10 +3,9 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import { ChevronDown, LogOut, Check } from "lucide-react";
+import { ChevronDown, LogOut, Check, LayoutGrid } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { useSidebar, useToast } from "@/lib/context";
 import { resolveIcon } from "@/lib/nav-icons";
 import { logoutAction } from "@/app/(auth)/logout/action";
@@ -17,12 +16,8 @@ interface Props {
   workspaces: Array<Pick<Workspace, "nanoid" | "name" | "domain">>;
   nav: NavItem[];
   user: { firstName: string | null; email: string | null };
+  children: React.ReactNode;
 }
-
-const ICON_BG: Record<string, string> = {
-  default: "bg-primary/10 text-primary",
-  accent: "bg-amber-100 text-amber-900",
-};
 
 function initials(name: string | null | undefined, email: string | null | undefined) {
   const source = (name || email || "?").trim();
@@ -44,26 +39,24 @@ function NavLink({ item }: { item: NavItem }) {
   return (
     <Link
       href={item.to}
-      className={cn(
-        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-        active
-          ? "bg-primary/10 text-primary"
-          : "text-muted-foreground hover:bg-accent hover:text-foreground",
-      )}
+      className={`sidebar-item${active ? " is-active" : ""}`}
+      aria-current={active ? "page" : undefined}
     >
-      <Icon
-        aria-hidden
-        className={cn(
-          "size-4 shrink-0",
-          active ? "text-primary" : "text-muted-foreground",
-        )}
-      />
+      <span aria-hidden className="sidebar-icon">
+        <Icon className="size-4" />
+      </span>
       <span className="truncate">{item.label}</span>
     </Link>
   );
 }
 
-export function WorkspaceShell({ workspace, workspaces, nav, user, children }: Props & { children: React.ReactNode }) {
+export function WorkspaceShell({
+  workspace,
+  workspaces,
+  nav,
+  user,
+  children,
+}: Props) {
   const { isOpen, toggle } = useSidebar();
   const router = useRouter();
   const toast = useToast();
@@ -83,38 +76,42 @@ export function WorkspaceShell({ workspace, workspaces, nav, user, children }: P
     <div className="flex min-h-screen w-full bg-background text-foreground">
       <aside
         data-open={isOpen}
-        className={cn(
-          "fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r bg-card transition-transform",
-          "md:relative md:translate-x-0",
-          isOpen ? "translate-x-0" : "-translate-x-full md:w-0 md:overflow-hidden md:border-0",
-        )}
+        className={`sidebar-surface scrollbar-premium fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-sidebar-border ${
+          isOpen
+            ? "translate-x-0"
+            : "-translate-x-full md:w-0 md:overflow-hidden md:border-0"
+        } md:relative md:translate-x-0`}
       >
-        <div className="flex items-center justify-between gap-2 border-b p-4">
+        <div className="px-3 pt-4 pb-2">
           <button
             type="button"
             onClick={() => setSwitcherOpen((v) => !v)}
             aria-haspopup="listbox"
             aria-expanded={switcherOpen}
-            className="flex flex-1 items-center justify-between rounded-lg border bg-background px-3 py-2 text-left hover:bg-accent"
+            className="sidebar-item is-active w-full"
           >
-            <span className="flex min-w-0 flex-col">
-              <span className="truncate text-sm font-semibold">{workspace.name}</span>
-              <span className="truncate text-xs text-muted-foreground">
+            <span aria-hidden className="sidebar-icon">
+              <LayoutGrid className="size-4" />
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col items-start leading-tight">
+              <span className="truncate text-sm">{workspace.name}</span>
+              <span className="truncate text-[11px] font-normal opacity-80">
                 /{workspace.domain}
               </span>
             </span>
             <ChevronDown
-              className={cn(
-                "size-4 text-muted-foreground transition-transform",
-                switcherOpen && "rotate-180",
-              )}
+              className={`size-4 shrink-0 transition-transform ${
+                switcherOpen ? "rotate-180" : ""
+              }`}
             />
           </button>
         </div>
 
         {switcherOpen && (
-          <div className="border-b bg-card p-2">
-            <ul role="listbox" className="max-h-64 space-y-1 overflow-auto">
+          <div className="px-3 pb-2">
+            <div className="sidebar-divider" />
+            <p className="sidebar-section-label pt-2">Switch workspace</p>
+            <ul role="listbox" className="sidebar-nav-list">
               {workspaces.map((ws) => {
                 const active = ws.nanoid === workspace.nanoid;
                 return (
@@ -127,28 +124,23 @@ export function WorkspaceShell({ workspace, workspaces, nav, user, children }: P
                         setSwitcherOpen(false);
                         if (!active) router.push(`/${ws.domain}/dashboard`);
                       }}
-                      className={cn(
-                        "flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm",
-                        active
-                          ? "bg-primary/10 text-primary"
-                          : "hover:bg-accent",
-                      )}
+                      className={`sidebar-item w-full text-left${
+                        active ? " is-active" : ""
+                      }`}
                     >
-                      <span className="min-w-0">
-                        <span className="block truncate font-medium">
-                          {ws.name}
-                        </span>
-                        <span className="block truncate text-xs text-muted-foreground">
-                          /{ws.domain}
+                      <span aria-hidden className="sidebar-icon">
+                        <span className="text-[11px] font-semibold">
+                          {ws.name.slice(0, 1).toUpperCase()}
                         </span>
                       </span>
-                      {active && <Check className="size-4 text-primary" />}
+                      <span className="min-w-0 flex-1 truncate">{ws.name}</span>
+                      {active && <Check className="size-4 shrink-0" />}
                     </button>
                   </li>
                 );
               })}
               {workspaces.length <= 1 && (
-                <li className="px-3 py-2 text-xs text-muted-foreground">
+                <li className="px-3 py-2 text-[11px] text-sidebar-muted-foreground">
                   You only belong to this workspace.
                 </li>
               )}
@@ -156,33 +148,40 @@ export function WorkspaceShell({ workspace, workspaces, nav, user, children }: P
           </div>
         )}
 
-        <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+        <div className="sidebar-divider mx-3" />
+
+        <nav className="flex-1 overflow-y-auto px-3 py-3 scrollbar-premium">
           {nav.length === 0 ? (
-            <p className="px-2 py-4 text-xs text-muted-foreground">
+            <p className="px-3 py-4 text-xs text-sidebar-muted-foreground">
               No navigation items yet.
             </p>
           ) : (
-            nav.map((item) => <NavLink key={item.to} item={item} />)
+            <ul className="sidebar-nav-list">
+              {nav.map((item) => (
+                <li key={item.to}>
+                  <NavLink item={item} />
+                </li>
+              ))}
+            </ul>
           )}
         </nav>
 
-        <div className="border-t p-3">
-          <div className="flex items-center gap-3 rounded-lg px-2 py-2">
-            <div
+        <div className="sidebar-divider mx-3" />
+
+        <div className="px-3 py-3">
+          <div className="sidebar-item">
+            <span
               aria-hidden
-              className={cn(
-                "flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold",
-                ICON_BG.default,
-              )}
+              className="sidebar-icon text-sm font-semibold"
             >
               {initials(user.firstName, user.email)}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">
+            </span>
+            <div className="min-w-0 flex-1 leading-tight">
+              <p className="truncate text-sm">
                 {user.firstName ?? user.email ?? "You"}
               </p>
               {user.firstName && user.email && (
-                <p className="truncate text-xs text-muted-foreground">
+                <p className="truncate text-[11px] font-normal opacity-80">
                   {user.email}
                 </p>
               )}
@@ -193,6 +192,7 @@ export function WorkspaceShell({ workspace, workspaces, nav, user, children }: P
               size="icon"
               onClick={handleLogout}
               aria-label="Log out"
+              className="size-8"
             >
               <LogOut className="size-4" />
             </Button>
