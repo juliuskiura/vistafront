@@ -318,9 +318,10 @@ See `app/(app)/[workspace]/dashboard/workspaces/` for a working example: Server 
 
 ## Explaining Technical Concepts
 
-When the user asks you to explain how something works — a technical decision, a pattern, an architectural choice, a bug, or a piece of code — explain it like you're teaching someone who is NEW to React and Next.js. Assume they understand programming basics but not the specific framework concepts. Follow these rules:
+When the user asks you to explain how something works — a technical decision, a pattern, an architectural choice, a bug, or a piece of code — explain it like you're teaching someone who is NEW to React and Next.js. Assume they are new to programming basics but not the specific framework concepts. Follow these rules:
 
-1. **Start with the problem in plain language.** Before explaining the solution, describe the challenge in everyday terms. Example: "In Next.js, navigation works differently depending on where you are in the code."
+1. **Start with the problem in plain language.** Before explaining the solution, start by mentioning whether that is a server component or a client. Then from there, describe the challenge in everyday terms. Example: "In Next.js, navigation works differently depending on where you are in the code."
+
 
 2. **Use concrete examples with actual code.** Show the "easy case" and the "hard case" side by side with real code snippets. Don't just describe abstractly — show actual function signatures and calls.
 

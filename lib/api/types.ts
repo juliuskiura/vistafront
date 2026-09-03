@@ -1037,3 +1037,323 @@ export interface AnalyticsSyncStatusResult {
     errors: { page: string; error: string }[];
   } | null;
 }
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Media Library
+ * ────────────────────────────────────────────────────────────────────── */
+
+export type AssetType = "image" | "video" | "audio" | "document" | "archive" | "ai_generated" | "other";
+export type AssetSource = "upload" | "import" | "ai" | "url" | "rendition";
+export type AssetStatus = "pending" | "stored" | "processing" | "ready" | "failed" | "trashed" | "deleted";
+export type ViewMode = "grid" | "list";
+export type SortKey = "name" | "date" | "size" | "type";
+export type SortDir = "asc" | "desc";
+
+export interface Asset {
+  nanoid: string;
+  name: string;
+  description: string;
+  alt_text: string;
+  asset_type: AssetType;
+  mime_type: string;
+  extension: string;
+  size: number | null;
+  width: number | null;
+  height: number | null;
+  duration_seconds: number | null;
+  format: string;
+  hash_sha256: string;
+  source: AssetSource;
+  status: AssetStatus;
+  original_file: string;
+  stream_url: string | null;
+  thumbnail: string | null;
+  dominant_colors: string[];
+  exif: Record<string, any>;
+  owner: string | null;
+  tags: string[];
+  favorite: boolean;
+  pinned: boolean;
+  archived: boolean;
+  original: string | null;
+  extra: Record<string, any>;
+  workspace: string;
+  created_by: string;
+  user: string;
+  created_at: string;
+  updated_at: string;
+  collections: string[];
+  folders: string[];
+}
+
+export interface AssetVersion {
+  nanoid: string;
+  asset: string;
+  version: number;
+  note: string;
+  file: string;
+  width: number | null;
+  height: number | null;
+  size: number | null;
+  hash_sha256: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Folder {
+  nanoid: string;
+  name: string;
+  parent: string | null;
+  created_by: string;
+  user: string;
+  order: number;
+  asset_count: number;
+  children: Folder[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Collection {
+  nanoid: string;
+  name: string;
+  shareable: boolean;
+  order: number;
+  asset_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SmartCollection {
+  nanoid: string;
+  name: string;
+  filter_spec: Record<string, any>;
+  owner: string | null;
+  asset_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AssetMeta {
+  nanoid: string;
+  asset: string;
+  key: string;
+  value: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AssetPermission {
+  nanoid: string;
+  asset: string;
+  user: string | null;
+  can_upload: boolean;
+  can_edit: boolean;
+  can_delete: boolean;
+  can_share: boolean;
+  can_download: boolean;
+  can_view: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AssetShare {
+  nanoid: string;
+  workspace: string;
+  asset: string;
+  token: string;
+  allow_download: boolean;
+  expires_at: string | null;
+  revoked_at: string | null;
+  view_count: number;
+  last_viewed_at: string | null;
+  url: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AssetTransformSpec {
+  crop?: { x: number; y: number; width: number; height: number } | null;
+  width?: number | null;
+  height?: number | null;
+  rotate?: number;
+  flip_h?: boolean;
+  flip_v?: boolean;
+  format?: "JPEG" | "PNG" | "WEBP" | "AVIF";
+  quality?: number;
+  note?: string;
+}
+
+export interface TransformationPreset {
+  nanoid: string;
+  name: string;
+  slug: string;
+  width: number | null;
+  height: number | null;
+  aspect_ratio: string;
+  format: string;
+  quality: number;
+  safe_area: number | null;
+  mode: "fit" | "crop" | "smart_crop" | "face";
+  adjust: Record<string, any>;
+  effect: Record<string, any>;
+  is_global: boolean;
+  workspace: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GeneratedAsset {
+  nanoid: string;
+  asset: string;
+  preset: string;
+  file: string;
+  width: number | null;
+  height: number | null;
+  size: number | null;
+  format: string;
+  status: "ready" | "processing" | "failed";
+  expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PlatformPreset {
+  id: string;
+  nanoid: string;
+  slug: string;
+  name: string;
+  platform: string;
+  width: number;
+  height: number;
+  aspect_ratio: string;
+  icon: string;
+}
+
+export interface PlatformPresetsResponse {
+  presets: PlatformPreset[];
+  format_map: Record<string, Record<string, string>>;
+}
+
+export interface AssetUsageItem {
+  usage_type: string;
+  content_type: string;
+  object_id: string;
+  position: number;
+  consumer_label: string;
+  via_rendition: boolean;
+}
+
+export interface AssetUsageResponse {
+  count: number;
+  items: AssetUsageItem[];
+}
+
+export interface MediaStats {
+  total_assets: number;
+  images: number;
+  videos: number;
+  documents: number;
+  storage_used: string;
+  storage_bytes: number;
+  recent_uploads: number;
+  favorites: number;
+  collections: number;
+  folders: number;
+}
+
+export interface UploadConfig {
+  part_size: number;
+  max_part_size: number;
+  oci_mode: "mock" | "live";
+  bucket: string;
+}
+
+export interface PaginatedAssets {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: Asset[];
+}
+
+export interface SearchFilters {
+  text: string;
+  asset_type: AssetType | "";
+  tags: string[];
+  folder: string | null;
+  collection: string | null;
+  date_from: string | null;
+  date_to: string | null;
+  uploader: string | null;
+  dominant_color: string | null;
+  favorite: boolean | null;
+  archived: boolean | null;
+  width: number | null;
+  height: number | null;
+  orientation: "landscape" | "portrait" | "square" | null;
+}
+
+export interface AssetPickerSelection {
+  single: Asset | null;
+  multiple: Asset[];
+}
+
+export interface AssetPickerProps {
+  mode: "single" | "multiple";
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSelect: (assets: Asset | Asset[]) => void;
+  filters?: Partial<SearchFilters>;
+  maxItems?: number;
+  title?: string;
+}
+
+export interface DragDropResult {
+  type: "move" | "copy" | "reorder";
+  items: string[];
+  target: string | null;
+}
+
+export interface VideoCuePoint {
+  id: string;
+  time: number;
+  title: string;
+  description?: string;
+  color?: string;
+  type: "chapter" | "marker" | "note";
+}
+
+export interface VideoPlayerState {
+  isPlaying: boolean;
+  currentTime: number;
+  duration: number;
+  buffered: TimeRanges | null;
+  bufferedEnd: number;
+  volume: number;
+  isMuted: boolean;
+  playbackRate: number;
+  isFullscreen: boolean;
+  isPictureInPicture: boolean;
+  isTheaterMode: boolean;
+  loopRange: { start: number; end: number } | null;
+  isLoading: boolean;
+  isBuffering: boolean;
+  error: string | null;
+}
+
+export interface VideoView {
+  src: string | null;
+  poster: string | null;
+  name: string;
+  sizeBytes: number | null;
+  mimeType: string;
+  extension: string;
+  container: string | null;
+  durationHint: number | null;
+  widthHint: number | null;
+  heightHint: number | null;
+  fps: number | null;
+  codec: string | null;
+  codecAudio: string | null;
+  bitrate: number | null;
+}
