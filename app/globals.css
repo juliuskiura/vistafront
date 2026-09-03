@@ -696,6 +696,14 @@
   margin: var(--sidebar-space-2) 0;
 }
 
+/* Billing tab utilities (port from legacy frontapp) */
+.border-sidebar-divider {
+  border-color: var(--sidebar-divider);
+}
+.text-sidebar-muted-foreground {
+  color: var(--sidebar-muted-foreground);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .auth-glow { animation: none !important; }
   .glass-card,

@@ -37,7 +37,15 @@ export {
   updateClientBusiness,
 } from "./client-businesses";
 
-export { listBillingProfiles } from "./billing";
+export {
+  listInvoices,
+  createInvoice,
+  extendInvoice,
+  listPayments,
+  listPaymentMethods,
+  listPlans,
+  getSubscription,
+} from "./billing";
 
 export {
   createCompany,

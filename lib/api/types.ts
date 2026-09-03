@@ -161,6 +161,111 @@ export interface BillingProfile {
   updated_at: string;
 }
 
+export type InvoiceStatus = "draft" | "open" | "paid" | "void" | "uncollectible";
+export type PaymentStatus = "pending" | "succeeded" | "failed" | "refunded";
+
+export interface InvoiceExtension {
+  id: number;
+  new_due_at: string;
+  reason: string;
+  created_at: string;
+}
+
+export interface Invoice {
+  refid: string;
+  nanoid: string;
+  number: string;
+  status: InvoiceStatus;
+  currency: string;
+  subtotal: string;
+  tax: string;
+  total: string;
+  issued_at: string | null;
+  due_at: string | null;
+  paid_at: string | null;
+  grace_period_days: number;
+  extensions?: InvoiceExtension[];
+}
+
+export interface Payment {
+  refid: string;
+  nanoid: string;
+  amount: string;
+  currency: string;
+  status: PaymentStatus;
+  paid_at: string | null;
+  created_at: string;
+}
+
+export interface PaymentMethod {
+  refid: string;
+  nanoid: string;
+  phone: string;
+  gateway: string;
+  last4: string;
+  brand: string;
+  is_default: boolean;
+  is_active: boolean;
+}
+
+export interface Plan {
+  id: number;
+  slug: string;
+  name: string;
+  label: string;
+  description: string;
+  order: number;
+  is_active: boolean;
+  seat_limit: number | null;
+  price_per_seat: string | null;
+  includes_enterprise_features: boolean;
+  app_keys: string[];
+  feature_flags: string[];
+}
+
+export interface Subscription {
+  id: number;
+  nanoid: string;
+  client_business_nanoid: string;
+  client_business_name: string;
+  plan_slug: string;
+  plan_label: string;
+  status: string;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
+  app_keys: string[];
+  feature_flags: string[];
+}
+
+export interface InvoiceExtensionForm {
+  new_due_at: string;
+  reason: string;
+}
+
+export interface InvoiceLineItemForm {
+  description?: string;
+  period_start?: string | null;
+  period_end?: string | null;
+  quantity?: number;
+  unit_price?: number;
+  amount: number;
+  tax_rate?: number;
+}
+
+export interface InvoiceInput {
+  client_business: string;
+  subscription?: string | null;
+  status?: InvoiceStatus;
+  currency?: string;
+  tax?: string;
+  issued_at?: string | null;
+  due_at?: string | null;
+  grace_period_days?: number;
+  pdf_url?: string;
+  line_items?: InvoiceLineItemForm[];
+}
+
 export interface NavItem {
   to: string;
   label: string;
