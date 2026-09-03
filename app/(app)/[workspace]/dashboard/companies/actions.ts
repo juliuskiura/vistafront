@@ -11,16 +11,13 @@ import {
   type NewCompanyInput,
   type CreateTierClassificationInput,
 } from "@/lib/schemas";
+import {
+  initialCreateCompanyState,
+  initialCreateTierClassificationState,
+  type CreateCompanyActionState,
+} from "./action-state";
 
-export interface CreateCompanyActionState {
-  status: "idle" | "success" | "error";
-  message?: string;
-  fieldErrors?: Record<string, string[] | undefined>;
-}
-
-export const initialCreateCompanyState: CreateCompanyActionState = {
-  status: "idle",
-};
+export { initialCreateCompanyState, initialCreateTierClassificationState };
 
 /**
  * Server Action: create a new company in the active workspace.
@@ -152,19 +149,10 @@ export async function bulkDeleteCompaniesAction(
 /**
  * Server Action: create a new tier classification.
  */
-export interface CreateTierClassificationActionState {
-  status: "idle" | "success" | "error";
-  message?: string;
-}
-
-export const initialCreateTierClassificationState: CreateTierClassificationActionState = {
-  status: "idle",
-};
-
 export async function createTierClassificationAction(
-  _prev: CreateTierClassificationActionState,
+  _prev: CreateCompanyActionState,
   formData: FormData,
-): Promise<CreateTierClassificationActionState> {
+): Promise<CreateCompanyActionState> {
   const workspaceDomain = String(formData.get("workspace_domain") ?? "").trim();
   const raw = {
     title: String(formData.get("title") ?? "").trim() || undefined,

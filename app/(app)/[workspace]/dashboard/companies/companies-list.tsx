@@ -52,11 +52,13 @@ import { CompaniesTable } from "@/app/(app)/[workspace]/dashboard/companies/comp
 import {
   createCompanyAction,
   initialCreateCompanyState,
-  type CreateCompanyActionState,
   createTierClassificationAction,
-  initialCreateTierClassificationState,
-  type CreateTierClassificationActionState,
 } from "@/app/(app)/[workspace]/dashboard/companies/actions";
+import {
+  initialCreateTierClassificationState,
+  type CreateCompanyActionState,
+  type CreateTierClassificationActionState,
+} from "@/app/(app)/[workspace]/dashboard/companies/action-state";
 
 export interface CompaniesPagination {
   page: number;
