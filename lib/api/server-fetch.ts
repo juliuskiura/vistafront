@@ -7,6 +7,27 @@ export interface RequestOptions {
   body?: unknown;
   cache?: RequestCache;
   next?: { revalidate?: number | false; tags?: string[] };
+  /**
+   * Active workspace slug (``Workspace.domain``) or nanoid. Forwarded to the
+   * backend as the ``X-Workspace`` request header.
+   *
+   * **Tenant-scoped callers must pass this.** The `/apis/<app>/*` URLs (CRM,
+   * schedules, projects, deliverables, etc.) carry no `/[workspace]` path
+   * segment; without the header, Django's ``WorkspaceResolutionMiddleware``
+   * falls back to the shared ``app`` workspace (see
+   * ``workspaces/middleware.py``) and the response is silently empty:
+   * ``{count: 0, results: []}`` for list endpoints.
+   *
+   * **Pre-tenant callers may omit this.** Sign-up, login, password reset,
+   * activate, verify-email, and workspace-bootstrap mutations
+   * (``createClientBusiness``, ``createWorkspace``, ``redeemInvitation``)
+   * run before a workspace exists. They use raw ``fetch()`` or
+   * ``serverMutate`` with ``workspace`` left undefined.
+   *
+   * Pass ``active.domain`` from the workspace the page already resolved via
+   * ``requireWorkspace(slug)`` in ``lib/auth/server.ts``.
+   */
+  workspace?: string;
 }
 
 /**
@@ -39,7 +60,7 @@ export function toQueryString(params: Record<string, unknown> = {}): string {
  */
 export async function serverFetch<T>(
   path: string,
-  options: RequestOptions = {}
+  options: RequestOptions = {},
 ): Promise<T> {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get("access");
@@ -58,6 +79,10 @@ export async function serverFetch<T>(
 
   if (cookieHeader) {
     headers.Cookie = cookieHeader;
+  }
+
+  if (options.workspace) {
+    headers["X-Workspace"] = options.workspace;
   }
 
   const response = await fetch(`${BACKEND_URL}${path}`, {
@@ -82,13 +107,26 @@ export async function serverFetch<T>(
 
 /**
  * Server-side fetch for mutations (POST, PUT, PATCH, DELETE).
- * Automatically includes CSRF token for Django.
+ * Automatically includes CSRF token for Django and the ``X-Workspace``
+ * tenant header. See {@link RequestOptions.workspace} for why the header
+ * is mandatory.
  */
+export interface MutateOptions {
+  body: unknown;
+  method?: "POST" | "PUT" | "PATCH" | "DELETE";
+  /**
+   * Active workspace slug (``Workspace.domain``) or nanoid. Forwarded as the
+   * ``X-Workspace`` header. See {@link RequestOptions.workspace} for the
+   * tenant-vs-pre-tenant distinction.
+   */
+  workspace?: string;
+}
+
 export async function serverMutate<T>(
   path: string,
-  body: unknown,
-  method: "POST" | "PUT" | "PATCH" | "DELETE" = "POST"
+  options: MutateOptions,
 ): Promise<T> {
+  const method = options.method ?? "POST";
   const cookieStore = await cookies();
   const accessToken = cookieStore.get("access");
   const refreshToken = cookieStore.get("refresh");
@@ -113,10 +151,14 @@ export async function serverMutate<T>(
     headers["X-CSRFToken"] = csrfToken.value;
   }
 
+  if (options.workspace) {
+    headers["X-Workspace"] = options.workspace;
+  }
+
   const response = await fetch(`${BACKEND_URL}${path}`, {
     method,
     headers,
-    body: JSON.stringify(body),
+    body: JSON.stringify(options.body),
     cache: "no-store",
   });
 

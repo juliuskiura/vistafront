@@ -16,5 +16,8 @@ export async function getPersonalDetails(): Promise<PersonalDetails> {
 export async function updatePersonalDetails(
   patch: PersonalDetailsPatch,
 ): Promise<PersonalDetails> {
-  return serverMutate<PersonalDetails>("/apis/profile/me/", patch, "PATCH");
+  return serverMutate<PersonalDetails>("/apis/profile/me/", {
+    body: patch,
+    method: "PATCH",
+  });
 }

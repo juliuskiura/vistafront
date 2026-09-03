@@ -29,7 +29,10 @@ export async function updateCurrentUser(patch: {
   first_name?: string | null;
   last_name?: string | null;
 }): Promise<User> {
-  return serverMutate<User>("/apis/auth/users/me/", patch, "PATCH");
+  return serverMutate<User>("/apis/auth/users/me/", {
+    body: patch,
+    method: "PATCH",
+  });
 }
 
 /**

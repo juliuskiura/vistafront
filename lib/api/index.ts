@@ -4,7 +4,7 @@ export {
   ServerFetchError,
   toQueryString,
 } from "./server-fetch";
-export type { RequestOptions } from "./server-fetch";
+export type { RequestOptions, MutateOptions } from "./server-fetch";
 
 export * from "./types";
 
@@ -15,8 +15,10 @@ export {
   checkDomainAvailability,
   createWorkspace,
   getWorkspace,
+  leaveWorkspace,
   listWorkspaceMembers,
   listWorkspaces,
+  updateWorkspace,
 } from "./workspaces";
 
 export { getCurrentUser, getUserProfile, updateCurrentUser, updateUserProfile } from "./users";
@@ -37,6 +39,44 @@ export {
 
 export { listBillingProfiles } from "./billing";
 
+export {
+  getCompany,
+  getContact,
+  getDeal,
+  getPipeline,
+  listCompanies,
+  listContacts,
+  listCountries,
+  listDeals,
+  listPipelines,
+} from "./crm";
+
 export { getDashboardWidgets, getNavigationSidebar } from "./dashboard";
 
 export { getPersonalDetails, updatePersonalDetails } from "./profile";
+
+export {
+  createNote,
+  createNoteType,
+  deleteNote,
+  getNote,
+  listNoteTypes,
+  listNotes,
+  listNoteAttachments,
+  toggleNoteArchive,
+  toggleNoteFavorite,
+  updateNote,
+} from "./notebook";
+
+export { getSchedule, getTodaySummary } from "./schedules";
+
+export {
+  completeProject,
+  createProject,
+  getDeliverable,
+  getProject,
+  getTask,
+  listDeliverables,
+  listProjects,
+  listTasks,
+} from "./projects";

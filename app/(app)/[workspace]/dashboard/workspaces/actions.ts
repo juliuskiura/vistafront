@@ -50,13 +50,16 @@ export async function sendInviteAction(
   }
 
   try {
-    await createInvitation({
+    await createInvitation(
+      {
+        workspace,
+        email,
+        first_name: firstName,
+        last_name: lastName,
+        role,
+      },
       workspace,
-      email,
-      first_name: firstName,
-      last_name: lastName,
-      role,
-    });
+    );
   } catch (error) {
     console.error("sendInviteAction failed:", error);
     return {
@@ -78,10 +81,10 @@ export async function sendInviteAction(
  *
  * Used by the "Pending invitations" table on the workspace settings page.
  */
-export async function revokeInviteAction(nanoid: string): Promise<void> {
+export async function revokeInviteAction(nanoid: string, workspace: string): Promise<void> {
   if (!nanoid) return;
   try {
-    await revokeInvitation(nanoid);
+    await revokeInvitation(nanoid, workspace);
   } catch (error) {
     console.error("revokeInviteAction failed:", error);
   }

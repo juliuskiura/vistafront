@@ -20,11 +20,10 @@ export async function getClientBusiness(nanoid: string): Promise<ClientBusiness>
 export async function createClientBusiness(
   body: CreateClientBusinessBody,
 ): Promise<ClientBusiness> {
-  return serverMutate<ClientBusiness>(
-    "/apis/workspaces/client-businesses/",
+  return serverMutate<ClientBusiness>("/apis/workspaces/client-businesses/", {
     body,
-    "POST",
-  );
+    method: "POST",
+  });
 }
 
 export async function updateClientBusiness(
@@ -33,7 +32,6 @@ export async function updateClientBusiness(
 ): Promise<ClientBusiness> {
   return serverMutate<ClientBusiness>(
     `/apis/workspaces/client-businesses/${nanoid}/`,
-    patch,
-    "PATCH",
+    { body: patch, method: "PATCH" },
   );
 }

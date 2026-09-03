@@ -25,7 +25,7 @@ export default async function WorkspacesSettingsPage({
     listWorkspaces().catch(() => [] as Workspace[]),
     // Pre-warm the members list so the "Memberships" link is snappy. Errors
     // are non-fatal — the members page has its own fetch.
-    listWorkspaceMembers(active.nanoid).catch(() => []),
+    listWorkspaceMembers(active.nanoid, active.domain).catch(() => []),
   ]);
 
   return (

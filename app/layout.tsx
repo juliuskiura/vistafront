@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 
 import { SidebarProvider, ToastProvider } from "@/lib/context";
+import { QueryProvider } from "@/lib/tanstack/query-provider";
 import "./globals.css";
 
 const inter = localFont({
@@ -68,7 +69,9 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         <ToastProvider>
-          <SidebarProvider>{children}</SidebarProvider>
+          <QueryProvider>
+            <SidebarProvider>{children}</SidebarProvider>
+          </QueryProvider>
         </ToastProvider>
       </body>
     </html>
