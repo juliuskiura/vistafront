@@ -74,3 +74,48 @@ export const NewNoteSchema = z.object({
   content: z.string().optional(), // JSON-encoded rich-text blob
 });
 export type NewNoteInput = z.infer<typeof NewNoteSchema>;
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Company (CRM)
+ * ────────────────────────────────────────────────────────────────────── */
+
+export const ProspectStatusSchema = z.enum([
+  "identified",
+  "researching",
+  "contact_ready",
+  "outreach_sent",
+  "engaged",
+  "qualified",
+  "customer",
+  "lost",
+]);
+
+export const SocialLinkSchema = z.object({
+  url: z.string().min(1, "URL or phone number is required."),
+  name: z.string().optional(),
+  is_primary: z.boolean().optional(),
+});
+
+export const NewCompanySchema = z.object({
+  workspace_domain: z.string().min(1, "Missing workspace."),
+  name: z.string().min(1, "Company name is required.").max(200),
+  domain: z.string().optional(),
+  industry: z.string().optional(),
+  size: z.string().optional(),
+  tier: z.string().nullable().optional(),
+  phone_numbers: z.array(z.string()).optional(),
+  social_links: z.array(SocialLinkSchema).optional(),
+  email: z.string().optional(),
+  country: z.string().optional(),
+  city: z.string().optional(),
+  address: z.string().optional(),
+  about: z.string().optional(),
+  status: ProspectStatusSchema.default("identified"),
+  verified: z.boolean().optional(),
+  total_listings: z
+    .number()
+    .int("Must be a whole number.")
+    .min(0, "Must be zero or greater.")
+    .optional(),
+});
+export type NewCompanyInput = z.infer<typeof NewCompanySchema>;

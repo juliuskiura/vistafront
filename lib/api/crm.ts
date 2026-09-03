@@ -1,13 +1,17 @@
 import "server-only";
 
-import { serverFetch, type RequestOptions } from "./server-fetch";
+import { serverFetch, serverMutate, type RequestOptions } from "./server-fetch";
 import type {
   Company,
+  CompanyStatusBreakdown,
   Contact,
   Country,
+  CreateCompanyBody,
   Deal,
+  Industry,
   Paginated,
   Pipeline,
+  TierClassification,
 } from "./types";
 
 function unwrap<T>(payload: T[] | Paginated<T>): T[] {
@@ -54,16 +58,39 @@ export function getContact(nanoid: string, workspace: string): Promise<Contact> 
  * Companies
  * ────────────────────────────────────────────────────────────────────── */
 
-export async function listCompanies(opts: {
+export interface ListCompaniesFilters {
   search?: string;
   status?: string;
   industry?: string;
+  size?: string;
+  tier?: string;
+  has_contacts?: boolean;
+  verified?: boolean;
+  ordering?: string;
+  page?: number;
+  page_size?: number;
+}
+
+export async function listCompanies(opts: {
+  filters?: ListCompaniesFilters;
   workspace: string;
 }): Promise<Company[]> {
+  const f = opts?.filters ?? {};
   const params = new URLSearchParams();
-  if (opts?.search) params.set("search", opts.search);
-  if (opts?.status) params.set("status", opts.status);
-  if (opts?.industry) params.set("industry", opts.industry);
+  if (f.search) params.set("search", f.search);
+  if (f.status) params.set("status", f.status);
+  if (f.industry) params.set("industry", f.industry);
+  if (f.size) params.set("size", f.size);
+  if (f.tier) params.set("tier", f.tier);
+  if (typeof f.has_contacts === "boolean") {
+    params.set("has_contacts", String(f.has_contacts));
+  }
+  if (typeof f.verified === "boolean") {
+    params.set("verified", String(f.verified));
+  }
+  if (f.ordering) params.set("ordering", f.ordering);
+  if (f.page) params.set("page", String(f.page));
+  if (f.page_size) params.set("page_size", String(f.page_size));
   const qs = params.toString();
   const payload = await serverFetch<Company[] | Paginated<Company>>(
     `/apis/crm/companies/${qs ? `?${qs}` : ""}`,
@@ -72,10 +99,89 @@ export async function listCompanies(opts: {
   return unwrap(payload);
 }
 
+/**
+ * Variant of {@link listCompanies} that returns the raw paginated envelope
+ * (`{ count, next, previous, results }`) so callers can render pagination
+ * controls. Use this when the UI needs to know the total row count or
+ * whether a next/previous page exists.
+ */
+export async function paginatedListCompanies(opts: {
+  filters?: ListCompaniesFilters;
+  workspace: string;
+}): Promise<Paginated<Company>> {
+  const f = opts?.filters ?? {};
+  const params = new URLSearchParams();
+  if (f.search) params.set("search", f.search);
+  if (f.status) params.set("status", f.status);
+  if (f.industry) params.set("industry", f.industry);
+  if (f.size) params.set("size", f.size);
+  if (f.tier) params.set("tier", f.tier);
+  if (typeof f.has_contacts === "boolean") {
+    params.set("has_contacts", String(f.has_contacts));
+  }
+  if (typeof f.verified === "boolean") {
+    params.set("verified", String(f.verified));
+  }
+  if (f.ordering) params.set("ordering", f.ordering);
+  if (f.page) params.set("page", String(f.page));
+  if (f.page_size) params.set("page_size", String(f.page_size));
+  const qs = params.toString();
+  return serverFetch<Paginated<Company>>(
+    `/apis/crm/companies/${qs ? `?${qs}` : ""}`,
+    wsOpts(opts.workspace),
+  );
+}
+
 export function getCompany(nanoid: string, workspace: string): Promise<Company> {
   return serverFetch<Company>(
     `/apis/crm/companies/${nanoid}/`,
     wsOpts(workspace),
+  );
+}
+
+export function createCompany(
+  body: CreateCompanyBody,
+  workspace: string,
+): Promise<Company> {
+  return serverMutate<Company>("/apis/crm/companies/", {
+    body,
+    workspace,
+  });
+}
+
+export function deleteCompany(nanoid: string, workspace: string): Promise<void> {
+  return serverMutate<void>(`/apis/crm/companies/${nanoid}/`, {
+    method: "DELETE",
+    body: {},
+    workspace,
+  });
+}
+
+/**
+ * Accurate company counts per ``ProspectStatus``. Honours the same filters
+ * as `listCompanies` except ``status`` itself, so the board cards stay
+ * stable while the user filters the list.
+ */
+export async function getCompanyStatusBreakdown(opts: {
+  filters?: Omit<ListCompaniesFilters, "status" | "ordering" | "page" | "page_size">;
+  workspace: string;
+}): Promise<CompanyStatusBreakdown> {
+  const f = opts?.filters ?? {};
+  const params = new URLSearchParams();
+  if (f.search) params.set("search", f.search);
+  if (f.industry) params.set("industry", f.industry);
+  if (f.size) params.set("size", f.size);
+  if (f.tier) params.set("tier", f.tier);
+  if (typeof f.has_contacts === "boolean") {
+    params.set("has_contacts", String(f.has_contacts));
+  }
+  if (typeof f.verified === "boolean") {
+    params.set("verified", String(f.verified));
+  }
+  const qs = params.toString();
+  return serverFetch<CompanyStatusBreakdown>(
+    `/apis/crm/companies/status_breakdown/${qs ? `?${qs}` : ""}`,
+    wsOpts(opts.workspace),
   );
 }
 
@@ -124,4 +230,21 @@ export function getDeal(nanoid: string, workspace: string): Promise<Deal> {
 
 export function listCountries(workspace: string): Promise<Country[]> {
   return serverFetch<Country[]>("/apis/crm/countries/", wsOpts(workspace));
+}
+
+export async function listIndustries(workspace: string): Promise<Industry[]> {
+  const payload = await serverFetch<Industry[] | Paginated<Industry>>(
+    "/apis/crm/industries/",
+    wsOpts(workspace),
+  );
+  return unwrap(payload);
+}
+
+export async function listTierClassifications(
+  workspace: string,
+): Promise<TierClassification[]> {
+  const payload = await serverFetch<
+    TierClassification[] | Paginated<TierClassification>
+  >("/apis/crm/tier-classifications/", wsOpts(workspace));
+  return unwrap(payload);
 }

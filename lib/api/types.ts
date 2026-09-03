@@ -333,6 +333,48 @@ export interface Country {
   phone_code: string;
 }
 
+export interface Industry {
+  id: number;
+  nanoid: string;
+  name: string;
+  description?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TierClassification {
+  id: number;
+  nanoid: string;
+  title: string;
+  label: string;
+  description?: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CompanyStatusBreakdown {
+  total: number;
+  counts: Partial<Record<ProspectStatus, number>>;
+}
+
+export type CreateCompanyBody = {
+  name: string;
+  domain?: string;
+  industry?: string;
+  size?: string;
+  tier?: string | null;
+  phone_numbers?: string[];
+  social_links?: { url: string; name?: string; is_primary?: boolean }[];
+  email?: string;
+  country?: string;
+  city?: string;
+  address?: string;
+  about?: string;
+  status?: ProspectStatus;
+  verified?: boolean;
+  total_listings?: number | null;
+};
+
 /* ──────────────────────────────────────────────────────────────────────
  * Notebook types
  *
@@ -635,4 +677,363 @@ export interface CreateProjectBody {
   priority?: ProjectPriority;
   start_date?: string | null;
   deadline?: string | null;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Social Manager types
+ *
+ * Mirrors the Django serializers in the `socialmanager` app. Field names
+ * match `frontapp/src/features/socialmanager/apptypes/socialmanager.ts`.
+ * All endpoints are tenant-scoped; the active workspace slug is forwarded
+ * as the ``X-Workspace`` header on every call.
+ * ────────────────────────────────────────────────────────────────────── */
+
+export type SocialPlatform =
+  | "facebook"
+  | "instagram"
+  | "x"
+  | "linkedin"
+  | "tiktok"
+  | "pinterest"
+  | "youtube"
+  | "threads"
+  | "bluesky"
+  | "mastodon"
+  | "google_business"
+  | "start_page";
+
+export interface SocialMediaPlatform {
+  id: string;
+  nanoid: string;
+  name: string;
+  slug: string;
+  svg: string;
+  color: string | null;
+  text_color: string | null;
+  hover_color: string | null;
+  client_id: string | null;
+  redirect_uri: string | null;
+  scopes: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PlatformContentFormat {
+  id: string;
+  nanoid: string;
+  platform: string;
+  format: string;
+  code: string;
+  display_name: string;
+  is_active: boolean;
+}
+
+export interface MediaConstraint {
+  id: string;
+  nanoid: string;
+  content_constraint: string;
+  media_type: "image" | "video" | "text";
+  min_width: number | null;
+  max_width: number | null;
+  min_height: number | null;
+  max_height: number | null;
+  aspect_ratio: string;
+  min_duration: number | null;
+  max_duration: number | null;
+  max_file_size: number | null;
+  allowed_formats: string[] | null;
+  extra_rules: Record<string, unknown> | null;
+}
+
+export interface ContentConstraint {
+  id: string;
+  nanoid: string;
+  platform: string;
+  content_format: string;
+  format_code: string;
+  display_name: string;
+  character_limit: number | null;
+  max_hashtags: number | null;
+  is_ephemeral: boolean;
+  publishing_api: string;
+  publishing_endpoint: string;
+  reference_url: string;
+  extra_rules: Record<string, unknown> | null;
+  media_constraints: MediaConstraint[];
+}
+
+export interface ManagedChannel {
+  id: string;
+  nanoid: string;
+  social_account: string;
+  platform: string;
+  platform_name: string;
+  account_name: string;
+  page_id: string;
+  page_name: string;
+  username: string;
+  link: string;
+  bio: string;
+  category: string;
+  website: string;
+  profile_picture_url: string;
+  cover_photo_url: string;
+  token_expires_at: string | null;
+  is_active: boolean;
+  follower_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SocialAccount {
+  nanoid: string;
+  platform: string;
+  social_account_uid: string;
+  account_name: string;
+  account_first_name: string;
+  account_last_name: string;
+  short_name: string;
+  profile_picture_url: string;
+  token_expires_at: string | null;
+  is_active: boolean;
+  extra_data: Record<string, unknown>;
+  connected_at: string;
+  managed_pages: ManagedChannel[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Campaign {
+  id: string;
+  nanoid: string;
+  name: string;
+  description: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type PostRecipientStatus = "pending" | "published" | "failed";
+
+export interface PostRecipient {
+  id: string;
+  nanoid: string;
+  scheduled_post: string;
+  managed_page: string;
+  managed_page_name: string;
+  content: string | null;
+  media_urls: string[];
+  media_image_urls?: string[];
+  link_url: string;
+  status: PostRecipientStatus;
+  external_post_id: string;
+  error_message: string;
+  published_at: string | null;
+}
+
+export type PostCommentType = "internal" | "audience";
+export type PostCommentStatus = "pending" | "published" | "failed" | "received";
+
+export interface PostComment {
+  id: string;
+  nanoid: string;
+  scheduled_post: string;
+  managed_page: string;
+  comment_type: PostCommentType;
+  author_name: string;
+  author_platform_id: string;
+  external_comment_id: string;
+  content: string;
+  status: PostCommentStatus;
+  scheduled_at: string | null;
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ScheduledPostStatus =
+  | "draft"
+  | "scheduled"
+  | "publishing"
+  | "published"
+  | "failed"
+  | "canceled";
+
+export interface ScheduledPost {
+  id: string;
+  nanoid: string;
+  campaign: string | null;
+  campaign_name: string | null;
+  content: string;
+  media_urls: string[];
+  media_image_urls?: string[];
+  scheduled_at: string;
+  status: ScheduledPostStatus;
+  external_post_id: string;
+  error_message: string;
+  published_at: string | null;
+  is_queue_item: boolean;
+  synced_from_channel: boolean;
+  comments_count: number;
+  reactions_count: number;
+  recipients: PostRecipient[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Hashtag {
+  id: string;
+  nanoid: string;
+  tag: string;
+  category: string;
+  usage_count: number;
+}
+
+export interface PostQueue {
+  id: string;
+  nanoid: string;
+  name: string;
+  managed_page: string | null;
+  is_active: boolean;
+}
+
+export interface PostQueueItem {
+  id: string;
+  nanoid: string;
+  queue: string;
+  scheduled_post: string | null;
+  position: number;
+  interval_minutes: number;
+}
+
+export interface MetricSnapshot {
+  id: string;
+  nanoid: string;
+  managed_page: string;
+  metric: string;
+  value: number;
+  period: string;
+  end_time: string;
+}
+
+/* ── Payloads and forms ──────────────────────────────────────────────── */
+
+export interface SocialAccountForm {
+  platform: string;
+  name: string;
+  username?: string;
+  external_id: string;
+  token_expires_at?: string | null;
+}
+
+export interface CampaignForm {
+  name: string;
+  description?: string;
+  is_active?: boolean;
+}
+
+export interface ScheduledPostRecipientInput {
+  managed_page: string;
+  content?: string;
+  media_urls?: string[];
+  media_assets?: string[];
+  link_url?: string;
+  format?: string;
+}
+
+export interface ScheduledPostForm {
+  campaign?: string | null;
+  content: string;
+  media_urls?: string[];
+  media_assets?: string[];
+  scheduled_at?: string;
+  status?: string;
+  format?: string;
+  recipients?: ScheduledPostRecipientInput[];
+  first_comments?: Record<string, string>;
+}
+
+export interface RecipientVariant {
+  page: ManagedChannel;
+  content: string;
+  media_urls: string[];
+  link_url?: string;
+  format?: string;
+}
+
+export interface OauthInitResult {
+  auth_url: string;
+  state: string;
+}
+
+export interface OauthRedirectUriResult {
+  platform: string;
+  redirect_uri: string;
+  secret_env_var: string;
+}
+
+export interface DiscoverChannelEntity {
+  entity_id: string;
+  name: string;
+  username?: string;
+  picture_url?: string;
+  category?: string;
+  follower_count?: number;
+  already_connected: boolean;
+}
+
+export interface DiscoverChannelsResult {
+  entities: DiscoverChannelEntity[];
+  notes?: { page_id?: string; page_name?: string; reason: string }[];
+}
+
+export interface SyncChannelSelectionResult {
+  channels: ManagedChannel[];
+}
+
+export interface RevokeAccountResult {
+  revoked: boolean;
+  account: SocialAccount;
+  warning?: string;
+}
+
+export interface ConnectedInstagramResult {
+  page_id: string | null;
+  instagram_business_account: { id: string } | null;
+  connected: boolean;
+}
+
+export interface TaskResponse {
+  task_id: string;
+  status?: string;
+  result?: string | null;
+}
+
+export interface SyncTaskResult {
+  task_id: string;
+}
+
+export interface PostsSyncStatusResult {
+  status: string;
+  result?: {
+    created: number;
+    skipped: number;
+    errors: { page: string; error: string }[];
+  } | null;
+}
+
+export interface CommentsSyncResult {
+  task_id: string;
+}
+
+export interface AnalyticsSyncStatusResult {
+  status: string;
+  result?: {
+    created: number;
+    updated: number;
+    since: string;
+    until: string;
+    errors: { page: string; error: string }[];
+  } | null;
 }

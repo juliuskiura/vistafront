@@ -1,160 +1,176 @@
-import Link from "next/link";
-
-import { listCompanies, type Company, type ProspectStatus } from "@/lib/api";
+import {
+  getCompanyStatusBreakdown,
+  listIndustries,
+  listTierClassifications,
+  paginatedListCompanies,
+  type Company,
+  type CompanyStatusBreakdown,
+  type Industry,
+  type Paginated,
+  type ProspectStatus,
+  type TierClassification,
+} from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { CompaniesList } from "@/app/(app)/[workspace]/dashboard/companies/companies-list";
 
-const PROSPECT_LABELS: Record<ProspectStatus, string> = {
-  identified: "Identified",
-  researching: "Researching",
-  contact_ready: "Contact Ready",
-  outreach_sent: "Outreach Sent",
-  engaged: "Engaged",
-  qualified: "Qualified",
-  customer: "Customer",
-  lost: "Lost",
-};
+const VALID_STATUSES: ProspectStatus[] = [
+  "identified",
+  "researching",
+  "contact_ready",
+  "outreach_sent",
+  "engaged",
+  "qualified",
+  "customer",
+  "lost",
+];
+
+const ALLOWED_PAGE_SIZES = [25, 50, 75, 100] as const;
+type AllowedPageSize = (typeof ALLOWED_PAGE_SIZES)[number];
+
+function parseStatus(raw: string | undefined): ProspectStatus | null {
+  if (!raw) return null;
+  return (VALID_STATUSES as string[]).includes(raw)
+    ? (raw as ProspectStatus)
+    : null;
+}
+
+function parseBool(raw: string | undefined): boolean | null {
+  if (raw === "true") return true;
+  if (raw === "false") return false;
+  return null;
+}
+
+function parsePageSize(raw: string | undefined): AllowedPageSize {
+  const n = Number(raw);
+  return (ALLOWED_PAGE_SIZES as readonly number[]).includes(n)
+    ? (n as AllowedPageSize)
+    : 25;
+}
+
+function parsePage(raw: string | undefined): number {
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
+}
 
 /**
- * Companies list (Server Component).
+ * Companies / Prospecting list (Server Component).
  *
- * Server-side search via `searchParams.search` and `searchParams.status`.
- * Filtering is done client-of-the-backend (after `listCompanies`) so the
- * shape stays a flat array; switch to query params when the API supports
- * them directly.
+ * Reads filters from `searchParams`, fetches the active workspace, the
+ * paginated list of companies matching the filters, the per-status
+ * breakdown, plus reference data (industries, tier classifications).
+ * Everything is fetched with `X-Workspace` so the tenant-scoped CRM
+ * endpoints return the right slice.
+ *
+ * The interactive bits (filter chips, status board, Add Company dialog,
+ * table column toggle + bulk actions, rows-per-page + pagination) live in
+ * the Client Component subtree so the bulk of the UI stays
+ * server-rendered.
  */
 export default async function CompaniesListPage({
   params,
   searchParams,
 }: {
   params: Promise<{ workspace: string }>;
-  searchParams: Promise<{ search?: string; status?: ProspectStatus }>;
+  searchParams: Promise<{
+    search?: string;
+    status?: string;
+    size?: string;
+    industry?: string;
+    tier?: string;
+    has_contacts?: string;
+    verified?: string;
+    ordering?: string;
+    page?: string;
+    page_size?: string;
+  }>;
 }) {
   const { workspace: slug } = await params;
-  const { search, status } = await searchParams;
+  const sp = await searchParams;
   const active = await requireWorkspace(slug);
 
-  const all = await listCompanies({ workspace: active.domain }).catch(
-    () => [] as Company[],
-  );
+  const filters = {
+    search: (sp.search ?? "").trim(),
+    status: parseStatus(sp.status),
+    size: (sp.size ?? "").trim(),
+    industry: (sp.industry ?? "").trim(),
+    tier: (sp.tier ?? "").trim(),
+    hasContacts: parseBool(sp.has_contacts),
+    verified: parseBool(sp.verified),
+  };
 
-  const q = (search ?? "").trim().toLowerCase();
-  const filtered = all.filter((c) => {
-    if (status && c.status !== status) return false;
-    if (!q) return true;
-    return [c.name, c.domain ?? "", c.industry ?? "", c.country ?? ""]
-      .join(" ")
-      .toLowerCase()
-      .includes(q);
-  }); 
+  const orderingStr = (sp.ordering ?? "").trim() || undefined;
+  const page = parsePage(sp.page);
+  const pageSize = parsePageSize(sp.page_size);
+
+  const listFilters = {
+    search: filters.search || undefined,
+    status: filters.status ?? undefined,
+    size: filters.size || undefined,
+    industry: filters.industry || undefined,
+    tier: filters.tier || undefined,
+    has_contacts: filters.hasContacts ?? undefined,
+    verified: filters.verified ?? undefined,
+    ordering: orderingStr,
+    page,
+    page_size: pageSize,
+  };
+
+  const breakdownFilters = {
+    search: listFilters.search,
+    industry: listFilters.industry,
+    size: listFilters.size,
+    tier: listFilters.tier,
+    has_contacts: listFilters.has_contacts,
+    verified: listFilters.verified,
+  };
+
+  const [companiesPayload, breakdown, industries, tierClassifications] =
+    await Promise.all([
+      paginatedListCompanies({
+        filters: listFilters,
+        workspace: active.domain,
+      }).catch(
+        () => ({ count: 0, next: null, previous: null, results: [] }) as Paginated<Company>,
+      ),
+      getCompanyStatusBreakdown({
+        filters: breakdownFilters,
+        workspace: active.domain,
+      }).catch(
+        () => ({ total: 0, counts: {} }) as CompanyStatusBreakdown,
+      ),
+      listIndustries(active.domain).catch(() => [] as Industry[]),
+      listTierClassifications(active.domain).catch(
+        () => [] as TierClassification[],
+      ),
+    ]);
+
+  const companies = companiesPayload.results ?? [];
+  const totalCount = companiesPayload.count ?? companies.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const hasNext = Boolean(companiesPayload.next);
+  const hasPrevious = Boolean(companiesPayload.previous);
 
   return (
-    <div className="max-w-4xl space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold">Companies</h1>
-        <p className="text-sm text-muted-foreground">
-          Companies in your CRM for {active.name}.
-        </p>
-      </div>
-
-      <form className="flex flex-wrap gap-2" method="get">
-        <input
-          type="search"
-          name="search"
-          defaultValue={search ?? ""}
-          placeholder="Search companies…"
-          className="flex h-9 w-full max-w-sm rounded-lg border border-input bg-background px-3 py-1 text-sm shadow-xs transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
-        />
-        <select
-          name="status"
-          defaultValue={status ?? ""}
-          className="flex h-9 rounded-lg border border-input bg-background px-3 py-1 text-sm shadow-xs transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
-        >
-          <option value="">All statuses</option>
-          {(Object.keys(PROSPECT_LABELS) as ProspectStatus[]).map((s) => (
-            <option key={s} value={s}>
-              {PROSPECT_LABELS[s]}
-            </option>
-          ))}
-        </select>
-        <button
-          type="submit"
-          className="inline-flex h-9 items-center justify-center rounded-lg border bg-background px-3 text-sm font-medium shadow-xs hover:bg-accent hover:text-accent-foreground"
-        >
-          Apply
-        </button>
-        {(q || status) ? (
-          <Link
-            href={`/${active.domain}/dashboard/companies`}
-            className="inline-flex h-9 items-center text-xs text-muted-foreground hover:underline"
-          >
-            Clear
-          </Link>
-        ) : null}
-      </form>
-
-      {filtered.length === 0 ? (
-        <Card className="rounded-xl border bg-card p-6 text-center text-sm text-muted-foreground">
-          {q || status
-            ? "No companies match your filters."
-            : "No companies yet. Add one from the CRM."}
-        </Card>
-      ) : (
-        <Card className="divide-y rounded-xl border bg-card">
-          {filtered.map((c) => (
-            <CompanyRow
-              key={c.nanoid}
-              company={c}
-              workspaceDomain={active.domain}
-            />
-          ))}
-        </Card>
-      )}
-    </div>
-  );
-}
-
-function CompanyRow({
-  company,
-  workspaceDomain,
-}: {
-  company: Company;
-  workspaceDomain: string;
-}) {
-  return (
-    <Link
-      href={`/${workspaceDomain}/dashboard/companies/${company.nanoid}`}
-      className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50"
-    >
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary text-sm font-semibold uppercase">
-        {company.name[0]?.toUpperCase() ?? "?"}
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{company.name}</p>
-        <p className="truncate text-xs text-muted-foreground">
-          {[company.industry, company.country, company.city]
-            .filter(Boolean)
-            .join(" · ") || "—"}
-        </p>
-      </div>
-      {typeof company.contact_count === "number" ? (
-        <span className="text-xs text-muted-foreground">
-          {company.contact_count}{" "}
-          {company.contact_count === 1 ? "contact" : "contacts"}
-        </span>
-      ) : null}
-      <Badge
-        variant={
-          company.status === "customer"
-            ? "default"
-            : company.status === "lost"
-              ? "outline"
-              : "secondary"
-        }
-      >
-        {PROSPECT_LABELS[company.status]}
-      </Badge>
-    </Link>
+    <CompaniesList
+      workspace={{
+        nanoid: active.nanoid,
+        name: active.name,
+        domain: active.domain,
+      }}
+      companies={companies}
+      breakdown={breakdown}
+      industries={industries}
+      tierClassifications={tierClassifications}
+      filters={filters}
+      ordering={orderingStr}
+      pagination={{
+        page,
+        pageSize,
+        totalCount,
+        totalPages,
+        hasNext,
+        hasPrevious,
+      }}
+    />
   );
 }
