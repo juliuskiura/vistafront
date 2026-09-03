@@ -2,12 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 
-import { createCompany, deleteCompany } from "@/lib/api";
+import { createCompany, deleteCompany, createTierClassification } from "@/lib/api";
 import {
   NewCompanySchema,
   ProspectStatusSchema,
+  CreateTierClassificationSchema,
   fieldErrorsFromZod,
   type NewCompanyInput,
+  type CreateTierClassificationInput,
 } from "@/lib/schemas";
 
 export interface CreateCompanyActionState {
@@ -145,4 +147,54 @@ export async function bulkDeleteCompaniesAction(
   const deleted = results.length - failed;
   revalidatePath(`/[workspace]/dashboard/companies`, "page");
   return { deleted, failed };
+}
+
+/**
+ * Server Action: create a new tier classification.
+ */
+export interface CreateTierClassificationActionState {
+  status: "idle" | "success" | "error";
+  message?: string;
+}
+
+export const initialCreateTierClassificationState: CreateTierClassificationActionState = {
+  status: "idle",
+};
+
+export async function createTierClassificationAction(
+  _prev: CreateTierClassificationActionState,
+  formData: FormData,
+): Promise<CreateTierClassificationActionState> {
+  const workspaceDomain = String(formData.get("workspace_domain") ?? "").trim();
+  const raw = {
+    title: String(formData.get("title") ?? "").trim() || undefined,
+    label: String(formData.get("label") ?? "").trim() || undefined,
+    description:
+      String(formData.get("description") ?? "").trim() === ""
+        ? {}
+        : { html: String(formData.get("description")).trim() },
+  } satisfies CreateTierClassificationInput;
+
+  const parsed = CreateTierClassificationSchema.safeParse(raw);
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: "Please fix the highlighted fields.",
+    };
+  }
+
+  try {
+    await createTierClassification(parsed.data, workspaceDomain);
+  } catch {
+    return {
+      status: "error",
+      message: "Could not create the tier. Please try again.",
+    };
+  }
+
+  revalidatePath(`/[workspace]/dashboard/companies`, "page");
+  return {
+    status: "success",
+    message: `Tier "${parsed.data.label}" created.`,
+  };
 }

@@ -49,6 +49,7 @@ export {
 
 export {
   createCompany,
+  createTierClassification,
   deleteCompany,
   getCompany,
   getCompanyStatusBreakdown,

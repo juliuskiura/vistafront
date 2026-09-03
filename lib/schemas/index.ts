@@ -119,3 +119,14 @@ export const NewCompanySchema = z.object({
     .optional(),
 });
 export type NewCompanyInput = z.infer<typeof NewCompanySchema>;
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Tier classification
+ * ────────────────────────────────────────────────────────────────────── */
+
+export const CreateTierClassificationSchema = z.object({
+  title: z.string().optional(),
+  label: z.string().optional(),
+  description: z.record(z.string(), z.unknown()).optional(),
+});
+export type CreateTierClassificationInput = z.infer<typeof CreateTierClassificationSchema>;

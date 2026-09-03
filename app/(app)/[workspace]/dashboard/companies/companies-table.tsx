@@ -22,6 +22,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuCheckboxItem,
+} from "@/components/ui/dropdown-menu";
+import {
   PROSPECT_LABELS,
   STATUS_COLORS,
 } from "@/lib/crm/constants";
@@ -90,14 +98,15 @@ const TOGGLEABLE_COLUMNS: { id: string; label: string }[] = [
  */
 const DEFAULT_VISIBLE_COLUMN_IDS: string[] = [
   "name",
-  "status",
   "industry",
   "contact_count",
+  "status",
+  "tier",
 ];
 
 const DEFAULT_VISIBLE: VisibilityState = TOGGLEABLE_COLUMNS.reduce<VisibilityState>(
   (acc, c) => {
-    acc[c.id] = !DEFAULT_VISIBLE_COLUMN_IDS.includes(c.id);
+    acc[c.id] = DEFAULT_VISIBLE_COLUMN_IDS.includes(c.id);
     return acc;
   },
   {},
@@ -417,36 +426,30 @@ export function CompaniesTable({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-end gap-2">
-        <details className="relative">
-          <summary className="inline-flex h-8 cursor-pointer list-none items-center gap-1.5 rounded-md border bg-background px-3 text-sm font-medium shadow-xs hover:bg-accent hover:text-accent-foreground">
-            <SlidersHorizontal size={14} className="size-3.5" />
-            Columns
-          </summary>
-          <div className="absolute right-0 z-20 mt-1 max-h-72 w-56 overflow-y-auto rounded-md border bg-popover p-2 text-sm shadow-lg">
-            {TOGGLEABLE_COLUMNS.map((col) => {
-              const visible =
-                table.getColumn(col.id)?.getIsVisible() ?? true;
-              return (
-                <label
-                  key={col.id}
-                  className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1 hover:bg-muted"
-                >
-                  <input
-                    type="checkbox"
-                    checked={visible}
-                    onChange={(e) =>
-                      table
-                        .getColumn(col.id)
-                        ?.toggleVisibility(e.target.checked)
-                    }
-                    className="size-4 rounded border-input"
-                  />
-                  {col.label}
-                </label>
-              );
-            })}
-          </div>
-        </details>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <SlidersHorizontal size={14} className="size-3.5 mr-1.5" />
+              Columns
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {TOGGLEABLE_COLUMNS.map((col) => (
+              <DropdownMenuCheckboxItem
+                key={col.id}
+                checked={table.getColumn(col.id)?.getIsVisible() ?? true}
+                onCheckedChange={(value) =>
+                  table.getColumn(col.id)?.toggleVisibility(!!value)
+                }
+                onSelect={(e) => e.preventDefault()}
+              >
+                {col.label}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {selectedCount > 0 ? (
@@ -493,9 +496,10 @@ export function CompaniesTable({
         </div>
       ) : null}
 
-      <Card className="overflow-hidden rounded-xl border bg-card shadow-sm">
-        <table className="w-full text-sm">
-          <thead>
+      <Card className="overflow-x-auto overflow-hidden rounded-xl border bg-card shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="text-sm min-w-full">
+            <thead>
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id} className="border-b bg-muted/50 text-left">
                 {hg.headers.map((header) => {
@@ -599,6 +603,7 @@ export function CompaniesTable({
             )}
           </tbody>
         </table>
+        </div>
       </Card>
     </div>
   );

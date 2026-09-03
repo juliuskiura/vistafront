@@ -248,3 +248,13 @@ export async function listTierClassifications(
   >("/apis/crm/tier-classifications/", wsOpts(workspace));
   return unwrap(payload);
 }
+
+export function createTierClassification(
+  body: { title?: string; label?: string; description?: Record<string, unknown> },
+  workspace: string,
+): Promise<TierClassification> {
+  return serverMutate<TierClassification>("/apis/crm/tier-classifications/", {
+    body,
+    workspace,
+  });
+}

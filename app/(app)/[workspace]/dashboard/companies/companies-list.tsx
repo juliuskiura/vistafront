@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, Plus } from "lucide-react";
+import { Building2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -20,9 +20,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuCheckboxItem,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/lib/context";
+import { cn } from "@/lib/utils";
 import {
   BOARD_STATUSES,
   COMPANY_PAGE_SIZES,
@@ -44,6 +53,9 @@ import {
   createCompanyAction,
   initialCreateCompanyState,
   type CreateCompanyActionState,
+  createTierClassificationAction,
+  initialCreateTierClassificationState,
+  type CreateTierClassificationActionState,
 } from "@/app/(app)/[workspace]/dashboard/companies/actions";
 
 export interface CompaniesPagination {
@@ -81,6 +93,26 @@ interface Props {
   pagination: CompaniesPagination;
 }
 
+function VSButton({
+  className,
+  appearance = "solid",
+  ...props
+}: React.ComponentProps<"button"> & {
+  appearance?: "solid" | "ghost" | "outline" | "threeD";
+}) {
+  return (
+    <Button
+      className={cn(
+        "h-11 rounded-xl px-4 font-medium",
+        appearance === "threeD" &&
+          "bg-primary text-primary-foreground shadow-[0_4px_0_0_var(--primary-700)] transition-all hover:translate-y-[1px] hover:shadow-[0_3px_0_0_var(--primary-700)] active:translate-y-[4px] active:shadow-none",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
 /**
  * Interactive Companies list — filters, status board, table, and the
  * "Add Company" dialog. The Server Component page fetches the data; this
@@ -90,6 +122,7 @@ interface Props {
  *     server can re-render with new `searchParams`).
  *   - Status board cards (clicking one toggles `?status=...`).
  *   - Add Company dialog (posts to `createCompanyAction`).
+ *   - Add Tier dialog (posts to `createTierClassificationAction`).
  *   - Rows-per-page + pagination (URL-driven, like the filter row).
  */
 export function CompaniesList({
@@ -105,7 +138,17 @@ export function CompaniesList({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [addOpen, setAddOpen] = useState(false);
+  const [tierOpen, setTierOpen] = useState(false);
   const [searchDraft, setSearchDraft] = useState(filters.search);
+
+  const [newTierTitle, setNewTierTitle] = useState("");
+  const [newTierLabel, setNewTierLabel] = useState("");
+  const [newTierDescription, setNewTierDescription] = useState("");
+
+  const [tierState, tierFormAction, tierPending] = useActionState<
+    CreateTierClassificationActionState,
+    FormData
+  >(createTierClassificationAction, initialCreateTierClassificationState);
 
   useEffect(() => {
     setSearchDraft(filters.search);
@@ -198,10 +241,9 @@ export function CompaniesList({
             {totalCount} compan{totalCount !== 1 ? "ies" : "y"} in your pipeline
           </p>
         </div>
-        <Button size="sm" onClick={() => setAddOpen(true)}>
-          <Plus size={16} className="mr-1.5" />
+        <VSButton appearance="threeD" onClick={() => setAddOpen(true)}>
           Add Company
-        </Button>
+        </VSButton>
       </div>
 
       <form
@@ -321,6 +363,12 @@ export function CompaniesList({
             Clear filters
           </Button>
         ) : null}
+        <VSButton
+          appearance="outline"
+          onClick={() => setTierOpen(true)}
+        >
+          Add Tier
+        </VSButton>
       </form>
 
       <section aria-label="Status breakdown" className="space-y-2">
@@ -478,6 +526,21 @@ export function CompaniesList({
         workspace={workspace}
         industries={industries}
         tierClassifications={tierClassifications}
+      />
+
+      <AddTierDialog
+        open={tierOpen}
+        onOpenChange={setTierOpen}
+        workspace={workspace}
+        tierState={tierState}
+        tierFormAction={tierFormAction}
+        tierPending={tierPending}
+        newTierTitle={newTierTitle}
+        setNewTierTitle={setNewTierTitle}
+        newTierLabel={newTierLabel}
+        setNewTierLabel={setNewTierLabel}
+        newTierDescription={newTierDescription}
+        setNewTierDescription={setNewTierDescription}
       />
     </div>
   );
@@ -853,6 +916,125 @@ function AddCompanyDialog({
             </Button>
             <Button type="submit" disabled={pending}>
               {pending ? "Creating…" : "Create Company"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AddTierDialog({
+  open,
+  onOpenChange,
+  workspace,
+  tierState,
+  tierFormAction,
+  tierPending,
+  newTierTitle,
+  setNewTierTitle,
+  newTierLabel,
+  setNewTierLabel,
+  newTierDescription,
+  setNewTierDescription,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  workspace: { nanoid: string; name: string; domain: string };
+  tierState: CreateTierClassificationActionState;
+  tierFormAction: (formData: FormData) => Promise<CreateTierClassificationActionState> | void;
+  tierPending: boolean;
+  newTierTitle: string;
+  setNewTierTitle: (v: string) => void;
+  newTierLabel: string;
+  setNewTierLabel: (v: string) => void;
+  newTierDescription: string;
+  setNewTierDescription: (v: string) => void;
+}) {
+  const toast = useToast();
+
+  useEffect(() => {
+    if (tierState.status === "success") {
+      toast.push({
+        variant: "success",
+        message: tierState.message ?? "Tier created.",
+      });
+      onOpenChange(false);
+      setNewTierTitle("");
+      setNewTierLabel("");
+      setNewTierDescription("");
+    } else if (tierState.status === "error") {
+      toast.push({
+        variant: "error",
+        message: tierState.message ?? "Could not create tier.",
+      });
+    }
+  }, [tierState, toast, onOpenChange]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className="sm:max-w-md gap-0 overflow-hidden p-0"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <DialogHeader className="rounded-t-xl bg-primary px-5 py-4">
+          <DialogTitle className="text-primary-foreground">
+            New Tier
+          </DialogTitle>
+        </DialogHeader>
+        <form
+          action={(submitted) => {
+            submitted.set("workspace_domain", workspace.domain);
+            tierFormAction(submitted);
+          }}
+          className="max-h-[70vh] space-y-4 overflow-y-auto px-5 py-4"
+        >
+          <input type="hidden" name="workspace_domain" value={workspace.domain} />
+          <div className="space-y-1.5">
+            <Label htmlFor="tier-title">Title</Label>
+            <Input
+              id="tier-title"
+              name="title"
+              value={newTierTitle}
+              onChange={(e) => setNewTierTitle(e.target.value)}
+              placeholder="e.g. Strategic"
+              required
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="tier-label">Label</Label>
+            <Input
+              id="tier-label"
+              name="label"
+              value={newTierLabel}
+              onChange={(e) => setNewTierLabel(e.target.value)}
+              placeholder="e.g. A"
+              required
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="tier-description">Description</Label>
+            <textarea
+              id="tier-description"
+              name="description"
+              rows={3}
+              value={newTierDescription}
+              onChange={(e) => setNewTierDescription(e.target.value)}
+              className="flex w-full rounded-lg border border-input bg-background px-3 py-2 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+              placeholder="Optional description"
+            />
+          </div>
+          <DialogFooter className="px-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={tierPending}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={tierPending}>
+              {tierPending ? "Saving…" : "Save Tier"}
             </Button>
           </DialogFooter>
         </form>
