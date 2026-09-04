@@ -2,7 +2,7 @@
 
 import { useRef, useCallback, useEffect, useState } from "react";
 import { useToast } from "@/lib/context";
-import { getAsset } from "@/lib/api";
+import { useQuery } from "@tanstack/react-query";
 import {
   updateAssetAction,
   getAssetMetasAction,
@@ -13,7 +13,7 @@ import { VideoPlayer } from "./VideoPlayer";
 import VideoSpecsPanel from "./VideoSpecsPanel";
 import { readMarkers, findMarkersMeta, VIDEO_MARKERS_KEY } from "@/lib/media/video-markers";
 import type { VideoCuePoint } from "@/lib/media/video-markers";
-import type { AssetMeta } from "@/lib/api";
+import type { AssetMeta, Asset } from "@/lib/api";
 
 interface VideoStudioProps {
   assetType: string;
@@ -29,6 +29,21 @@ interface VideoStudioProps {
   nanoid: string;
   workspaceDomain: string;
   asset?: import("@/lib/api").Asset;
+}
+
+/**
+ * Fetch the current asset (fresh presigned `stream_url`) through the Next
+ * Route Handler so the client gets server-side cookie/`X-Workspace`
+ * forwarding. TanStack Query manages the polling every 60s; the returned
+ * data object is always fresh so the player can re-initialize.
+ */
+async function fetchAsset(nanoid: string, workspaceDomain: string): Promise<Asset> {
+  const res = await fetch(
+    `/api/media/asset?nanoid=${encodeURIComponent(nanoid)}&workspace=${encodeURIComponent(workspaceDomain)}`,
+    { cache: "no-store" },
+  );
+  if (!res.ok) throw new Error("Failed to fetch asset");
+  return res.json();
 }
 
 export function VideoStudio({
@@ -48,10 +63,29 @@ export function VideoStudio({
 }: VideoStudioProps) {
   const toast = useToast();
   const backfilledRef = useRef(false);
-  const [currentSrc, setCurrentSrc] = useState(src);
-  const sourceRefreshTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const [metas, setMetas] = useState<AssetMeta[]>([]);
   const [cuePoints, setCuePoints] = useState<VideoCuePoint[]>([]);
+  // Forced re-init counter: bumped only when the source actually expires
+  // (player fires an error), so the <video> re-attaches even when the URL
+  // string is unchanged. Mirrors legacy RTK `refetch()` which always
+  // re-ran the player init effect.
+  const [expiryRemountKey, setExpiryRemountKey] = useState(0);
+
+  // Live asset data: poll for a fresh presigned URL while the user lingers.
+  const { data: liveAsset, refetch } = useQuery({
+    queryKey: ["asset", "video-studio", nanoid, workspaceDomain],
+    queryFn: () => fetchAsset(nanoid, workspaceDomain),
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+    staleTime: 30_000,
+  });
+
+  const currentSrc = liveAsset?.stream_url ?? src;
+
+  const handleSourceExpired = useCallback(() => {
+    setExpiryRemountKey((k) => k + 1);
+    refetch();
+  }, [refetch]);
 
   // Fetch metas on mount
   useEffect(() => {
@@ -95,22 +129,10 @@ export function VideoStudio({
     }
   }, [cuePoints, metas, nanoid, workspaceDomain, toast]);
 
-  // Refresh presigned source URL periodically to handle expiry
-  useEffect(() => {
-    sourceRefreshTimer.current = setInterval(async () => {
-      try {
-        const updated = await getAsset(nanoid, workspaceDomain);
-        if (updated.stream_url && updated.stream_url !== currentSrc) {
-          setCurrentSrc(updated.stream_url);
-        }
-      } catch {}
-    }, 60000);
-    return () => { if (sourceRefreshTimer.current) clearInterval(sourceRefreshTimer.current); };
-  }, [nanoid, workspaceDomain, currentSrc]);
-
   return (
     <div className="space-y-4">
       <VideoPlayer
+        key={expiryRemountKey}
         src={currentSrc}
         assetType={assetType}
         mimeType={mimeType}
@@ -120,12 +142,7 @@ export function VideoStudio({
         height={height}
         fps={fps}
         onLoadedMetadata={handleLoadedMetadata}
-        onSourceExpired={async () => {
-          try {
-            const updated = await getAsset(nanoid, workspaceDomain);
-            if (updated.stream_url) setCurrentSrc(updated.stream_url);
-          } catch {}
-        }}
+        onSourceExpired={handleSourceExpired}
         asset={asset}
       />
       <VideoSpecsPanel

@@ -1,5 +1,6 @@
 import { getAsset, getAssetVersions, type Asset, type AssetVersion } from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
+import { HydrationBoundary, QueryClient, dehydrate } from "@tanstack/react-query";
 import { AssetDetailClient } from "./asset-detail-client";
 
 export default async function MediaAssetDetailPage({
@@ -24,11 +25,21 @@ export default async function MediaAssetDetailPage({
     );
   }
 
+  // Prefetch the same asset the video studio polls, so the first paint
+  // ships with data and hydration doesn't show a blank/errant source.
+  const qc = new QueryClient();
+  await qc.prefetchQuery({
+    queryKey: ["asset", "video-studio", nanoid, active.domain],
+    queryFn: () => getAsset(nanoid, active.domain),
+  });
+
   return (
-    <AssetDetailClient
-      workspaceDomain={active.domain}
-      asset={asset}
-      versions={versions}
-    />
+    <HydrationBoundary state={dehydrate(qc)}>
+      <AssetDetailClient
+        workspaceDomain={active.domain}
+        asset={asset}
+        versions={versions}
+      />
+    </HydrationBoundary>
   );
 }
