@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { listWorkspaces, type Workspace } from "@/lib/api";
 import {
   clearAuthCookies as clearAuthCookiesFromStore,
@@ -137,6 +138,19 @@ export async function refreshAccessToken(): Promise<boolean> {
     if (!response.ok) {
       return false;
     }
+
+    const data = (await response.json()) as { access?: string };
+    if (!data.access) {
+      return false;
+    }
+
+    const cookieStore = await cookies();
+    cookieStore.set("access", data.access, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+    });
 
     return true;
   } catch (error) {

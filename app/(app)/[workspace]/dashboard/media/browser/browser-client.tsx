@@ -16,6 +16,7 @@ interface Props {
   initialAssets: PaginatedAssets;
   initialSearch: string;
   initialAssetType: string;
+  pageSize: number;
 }
 
 export function BrowserClient({
@@ -23,6 +24,7 @@ export function BrowserClient({
   initialAssets,
   initialSearch,
   initialAssetType,
+  pageSize,
 }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -111,6 +113,20 @@ export function BrowserClient({
     return sorted;
   }, [assets, sortKey, sortDir]);
 
+  const currentPage = Number(searchParams.get("page") ?? "1");
+  const totalPages = Math.max(1, Math.ceil((initialAssets.count || 0) / (pageSize || 24)));
+
+  const goToPage = useCallback(
+    (page: number) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("page", String(page));
+      startTransition(() => {
+        router.push(`/${workspaceDomain}/dashboard/media/browser?${params.toString()}`);
+      });
+    },
+    [router, searchParams, workspaceDomain],
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
@@ -155,11 +171,30 @@ export function BrowserClient({
         </div>
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <div className="text-sm text-muted-foreground">
           {initialAssets.count} asset{initialAssets.count !== 1 ? "s" : ""}
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={currentPage <= 1}
+            onClick={() => goToPage(currentPage - 1)}
+          >
+            Previous
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            Page {currentPage} of {totalPages || 1}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={currentPage >= totalPages}
+            onClick={() => goToPage(currentPage + 1)}
+          >
+            Next
+          </Button>
           <Button
             variant="outline"
             size="sm"

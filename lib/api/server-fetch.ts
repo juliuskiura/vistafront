@@ -28,6 +28,7 @@ export interface RequestOptions {
    * ``requireWorkspace(slug)`` in ``lib/auth/server.ts``.
    */
   workspace?: string;
+  _retry?: boolean;
 }
 
 /**
@@ -52,6 +53,39 @@ export function toQueryString(params: Record<string, unknown> = {}): string {
     }
   }
   return parts.length === 0 ? "" : `?${parts.join("&")}`;
+}
+
+async function tryRefreshAccessToken(
+  cookieStore: Awaited<ReturnType<typeof cookies>>,
+): Promise<boolean> {
+  const refreshToken = cookieStore.get("refresh")?.value;
+  if (!refreshToken) return false;
+
+  try {
+    const response = await fetch(`${BACKEND_URL}/apis/auth/jwt/refresh/`, {
+      method: "POST",
+      headers: {
+        Cookie: `refresh=${refreshToken}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) return false;
+
+    const data = (await response.json()) as { access?: string };
+    if (!data.access) return false;
+
+    cookieStore.set("access", data.access, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+    });
+
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -94,6 +128,16 @@ export async function serverFetch<T>(
   });
 
   if (!response.ok) {
+    const isAuthError = response.status === 401 || response.status === 403;
+    const canRetry = !options._retry && isAuthError && !!refreshToken;
+
+    if (canRetry) {
+      const refreshed = await tryRefreshAccessToken(cookieStore);
+      if (refreshed) {
+        return serverFetch<T>(path, { ...options, _retry: true });
+      }
+    }
+
     const errorText = await response.text();
     throw new ServerFetchError(response.status, errorText, path);
   }
@@ -120,6 +164,7 @@ export interface MutateOptions {
    * tenant-vs-pre-tenant distinction.
    */
   workspace?: string;
+  _retry?: boolean;
 }
 
 export async function serverMutate<T>(
@@ -163,6 +208,16 @@ export async function serverMutate<T>(
   });
 
   if (!response.ok) {
+    const isAuthError = response.status === 401 || response.status === 403;
+    const canRetry = !options._retry && isAuthError && !!refreshToken;
+
+    if (canRetry) {
+      const refreshed = await tryRefreshAccessToken(cookieStore);
+      if (refreshed) {
+        return serverMutate<T>(path, { ...options, _retry: true });
+      }
+    }
+
     const errorText = await response.text();
     throw new ServerFetchError(response.status, errorText, path);
   }

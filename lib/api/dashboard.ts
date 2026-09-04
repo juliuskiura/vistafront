@@ -6,12 +6,12 @@ import type { DashboardWidget, NavItem } from "./types";
 /**
  * Server-rendered dashboard widgets for the current workspace.
  *
- * Backed by `/apis/dashboard/widgets/`. The backend resolves the active
- * workspace from the session (cookie + path), so this works inside a
- * `[workspace]` Server Component without extra arguments.
+ * Backed by `/apis/dashboard/widgets/`. The `workspace` parameter
+ * is forwarded as the `X-Workspace` header so the middleware
+ * resolves the active tenant.
  */
-export async function getDashboardWidgets(): Promise<DashboardWidget[]> {
-  return serverFetch<DashboardWidget[]>("/apis/dashboard/widgets/");
+export async function getDashboardWidgets(workspace: string): Promise<DashboardWidget[]> {
+  return serverFetch<DashboardWidget[]>("/apis/dashboard/widgets/", { workspace });
 }
 
 /**

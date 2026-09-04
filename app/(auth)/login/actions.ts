@@ -102,9 +102,16 @@ async function safeReadDetail(response: Response): Promise<string | null> {
 
 /**
  * Replay Django's `Set-Cookie` headers onto the outbound response so the
- * browser stores the HttpOnly `access` and `refresh` tokens. Only the
- * `access` and `refresh` cookies are forwarded; any other cookie Django
- * might set (e.g. CSRF) is ignored.
+ * browser stores the HttpOnly `access` and `refresh` tokens, plus the
+ * `csrftoken` cookie that Django's CsrfViewMiddleware sets on every response.
+ *
+ * In the legacy SPA, Django's cookies reached the browser directly because
+ * requests went through Vite's same-origin proxy.  In Next.js, login calls
+ * Django server-side (Node→Node), so the browser never sees Django's
+ * Set-Cookie headers — we must forward them manually.
+ *
+ * The CSRF cookie is NOT HttpOnly (JavaScript must read it to attach the
+ * X-CSRFToken header on mutations).
  *
  * Must run inside a Server Action — `.set` on `cookies()` is not allowed
  * during Server Component render.
@@ -114,6 +121,7 @@ async function forwardAuthCookies(response: Response): Promise<void> {
   if (!setCookies.length) return;
 
   const cookieStore = await cookies();
+  const forwarded = new Set<string>();
 
   for (const raw of setCookies) {
     const [pair, ...attributes] = raw.split("; ");
@@ -121,10 +129,18 @@ async function forwardAuthCookies(response: Response): Promise<void> {
     if (eq <= 0) continue;
     const name = pair.slice(0, eq);
     const value = pair.slice(eq + 1);
-    if (name !== "access" && name !== "refresh") continue;
+
+    // Forward auth tokens and the CSRF cookie.  Skip anything else
+    // (sessionid, etc.) that we don't need in the browser.
+    const isAuth = name === "access" || name === "refresh";
+    const isCsrf = name === "csrftoken";
+    if (!isAuth && !isCsrf) continue;
+
+    // Deduplicate — Django may send multiple Set-Cookie for the same name.
+    if (forwarded.has(name)) continue;
+    forwarded.add(name);
 
     const lowerAttrs = attributes.map((a) => a.toLowerCase());
-    const httpOnly = lowerAttrs.some((a) => a === "httponly");
     const secure = lowerAttrs.some((a) => a === "secure");
     const sameSiteRaw = attributes
       .find((a) => a.toLowerCase().startsWith("samesite="))
@@ -133,6 +149,12 @@ async function forwardAuthCookies(response: Response): Promise<void> {
       | "lax"
       | "strict"
       | "none";
+
+    // Auth cookies stay HttpOnly; the CSRF cookie must be readable by JS
+    // so the upload manager and mutation helpers can attach X-CSRFToken.
+    const httpOnly = isAuth
+      ? lowerAttrs.some((a) => a === "httponly")
+      : false;
 
     cookieStore.set(name, value, {
       httpOnly,

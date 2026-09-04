@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 
-import { getAuthUser } from "@/lib/auth/server";
+import { requireWorkspace, getAuthUser } from "@/lib/auth/server";
 import { getDashboardWidgets, ServerFetchError } from "@/lib/api";
 import { DashboardWidgets } from "@/components/dashboard/dashboard-widgets";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
@@ -13,7 +13,14 @@ import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
  * dashboard API are surfaced as a visible error card (not silently
  * converted into an empty array) so the developer sees what went wrong.
  */
-export default function DashboardHomePage() {
+export default async function DashboardHomePage({
+  params,
+}: {
+  params: Promise<{ workspace: string }>;
+}) {
+  const { workspace: slug } = await params;
+  const active = await requireWorkspace(slug);
+
   return (
     <div className="space-y-6">
       <Suspense fallback={<DashboardHeadingSkeleton />}>
@@ -21,7 +28,7 @@ export default function DashboardHomePage() {
       </Suspense>
 
       <Suspense fallback={<DashboardSkeleton />}>
-        <DashboardWidgetsAsync />
+        <DashboardWidgetsAsync workspace={active.domain} />
       </Suspense>
     </div>
   );
@@ -53,10 +60,10 @@ function DashboardHeadingSkeleton() {
   );
 }
 
-async function DashboardWidgetsAsync() {
+async function DashboardWidgetsAsync({ workspace }: { workspace: string }) {
   let widgets;
   try {
-    widgets = await getDashboardWidgets();
+    widgets = await getDashboardWidgets(workspace);
   } catch (error) {
     // Surface the real failure (auth, transport, schema) so we don't
     // silently render the "empty" state when the API actually errored.

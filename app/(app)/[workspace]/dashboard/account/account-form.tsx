@@ -4,7 +4,7 @@ import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/lib/context";
@@ -70,7 +70,7 @@ export function AccountForm({ details }: Props) {
       : null;
 
   return (
-    <Card className="rounded-xl border bg-card">
+    <div className="glass-surface rounded-xl">
       <CardHeader>
         <div className="flex items-center gap-3">
           <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-base font-semibold text-primary">
@@ -190,6 +190,6 @@ export function AccountForm({ details }: Props) {
           </div>
         </form>
       </CardContent>
-    </Card>
+    </div>
   );
 }

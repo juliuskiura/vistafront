@@ -52,6 +52,7 @@ export default async function MediaBrowserPage({
       initialAssets={assetsPayload}
       initialSearch={sp.text ?? ""}
       initialAssetType={sp.asset_type ?? ""}
+      pageSize={pageSize}
     />
   );
 }
