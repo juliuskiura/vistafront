@@ -90,8 +90,35 @@ export interface VideoView {
   bitrate: number | null;
 }
 
+/**
+ * Normalize a media/API URL that Django baked an absolute origin into
+ * (e.g. `http://127.0.0.1:8000/apis/media/assets/{nanoid}/stream/`) down
+ * to a same-origin relative path.
+ *
+ * Rationale: the browser's session cookies live on the Next.js origin and
+ * `/apis/*` is proxied to Django by `next.config.ts`. If the player hits the
+ * absolute backend host directly (cross-origin), the session cookie is not
+ * sent and the auth-backed `/stream/` endpoint returns 401. Rewriting to a
+ * relative path routes the request through the same-origin proxy so cookies
+ * attach and playback works, mirroring legacy Vite (`changeOrigin: false`).
+ */
+export function toSameOriginApiUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url, "http://current.invalid");
+    if (parsed.pathname.startsWith("/apis/")) {
+      return `${parsed.pathname}${parsed.search}`;
+    }
+    // Non-API (object-store/blob) URLs are left untouched.
+    return url;
+  } catch {
+    // Already relative or malformed — pass through.
+    return url.startsWith("/") ? url : null;
+  }
+}
+
 export function toVideoView(asset: Asset): VideoView {
-  const src = asset.stream_url || asset.original || null;
+  const src = toSameOriginApiUrl(asset.stream_url || asset.original);
   return {
     src,
     poster: asset.thumbnail || null,

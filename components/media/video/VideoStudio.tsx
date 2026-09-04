@@ -12,6 +12,7 @@ import {
 import { VideoPlayer } from "./VideoPlayer";
 import VideoSpecsPanel from "./VideoSpecsPanel";
 import { readMarkers, findMarkersMeta, VIDEO_MARKERS_KEY } from "@/lib/media/video-markers";
+import { toSameOriginApiUrl } from "@/lib/media/video-utils";
 import type { VideoCuePoint } from "@/lib/media/video-markers";
 import type { AssetMeta, Asset } from "@/lib/api";
 
@@ -80,11 +81,21 @@ export function VideoStudio({
     staleTime: 30_000,
   });
 
-  const currentSrc = liveAsset?.stream_url ?? src;
+  const currentSrc = toSameOriginApiUrl(liveAsset?.stream_url ?? src);
 
-  const handleSourceExpired = useCallback(() => {
-    setExpiryRemountKey((k) => k + 1);
-    refetch();
+  const handleSourceExpired = useCallback(async () => {
+    // Only re-initialize the player after a successful refresh, so we don't
+    // hot-loop the expired source when the backend is (still) failing auth.
+    // `refetch()` resolves even on error, so check the result explicitly.
+    try {
+      const result = await refetch();
+      if (result.isSuccess) {
+        setExpiryRemountKey((k) => k + 1);
+      }
+    } catch {
+      // Leave the player on its current (error) state; the periodic
+      // refetchInterval will retry automatically.
+    }
   }, [refetch]);
 
   // Fetch metas on mount
