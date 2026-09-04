@@ -7,10 +7,14 @@ import {
   deleteAsset,
   favoriteAsset,
   getAsset,
+  getAssetMetas,
+  createAssetMeta,
+  updateAssetMeta,
   restoreAsset,
   trashAsset,
   updateAsset,
   type Asset,
+  type AssetMeta,
 } from "@/lib/api";
 
 export interface MediaActionState {
@@ -94,4 +98,27 @@ export async function bulkFavoriteAssetsAction(
   const result = await bulkFavoriteAssets(nanoids, favorite, workspace);
   revalidatePath(`/[workspace]/dashboard/media`, "page");
   return result;
+}
+
+export async function getAssetMetasAction(
+  assetNanoid: string,
+  workspace: string,
+): Promise<AssetMeta[]> {
+  return getAssetMetas(assetNanoid, workspace);
+}
+
+export async function createAssetMetaAction(
+  body: { asset: string; key: string; value: string },
+  workspace: string,
+): Promise<AssetMeta> {
+  return createAssetMeta(body, workspace);
+}
+
+export async function updateAssetMetaAction(
+  nanoid: string,
+  asset: string,
+  data: Partial<AssetMeta>,
+  workspace: string,
+): Promise<AssetMeta> {
+  return updateAssetMeta(nanoid, asset, data, workspace);
 }

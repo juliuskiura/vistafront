@@ -35,6 +35,9 @@ import {
   FileArchive as ArchiveIcon,
 } from "lucide-react";
 import { useToast } from "@/lib/context";
+import { MediaPlayer } from "@/components/media/media-player";
+import { VideoStudio } from "@/components/media/video/VideoStudio";
+import { AssetMetadataInspector } from "@/components/media/asset-metadata-inspector";
 import {
   deleteAssetAction,
   favoriteAssetAction,
@@ -211,70 +214,44 @@ export function AssetDetailClient({ workspaceDomain, asset: initialAsset, versio
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <Card className="rounded-xl border bg-card ring-0 shadow-sm overflow-hidden">
-            <CardContent className="p-0">
-              <div className="aspect-video bg-muted/30 flex items-center justify-center">
-                {asset.thumbnail ? (
-                  <img
-                    src={asset.thumbnail}
-                    alt={asset.name}
-                    className="w-full h-full object-contain"
-                  />
+              <CardContent className="p-0">
+                {asset.asset_type === "video" ? (
+                   <VideoStudio
+                     assetType={asset.asset_type}
+                     mimeType={asset.mime_type}
+                     extension={asset.format}
+                     size={asset.size}
+                     src={asset.stream_url ?? asset.original}
+                     thumbnail={asset.thumbnail}
+                     durationSeconds={asset.duration_seconds}
+                     width={asset.width}
+                     height={asset.height}
+                     fps={null}
+                     nanoid={asset.nanoid}
+                     workspaceDomain={workspaceDomain}
+                     asset={asset}
+                   />
                 ) : (
-                  <div className="text-center text-muted-foreground">
-                    {icon}
-                    <p className="text-sm mt-2">No preview available</p>
-                  </div>
+                  <MediaPlayer
+                    src={asset.stream_url ?? asset.original}
+                    assetType={asset.asset_type}
+                    mimeType={asset.mime_type}
+                    thumbnail={asset.thumbnail}
+                    durationSeconds={asset.duration_seconds}
+                    width={asset.width}
+                    height={asset.height}
+                  />
                 )}
-              </div>
-            </CardContent>
+              </CardContent>
           </Card>
         </div>
 
         <div className="space-y-4">
-          <Card className="rounded-xl border bg-card ring-0 shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <DetailRow label="Name" value={asset.name} />
-              <DetailRow label="Type" value={asset.asset_type} />
-              <DetailRow label="Format" value={asset.format} />
-              <DetailRow label="MIME" value={asset.mime_type} />
-              <DetailRow label="Size" value={asset.size ? `${(asset.size / 1024).toFixed(1)} KB` : "—"} />
-              {asset.width && asset.height && (
-                <DetailRow label="Dimensions" value={`${asset.width} x ${asset.height}`} />
-              )}
-              <DetailRow label="Status" value={asset.status} />
-              <DetailRow label="Source" value={asset.source} />
-              <DetailRow label="Hash" value={asset.hash_sha256?.slice(0, 16)} />
-            </CardContent>
-          </Card>
-
-          {asset.description && (
-            <Card className="rounded-xl border bg-card ring-0 shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-sm font-medium">Description</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">{asset.description}</p>
-              </CardContent>
-            </Card>
-          )}
-
-          {asset.tags.length > 0 && (
-            <Card className="rounded-xl border bg-card ring-0 shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-sm font-medium">Tags</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {asset.tags.map((tag) => (
-                    <Badge key={tag} variant="secondary">{tag}</Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          <AssetMetadataInspector
+            asset={asset}
+            workspaceDomain={workspaceDomain}
+            onAssetUpdated={(updated) => setAsset(updated)}
+          />
         </div>
       </div>
 
@@ -319,15 +296,6 @@ export function AssetDetailClient({ workspaceDomain, asset: initialAsset, versio
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
-  );
-}
-
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium text-right truncate max-w-[200px]">{value || "—"}</span>
     </div>
   );
 }
