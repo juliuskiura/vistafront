@@ -14,6 +14,8 @@ import {
   Upload,
   Users,
   Wifi,
+  MessageCircle,
+  Heart,
   type LucideIcon,
 } from "lucide-react";
 
@@ -61,6 +63,35 @@ function formatDate(iso: string): string {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function RecipientChip({
+  managedPageName,
+  channel,
+}: {
+  managedPageName: string;
+  channel?: ManagedChannel;
+}) {
+  if (!channel) {
+    return (
+      <span className="rounded-md bg-neutral-100 px-1.5 py-0.5 text-[10px] font-medium text-neutral-600">
+        {managedPageName}
+      </span>
+    );
+  }
+  const style = getPlatformStyle(channel.platform);
+  const platformLabel = channel.platform_name || style.label;
+  const displayName = channel.page_name || managedPageName;
+  return (
+    <span
+      className={`inline-flex max-w-full items-center gap-1.5 rounded-md border px-1.5 py-0.5 ${style.bg} ${style.border}`}
+    >
+      <PlatformGlyph platform={channel.platform} size="sm" />
+      <span className="truncate text-[10px] font-medium text-neutral-700">
+        {platformLabel} · {displayName}
+      </span>
+    </span>
+  );
 }
 
 /* ──────────────────────────────────────────────────────────────────────
@@ -124,6 +155,11 @@ export function SocialHomePageClient({
 
   /* ── Derived data ── */
   const connectedPages = useMemo(() => rawPages.filter((p) => p.is_active), [rawPages]);
+
+  const pagesByNanoid = useMemo(
+    () => new Map(rawPages.map((p) => [p.nanoid, p] as const)),
+    [rawPages],
+  );
 
   const scheduled = useMemo(() => posts.filter((p) => p.status === "scheduled"), [posts]);
   const drafts = useMemo(() => posts.filter((p) => p.status === "draft"), [posts]);
@@ -208,44 +244,120 @@ export function SocialHomePageClient({
 
         {/* Post table */}
         {recent.length > 0 ? (
-          <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
-            <table className="w-full text-left text-sm">
+          <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white">
+            <table className="w-full min-w-[680px] text-left text-sm">
               <thead className="border-b border-neutral-100 bg-neutral-50 text-xs font-medium text-neutral-500">
                 <tr>
                   <th className="px-4 py-2.5">Content</th>
+                  <th className="px-4 py-2.5">Platforms</th>
                   <th className="px-4 py-2.5">Status</th>
-                  <th className="px-4 py-2.5">Scheduled</th>
-                  <th className="px-4 py-2.5">Channels</th>
+                  <th className="px-4 py-2.5">Date</th>
+                  <th className="px-4 py-2.5">Live Stream</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
                 {recent.map((post) => (
                   <tr key={post.nanoid} className="hover:bg-neutral-50">
-                    <td className="max-w-xs truncate px-4 py-2.5 text-neutral-900">
-                      {post.content || "No content"}
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        {post.media_image_urls?.[0] ? (
+                          <img
+                            src={post.media_image_urls[0]}
+                            alt=""
+                            className="size-10 shrink-0 rounded-md object-cover"
+                          />
+                        ) : (
+                          <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-neutral-100 text-[10px] font-semibold text-neutral-400">
+                            TXT
+                          </div>
+                        )}
+                        <span className="line-clamp-2 max-w-[320px] text-sm text-neutral-900">
+                          {post.content || "No content"}
+                        </span>
+                      </div>
                     </td>
-                    <td className="px-4 py-2.5">
-                      <span
-                        className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-semibold capitalize ${
-                          STATUS_STYLES[post.status] ?? STATUS_STYLES.draft
-                        }`}
-                      >
-                        {post.status}
-                      </span>
+                    <td className="px-4 py-3">
+                      {post.recipients.length === 0 ? (
+                        <span className="text-xs text-neutral-400">—</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {post.recipients.slice(0, 3).map((r) => {
+                            const page = pagesByNanoid.get(r.managed_page);
+                            const platform = page?.platform || "";
+                            const style = getPlatformStyle(platform);
+                            const avatar = page?.profile_picture_url;
+                            const displayName = page?.page_name || r.managed_page_name;
+                            const platformLabel = page?.platform_name || style.label;
+                            return (
+                              <span key={r.nanoid} className="flex items-center gap-1.5">
+                                <span className="relative shrink-0">
+                                  {avatar ? (
+                                    <img
+                                      src={avatar}
+                                      alt=""
+                                      className="size-8 rounded-full object-cover shadow ring-1 ring-black/5"
+                                    />
+                                  ) : (
+                                    <span
+                                      className={`flex size-8 items-center justify-center rounded-full text-[10px] font-bold shadow ring-1 ring-black/5 ${style.bg} ${style.color}`}
+                                    >
+                                      {displayName.slice(0, 1).toUpperCase()}
+                                    </span>
+                                  )}
+                                  {platform && (
+                                    <span className="absolute bottom-0 right-0 flex size-4 translate-x-1/4 translate-y-1/4 items-center justify-center rounded-full bg-white shadow ring-1 ring-black/5">
+                                      <PlatformGlyph platform={platform} size="sm" />
+                                    </span>
+                                  )}
+                                </span>
+                                <span className="flex flex-col">
+                                  <span className="max-w-[140px] truncate text-xs font-medium text-neutral-700">
+                                    {displayName}
+                                  </span>
+                                  <span className={`text-[10px] capitalize ${style.color}`}>
+                                    {platformLabel}
+                                  </span>
+                                </span>
+                              </span>
+                            );
+                          })}
+                          {post.recipients.length > 3 && (
+                            <span className="flex items-center rounded-md bg-neutral-100 px-2 py-0.5 text-[10px] font-medium text-neutral-500">
+                              +{post.recipients.length - 3}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-xs text-neutral-500">
-                      {formatDate(post.scheduled_at)}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <div className="flex flex-wrap gap-1">
-                        {post.recipients.map((r) => (
-                          <span
-                            key={r.nanoid}
-                            className="rounded-md bg-neutral-100 px-1.5 py-0.5 text-[10px] font-medium text-neutral-600"
-                          >
-                            {r.managed_page_name}
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1.5">
+                        {post.synced_from_channel && (
+                          <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-[10px] font-semibold text-neutral-500">
+                            Synced
                           </span>
-                        ))}
+                        )}
+                        <span
+                          className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-semibold capitalize ${
+                            STATUS_STYLES[post.status] ?? STATUS_STYLES.draft
+                          }`}
+                        >
+                          {post.status}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-xs text-neutral-500">
+                      {formatDate(post.published_at || post.scheduled_at || post.created_at)}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <span className="flex items-center gap-1 text-xs text-neutral-600" title="Audience comments">
+                          <MessageCircle className="size-3.5 text-neutral-400" />
+                          {post.comments_count ?? 0}
+                        </span>
+                        <span className="flex items-center gap-1 text-xs text-neutral-600" title="Reactions">
+                          <Heart className="size-3.5 text-rose-400" />
+                          {post.reactions_count ?? 0}
+                        </span>
                       </div>
                     </td>
                   </tr>
@@ -352,12 +464,11 @@ export function SocialHomePageClient({
                   {post.recipients.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-1.5">
                       {post.recipients.map((r) => (
-                        <span
+                        <RecipientChip
                           key={r.nanoid}
-                          className="rounded-md bg-neutral-100 px-2 py-0.5 text-[10px] font-medium text-neutral-600"
-                        >
-                          {r.managed_page_name}
-                        </span>
+                          managedPageName={r.managed_page_name}
+                          channel={pagesByNanoid.get(r.managed_page)}
+                        />
                       ))}
                     </div>
                   )}
