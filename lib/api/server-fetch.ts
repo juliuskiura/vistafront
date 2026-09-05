@@ -1,59 +1,9 @@
+"use server";
+
 import { cookies } from "next/headers";
+import { ServerFetchError, type RequestOptions, type MutateOptions } from "./server-fetch-types";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:8000";
-
-export interface RequestOptions {
-  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
-  body?: unknown;
-  cache?: RequestCache;
-  next?: { revalidate?: number | false; tags?: string[] };
-  /**
-   * Active workspace slug (``Workspace.domain``) or nanoid. Forwarded to the
-   * backend as the ``X-Workspace`` request header.
-   *
-   * **Tenant-scoped callers must pass this.** The `/apis/<app>/*` URLs (CRM,
-   * schedules, projects, deliverables, etc.) carry no `/[workspace]` path
-   * segment; without the header, Django's ``WorkspaceResolutionMiddleware``
-   * falls back to the shared ``app`` workspace (see
-   * ``workspaces/middleware.py``) and the response is silently empty:
-   * ``{count: 0, results: []}`` for list endpoints.
-   *
-   * **Pre-tenant callers may omit this.** Sign-up, login, password reset,
-   * activate, verify-email, and workspace-bootstrap mutations
-   * (``createClientBusiness``, ``createWorkspace``, ``redeemInvitation``)
-   * run before a workspace exists. They use raw ``fetch()`` or
-   * ``serverMutate`` with ``workspace`` left undefined.
-   *
-   * Pass ``active.domain`` from the workspace the page already resolved via
-   * ``requireWorkspace(slug)`` in ``lib/auth/server.ts``.
-   */
-  workspace?: string;
-  _retry?: boolean;
-}
-
-/**
- * Serialize a flat object into a URL-encoded query string. Values that are
- * `null` or `undefined` are skipped; arrays are repeated. Safe for simple
- * JSON-encodable values; do not pass nested objects.
- */
-export function toQueryString(params: Record<string, unknown> = {}): string {
-  const parts: string[] = [];
-  for (const [key, value] of Object.entries(params)) {
-    if (value === null || value === undefined) continue;
-    if (Array.isArray(value)) {
-      for (const item of value) {
-        parts.push(
-          `${encodeURIComponent(key)}=${encodeURIComponent(String(item))}`,
-        );
-      }
-    } else {
-      parts.push(
-        `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`,
-      );
-    }
-  }
-  return parts.length === 0 ? "" : `?${parts.join("&")}`;
-}
 
 async function tryRefreshAccessToken(
   cookieStore: Awaited<ReturnType<typeof cookies>>,
@@ -82,9 +32,53 @@ async function tryRefreshAccessToken(
       path: "/",
     });
 
+    // Forward a rotated refresh cookie (ROTATE_REFRESH_TOKENS) so the browser
+    // keeps a valid refresh token for the next refresh.
+    forwardRotatedRefreshCookie(response, cookieStore);
+
     return true;
   } catch {
     return false;
+  }
+}
+
+/**
+ * Forward a rotated `refresh` cookie from Django's `Set-Cookie` headers onto
+ * the outbound browser cookies. If the response does not include one (token
+ * rotation disabled), the existing cookie is left untouched.
+ */
+function forwardRotatedRefreshCookie(
+  response: Response,
+  cookieStore: Awaited<ReturnType<typeof cookies>>,
+): void {
+  const setCookies = response.headers.getSetCookie();
+  if (!setCookies.length) return;
+
+  for (const raw of setCookies) {
+    const [pair, ...attributes] = raw.split("; ");
+    const eq = pair.indexOf("=");
+    if (eq <= 0) continue;
+    const name = pair.slice(0, eq);
+    const value = pair.slice(eq + 1);
+    if (name !== "refresh") continue;
+
+    const lowerAttrs = attributes.map((a) => a.toLowerCase());
+    const secure = lowerAttrs.some((a) => a === "secure");
+    const sameSiteAttr = attributes.find((a) =>
+      a.toLowerCase().startsWith("samesite="),
+    )?.split("=")[1];
+    const sameSite = (sameSiteAttr ?? "lax").toLowerCase() as
+      | "lax"
+      | "strict"
+      | "none";
+
+    cookieStore.set("refresh", value, {
+      httpOnly: true,
+      secure,
+      sameSite,
+      path: "/",
+    });
+    return;
   }
 }
 
@@ -155,18 +149,6 @@ export async function serverFetch<T>(
  * tenant header. See {@link RequestOptions.workspace} for why the header
  * is mandatory.
  */
-export interface MutateOptions {
-  body: unknown;
-  method?: "POST" | "PUT" | "PATCH" | "DELETE";
-  /**
-   * Active workspace slug (``Workspace.domain``) or nanoid. Forwarded as the
-   * ``X-Workspace`` header. See {@link RequestOptions.workspace} for the
-   * tenant-vs-pre-tenant distinction.
-   */
-  workspace?: string;
-  _retry?: boolean;
-}
-
 export async function serverMutate<T>(
   path: string,
   options: MutateOptions,
@@ -227,15 +209,4 @@ export async function serverMutate<T>(
   }
 
   return (await response.json()) as T;
-}
-
-export class ServerFetchError extends Error {
-  constructor(
-    public status: number,
-    public body: string,
-    public path: string
-  ) {
-    super(`Server fetch failed: ${status} ${path}`);
-    this.name = "ServerFetchError";
-  }
 }

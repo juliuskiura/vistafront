@@ -73,6 +73,16 @@ export async function loginAction(
     };
   }
 
+  // If the user was redirected here while trying to reach a protected page,
+  // send them back there instead of the onboarding default.
+  const cookieStore = await cookies();
+  const nextUrl = cookieStore.get("auth_next_url")?.value;
+
+  if (nextUrl && nextUrl.startsWith("/") && !nextUrl.startsWith("//")) {
+    cookieStore.delete("auth_next_url");
+    redirect(nextUrl);
+  }
+
   redirect(user.redirect_url || "/onboarding");
 }
 
