@@ -58,7 +58,7 @@ export function SocialManagerLayout({
   const isHome = pathname === basePath;
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col">
       {isHome && (
         <div className="flex flex-col justify-between gap-4 bg-gradient-to-r from-primary-600 to-secondary-600 p-6 text-white md:flex-row md:items-center">
           <div>
@@ -85,7 +85,7 @@ export function SocialManagerLayout({
       )}
 
       {/* ── Inner nav ── */}
-      <nav className="sticky top-0 z-20 border-b border-neutral-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+      <nav className="sticky -top-4 z-20 border-b border-neutral-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 md:-top-6">
         <div className="flex items-center gap-1 overflow-x-auto px-1 py-0.5">
           {/* Brand — links back to home */}
           <Link
@@ -176,7 +176,7 @@ export function SocialManagerLayout({
       </nav>
 
       {/* ── Page content ── */}
-      <div>{children}</div>
+      <div className="flex-1 p-4 md:p-6">{children}</div>
     </div>
   );
 }

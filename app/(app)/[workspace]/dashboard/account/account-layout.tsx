@@ -48,7 +48,7 @@ export function AccountLayout({
   const ActiveIcon = activeItem.icon;
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col">
       <div className="flex flex-col justify-between gap-4 bg-gradient-to-r from-primary-600 to-secondary-600 p-6 text-white md:flex-row md:items-center">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Account Settings</h2>
@@ -58,7 +58,7 @@ export function AccountLayout({
         </div>
       </div>
 
-      <nav className="sticky top-0 z-20 flex flex-wrap items-center gap-2 border-b border-neutral-200 bg-white/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-white/80 md:px-6">
+      <nav className="sticky -top-4 z-20 flex flex-wrap items-center gap-2 border-b border-neutral-200 bg-white/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-white/80 md:-top-6 md:px-6">
         <button
           type="button"
           onClick={() => router.push(basePath)}
@@ -139,7 +139,7 @@ export function AccountLayout({
         </div>
       </nav>
 
-      <div>{children}</div>
+      <div className="mt-6 flex-1">{children}</div>
     </div>
   );
 }
