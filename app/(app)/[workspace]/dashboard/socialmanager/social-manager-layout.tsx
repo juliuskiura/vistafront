@@ -1,29 +1,50 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
-import { PenLine, Plus, Share2 } from "lucide-react";
+import { usePathname } from "next/navigation";
+import {
+  LayoutDashboard,
+  Share2,
+  CalendarDays,
+  PenLine,
+  ListOrdered,
+  Upload,
+  BarChart3,
+  Plus,
+  Send,
+} from "lucide-react";
+import {
+  WorkspaceInnerNav,
+  type InnerNavItem,
+  type InnerNavGroup,
+} from "@/components/workspace/workspace-inner-nav";
 
 /* ──────────────────────────────────────────────────────────────────────
  * Social Manager Layout
  *
  * Wraps every /socialmanager/* route with:
- *  • A sticky horizontal inner-nav (desktop tabs → mobile dropdown)
- *  • The nav items come from the backend sidebar; we receive them as
- *    props from the workspace layout and filter to socialmanager ones.
+ *  • A sticky horizontal inner-nav (desktop pills → mobile dropdown)
+ *  • Rendered through the shared WorkspaceInnerNav shell.
  *
  * The `<slot>` renders the active child page.
  * ────────────────────────────────────────────────────────────────────── */
 
-const NAV_ITEMS = [
-  { label: "Overview", href: "", end: true },
-  { label: "Channels", href: "channels" },
-  { label: "Calendar", href: "calendar" },
-  { label: "Compose", href: "compose" },
-  { label: "Queues", href: "queues" },
-  { label: "Bulk Upload", href: "bulk-upload" },
-  { label: "Analytics", href: "analytics" },
+const NAV_ITEMS: InnerNavItem[] = [
+  { label: "Overview", href: "", end: true, icon: LayoutDashboard },
+  { label: "Channels", href: "/channels", icon: Share2 },
+  { label: "Calendar", href: "/calendar", icon: CalendarDays },
+];
+
+const NAV_GROUPS: InnerNavGroup[] = [
+  {
+    label: "Publishing",
+    icon: Send,
+    items: [
+      { label: "Queues", href: "/queues", icon: ListOrdered },
+      { label: "Bulk Upload", href: "/bulk-upload", icon: Upload },
+      { label: "Analytics", href: "/analytics", icon: BarChart3 },
+    ],
+  },
 ];
 
 interface SocialManagerLayoutProps {
@@ -37,24 +58,9 @@ export function SocialManagerLayout({
   workspaceDomain,
 }: SocialManagerLayoutProps) {
   const pathname = usePathname();
-  const router = useRouter();
-  const [mobileOpen, setMobileOpen] = useState(false);
 
   const basePath = `/${workspaceDomain}/dashboard/socialmanager`;
 
-  function isActive(item: (typeof NAV_ITEMS)[number]): boolean {
-    const itemPath = item.href ? `${basePath}/${item.href}` : basePath;
-    if (item.end) return pathname === itemPath;
-    return pathname.startsWith(itemPath + "/") || pathname === itemPath;
-  }
-
-  function handleNav(href: string) {
-    const fullHref = href ? `${basePath}/${href}` : basePath;
-    router.push(fullHref);
-    setMobileOpen(false);
-  }
-
-  const activeItem = NAV_ITEMS.find((item) => isActive(item)) ?? NAV_ITEMS[0];
   const isHome = pathname === basePath;
 
   return (
@@ -84,98 +90,23 @@ export function SocialManagerLayout({
         </div>
       )}
 
-      {/* ── Inner nav ── */}
-      <nav className="sticky -top-4 z-20 border-b border-neutral-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 md:-top-6">
-        <div className="flex items-center gap-1 overflow-x-auto px-1 py-0.5">
-          {/* Brand — links back to home */}
-          <Link
-            href={basePath}
-            className="flex shrink-0 items-center gap-2 pr-1 text-sm font-bold tracking-tight text-neutral-900 hover:text-primary-600"
-          >
-            <Share2 className="h-4 w-4 text-primary-600" />
-            Social Manager
-          </Link>
-
-          {/* Desktop tabs */}
-          <div className="hidden items-center gap-1 md:flex">
-            {NAV_ITEMS.map((item) => {
-              const active = isActive(item);
-              return (
-                <Link
-                  key={item.href || "overview"}
-                  href={item.href ? `${basePath}/${item.href}` : basePath}
-                  className={[
-                    "whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                    active
-                      ? "bg-neutral-900 text-white"
-                      : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900",
-                  ].join(" ")}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </div>
-
-          {/* Spacer to push New Post to the right on desktop */}
-          <div className="flex-1" />
-
-          {/* New Post */}
+      <WorkspaceInnerNav
+        basePath={basePath}
+        brandLabel="Social Manager"
+        brandIcon={Share2}
+        items={NAV_ITEMS}
+        groups={NAV_GROUPS}
+        trailing={
           <Link
             href={`${basePath}/compose`}
-            className="hidden shrink-0 items-center gap-2 rounded-lg bg-gradient-to-r from-primary-600 to-secondary-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition-all hover:from-primary-500 hover:to-secondary-500 md:inline-flex"
+            className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-gradient-to-r from-primary-600 to-secondary-600 px-2.5 py-1.5 text-xs font-bold text-white shadow-sm transition-all hover:from-primary-500 hover:to-secondary-500 md:px-3"
           >
             <PenLine className="h-4 w-4" />
             New Post
           </Link>
+        }
+      />
 
-          {/* Mobile dropdown trigger */}
-          <div className="md:hidden">
-            <button
-              type="button"
-              onClick={() => setMobileOpen(!mobileOpen)}
-              className="flex items-center gap-1.5 rounded-md border border-neutral-200 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
-            >
-              {activeItem.label}
-              <svg
-                className={`h-4 w-4 text-neutral-400 transition-transform ${mobileOpen ? "rotate-180" : ""}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile dropdown menu */}
-        {mobileOpen && (
-          <div className="border-t border-neutral-100 px-2 pb-2 pt-1 md:hidden">
-            {NAV_ITEMS.map((item) => {
-              const active = isActive(item);
-              return (
-                <button
-                  key={item.href || "overview"}
-                  type="button"
-                  onClick={() => handleNav(item.href)}
-                  className={[
-                    "block w-full rounded-md px-3 py-2 text-left text-sm font-medium transition-colors",
-                    active
-                      ? "bg-neutral-900 text-white"
-                      : "text-neutral-600 hover:bg-neutral-100",
-                  ].join(" ")}
-                >
-                  {item.label}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </nav>
-
-      {/* ── Page content ── */}
       <div className="flex-1 p-4 md:p-6">{children}</div>
     </div>
   );
