@@ -6,8 +6,6 @@ import { Lock, Eye, EyeOff } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { AuthCard } from "@/components/auth/auth-card";
 import { initialAuthState } from "@/lib/auth/action-state";
@@ -20,25 +18,7 @@ interface Props {
   token: string;
 }
 
-function VSButton({
-  className,
-  appearance = "solid",
-  ...props
-}: React.ComponentProps<"button"> & {
-  appearance?: "solid" | "ghost" | "outline" | "threeD";
-}) {
-  return (
-    <Button
-      className={cn(
-        "h-11 rounded-xl px-4 font-medium",
-        appearance === "threeD" &&
-          "bg-primary text-primary-foreground shadow-[0_4px_0_0_var(--primary-700)] transition-all hover:translate-y-[1px] hover:shadow-[0_3px_0_0_var(--primary-700)] active:translate-y-[4px] active:shadow-none",
-        className,
-      )}
-      {...props}
-    />
-  );
-}
+import { VSButton } from "@/components/shared/components/customUi/VSButton";
 
 export function ResetPasswordConfirmForm({ uid, token }: Props) {
   const [state, formAction, pending] = useActionState(

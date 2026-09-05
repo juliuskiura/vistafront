@@ -1,5 +1,3 @@
-import "server-only";
-
 import { serverFetch, serverMutate } from "./server-fetch";
 import type {
   ClientBusiness,

@@ -1,10 +1,10 @@
 export {
   serverFetch,
   serverMutate,
-  ServerFetchError,
-  toQueryString,
 } from "./server-fetch";
-export type { RequestOptions, MutateOptions } from "./server-fetch";
+export { toQueryString } from "./query-string";
+export { ServerFetchError } from "./server-fetch-types";
+export type { RequestOptions, MutateOptions } from "./server-fetch-types";
 
 export * from "./types";
 

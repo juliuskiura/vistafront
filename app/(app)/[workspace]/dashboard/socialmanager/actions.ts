@@ -53,10 +53,22 @@ import type {
   PostQueueItem,
   PostComment,
 } from "@/lib/api/types";
-
-/* ──────────────────────────────────────────────────────────────────────
- * Zod schemas
- * ────────────────────────────────────────────────────────────────────── */
+import type {
+  CampaignActionState,
+  PostActionState,
+  QueueActionState,
+  QueueItemActionState,
+  AccountActionState,
+  PlatformActionState,
+} from "./action-state";
+import {
+  initialCampaignState,
+  initialPostState,
+  initialQueueState,
+  initialQueueItemState,
+  initialAccountState,
+  initialPlatformState,
+} from "./action-state";
 
 const CampaignSchema = z.object({
   name: z.string().min(1, "Campaign name is required."),
@@ -106,14 +118,6 @@ export async function oauthInitAction(
 /* ──────────────────────────────────────────────────────────────────────
  * Campaign actions
  * ────────────────────────────────────────────────────────────────────── */
-
-export type CampaignActionState = {
-  status: "idle" | "success" | "error";
-  message?: string;
-  fieldErrors?: Record<string, string[]>;
-};
-
-export const initialCampaignState: CampaignActionState = { status: "idle" };
 
 export async function createCampaignAction(
   _prev: CampaignActionState,
@@ -173,14 +177,6 @@ export async function deleteCampaignAction(
 /* ──────────────────────────────────────────────────────────────────────
  * Post actions
  * ────────────────────────────────────────────────────────────────────── */
-
-export type PostActionState = {
-  status: "idle" | "success" | "error";
-  message?: string;
-  fieldErrors?: Record<string, string[]>;
-};
-
-export const initialPostState: PostActionState = { status: "idle" };
 
 export async function createPostAction(
   _prev: PostActionState,
@@ -335,14 +331,6 @@ export async function createHashtagAction(
  * Queue actions
  * ────────────────────────────────────────────────────────────────────── */
 
-export type QueueActionState = {
-  status: "idle" | "success" | "error";
-  message?: string;
-  fieldErrors?: Record<string, string[]>;
-};
-
-export const initialQueueState: QueueActionState = { status: "idle" };
-
 export async function createQueueAction(
   _prev: QueueActionState,
   formData: FormData,
@@ -413,13 +401,6 @@ export async function scheduleQueueAction(
 
 /* ── Queue items ── */
 
-export type QueueItemActionState = {
-  status: "idle" | "success" | "error";
-  message?: string;
-};
-
-export const initialQueueItemState: QueueItemActionState = { status: "idle" };
-
 export async function createQueueItemAction(
   body: Partial<PostQueueItem>,
   workspace: string,
@@ -466,13 +447,6 @@ export async function deleteQueueItemAction(
 /* ──────────────────────────────────────────────────────────────────────
  * Account / Channel actions
  * ────────────────────────────────────────────────────────────────────── */
-
-export type AccountActionState = {
-  status: "idle" | "success" | "error";
-  message?: string;
-};
-
-export const initialAccountState: AccountActionState = { status: "idle" };
 
 export async function syncAccountAction(
   nanoid: string,
@@ -599,14 +573,6 @@ export async function getAnalyticsSyncStatusAction(
 /* ──────────────────────────────────────────────────────────────────────
  * Platform config actions (admin)
  * ────────────────────────────────────────────────────────────────────── */
-
-export type PlatformActionState = {
-  status: "idle" | "success" | "error";
-  message?: string;
-  fieldErrors?: Record<string, string[]>;
-};
-
-export const initialPlatformState: PlatformActionState = { status: "idle" };
 
 export async function createPlatformAction(
   body: Record<string, unknown>,

@@ -22,6 +22,11 @@ async function tryRefreshAccessToken(
 
     if (!response.ok) return false;
 
+    if (response.status === 204) {
+      forwardAuthCookies(response, cookieStore);
+      return true;
+    }
+
     const data = (await response.json()) as { access?: string };
     if (!data.access) return false;
 
@@ -32,9 +37,7 @@ async function tryRefreshAccessToken(
       path: "/",
     });
 
-    // Forward a rotated refresh cookie (ROTATE_REFRESH_TOKENS) so the browser
-    // keeps a valid refresh token for the next refresh.
-    forwardRotatedRefreshCookie(response, cookieStore);
+    forwardAuthCookies(response, cookieStore);
 
     return true;
   } catch {
@@ -43,11 +46,12 @@ async function tryRefreshAccessToken(
 }
 
 /**
- * Forward a rotated `refresh` cookie from Django's `Set-Cookie` headers onto
- * the outbound browser cookies. If the response does not include one (token
- * rotation disabled), the existing cookie is left untouched.
+ * Forward rotated auth cookies (`access`, `refresh`) from Django's
+ * `Set-Cookie` headers onto the outbound browser cookies. If the response
+ * does not include a given cookie (token rotation disabled), the existing
+ * cookie is left untouched.
  */
-function forwardRotatedRefreshCookie(
+function forwardAuthCookies(
   response: Response,
   cookieStore: Awaited<ReturnType<typeof cookies>>,
 ): void {
@@ -60,7 +64,7 @@ function forwardRotatedRefreshCookie(
     if (eq <= 0) continue;
     const name = pair.slice(0, eq);
     const value = pair.slice(eq + 1);
-    if (name !== "refresh") continue;
+    if (name !== "access" && name !== "refresh") continue;
 
     const lowerAttrs = attributes.map((a) => a.toLowerCase());
     const secure = lowerAttrs.some((a) => a === "secure");
@@ -72,13 +76,12 @@ function forwardRotatedRefreshCookie(
       | "strict"
       | "none";
 
-    cookieStore.set("refresh", value, {
+    cookieStore.set(name, value, {
       httpOnly: true,
       secure,
       sameSite,
       path: "/",
     });
-    return;
   }
 }
 

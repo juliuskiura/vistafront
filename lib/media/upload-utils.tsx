@@ -1,3 +1,4 @@
+import { nanoid } from "nanoid";
 import type { ComponentType } from "react";
 
 export type UploadItemStatus =
@@ -82,7 +83,7 @@ export function getFileIcon(
 
 export function createUploadItem(file: File): UploadItem {
   return {
-    id: crypto.randomUUID(),
+    id: nanoid(),
     file,
     filename: file.name,
     size: file.size,

@@ -1,6 +1,5 @@
-import "server-only";
-
-import { serverFetch, serverMutate, type RequestOptions } from "./server-fetch";
+import { serverFetch, serverMutate } from "./server-fetch";
+import type { RequestOptions } from "./server-fetch-types";
 import type {
   Company,
   CompanyStatusBreakdown,

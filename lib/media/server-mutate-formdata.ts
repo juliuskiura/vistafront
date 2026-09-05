@@ -7,7 +7,7 @@
 "use server";
 
 import { cookies } from "next/headers";
-import { ServerFetchError } from "@/lib/api/server-fetch";
+import { ServerFetchError } from "@/lib/api/server-fetch-types";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:8000";
 

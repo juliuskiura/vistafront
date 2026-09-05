@@ -1,6 +1,5 @@
-import "server-only";
-
-import { serverFetch, toQueryString } from "./server-fetch";
+import { serverFetch } from "./server-fetch";
+import { toQueryString } from "./query-string";
 import type {
   ScheduleFilters,
   ScheduleResponse,

@@ -1,6 +1,5 @@
-import "server-only";
-
-import { serverFetch, serverMutate, toQueryString } from "./server-fetch";
+import { serverFetch, serverMutate } from "./server-fetch";
+import { toQueryString } from "./query-string";
 import type {
   Asset,
   AssetMeta,

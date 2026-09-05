@@ -1,5 +1,3 @@
-import "server-only";
-
 import { serverFetch } from "./server-fetch";
 import type { DashboardWidget, NavItem } from "./types";
 
