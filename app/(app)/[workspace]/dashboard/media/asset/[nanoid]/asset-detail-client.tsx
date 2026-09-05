@@ -35,7 +35,6 @@ import {
   FileArchive as ArchiveIcon,
 } from "lucide-react";
 import { useToast } from "@/lib/context";
-import { MediaPlayer } from "@/components/media/media-player";
 import { VideoStudio } from "@/components/media/video/VideoStudio";
 import { AssetMetadataInspector } from "@/components/media/asset-metadata-inspector";
 import {
@@ -215,33 +214,15 @@ export function AssetDetailClient({ workspaceDomain, asset: initialAsset, versio
         <div className="lg:col-span-2">
           <Card className="rounded-xl border bg-card ring-0 shadow-sm overflow-hidden">
               <CardContent className="p-0">
-                {asset.asset_type === "video" ? (
-                   <VideoStudio
-                     assetType={asset.asset_type}
-                     mimeType={asset.mime_type}
-                     extension={asset.format}
-                     size={asset.size}
-                     src={asset.stream_url ?? asset.original}
-                     thumbnail={asset.thumbnail}
-                     durationSeconds={asset.duration_seconds}
-                     width={asset.width}
-                     height={asset.height}
-                     fps={null}
-                     nanoid={asset.nanoid}
-                     workspaceDomain={workspaceDomain}
-                     asset={asset}
-                   />
-                ) : (
-                  <MediaPlayer
-                    src={asset.stream_url ?? asset.original}
-                    assetType={asset.asset_type}
-                    mimeType={asset.mime_type}
-                    thumbnail={asset.thumbnail}
-                    durationSeconds={asset.duration_seconds}
-                    width={asset.width}
-                    height={asset.height}
-                  />
-                )}
+{asset.asset_type === "video" ? (
+                    <VideoStudio asset={asset} workspaceDomain={workspaceDomain} />
+                 ) : (
+                   <div className="aspect-video bg-muted/30 flex items-center justify-center">
+                     <div className="text-center text-muted-foreground">
+                       <p className="text-sm">No preview available for {asset.asset_type}</p>
+                     </div>
+                   </div>
+                 )}
               </CardContent>
           </Card>
         </div>

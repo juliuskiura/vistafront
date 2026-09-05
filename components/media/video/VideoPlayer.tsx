@@ -19,60 +19,32 @@ import {
   Loader2,
   Sliders,
 } from "lucide-react";
-import { useToast } from "@/lib/context";
 import { VideoProgressBar } from "./VideoProgressBar";
 import { VideoOverlayActions } from "./VideoOverlayActions";
 import { SeekToTimeModal } from "./SeekToTimeModal";
 import { KeyboardShortcutsModal } from "./KeyboardShortcutsModal";
 import { VideoTechnicalStats } from "./VideoTechnicalStats";
 import { attachHls, isHlsAsset, isHlsSupported } from "@/lib/media/hls";
-import { formatTime, formatTimecode } from "@/lib/media/video-utils";
+import { formatTime, formatTimecode, toProtocolRelative } from "@/lib/media/video-utils";
 import type { Asset } from "@/lib/api";
-
-interface VideoPlayerState {
-  isPlaying: boolean;
-  currentTime: number;
-  duration: number;
-  buffered: TimeRanges | null;
-  bufferedEnd: number;
-  volume: number;
-  isMuted: boolean;
-  playbackRate: number;
-  isFullscreen: boolean;
-  isPictureInPicture: boolean;
-  isTheaterMode: boolean;
-  loopRange: { start: number; end: number } | null;
-  isLoading: boolean;
-  isBuffering: boolean;
-  error: string | null;
-}
+import type { VideoCuePoint, VideoPlayerState } from "@/lib/apptypes/media_libary";
 
 interface VideoPlayerProps {
-  src: string | null;
-  assetType: string;
-  mimeType: string;
-  thumbnail: string | null;
-  durationSeconds: number | null;
-  width: number | null;
-  height: number | null;
-  fps: number | null;
+  asset: Asset;
+  onCuePointAdd?: (cue: VideoCuePoint) => void;
+  cuePoints?: VideoCuePoint[];
   onLoadedMetadata?: (info: { duration: number; width: number; height: number }) => void;
   onSourceExpired?: () => void;
-  asset?: Asset;
+  className?: string;
 }
 
 export function VideoPlayer({
-  src,
-  assetType,
-  mimeType,
-  thumbnail,
-  durationSeconds,
-  width,
-  height,
-  fps = null,
+  asset,
+  onCuePointAdd,
+  cuePoints = [],
   onLoadedMetadata,
   onSourceExpired,
-  asset,
+  className,
 }: VideoPlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -82,12 +54,10 @@ export function VideoPlayer({
   const isReconnecting = useRef(false);
   const hlsRef = useRef<ReturnType<typeof attachHls> | null>(null);
 
-  const toast = useToast();
-
   const [playerState, setPlayerState] = useState<VideoPlayerState>({
     isPlaying: false,
     currentTime: 0,
-    duration: durationSeconds || 0,
+    duration: asset.duration_seconds || 0,
     buffered: null,
     bufferedEnd: 0,
     volume: 1,
@@ -112,7 +82,7 @@ export function VideoPlayer({
   const [doubleClickRipple, setDoubleClickRipple] = useState<'left' | 'right' | null>(null);
   const [sourceKind, setSourceKind] = useState<'progressive' | 'hls' | 'unsupported'>('progressive');
   const [reconnecting, setReconnecting] = useState(false);
-  const [cuePoints, setCuePoints] = useState<Array<{id: string; time: number; title: string; description?: string; type: string; color: string}>>([]);
+  const fps = null;
 
   const flashNotification = useCallback((msg: string) => {
     setFlashMessage(msg);
@@ -123,13 +93,14 @@ export function VideoPlayer({
   }, []);
 
   const resolveVideoSource = useCallback((): { src: string | null; kind: 'progressive' | 'hls' | 'unsupported' } => {
+    const src = toProtocolRelative(asset.stream_url) || toProtocolRelative(asset.original_file) || null;
     if (!src) return { src: null, kind: 'unsupported' };
-    if (isHlsAsset({ original: src, stream_url: src })) {
+    if (isHlsAsset(asset)) {
       if (!isHlsSupported()) return { src, kind: 'unsupported' };
       return { src, kind: 'hls' };
     }
     return { src, kind: 'progressive' };
-  }, [src]);
+  }, [asset]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -168,7 +139,7 @@ export function VideoPlayer({
       video.removeAttribute('src');
       video.load();
     };
-  }, [resolveVideoSource]);
+  }, [asset.original_file, asset.stream_url, resolveVideoSource]);
 
   const handleLoadedMetadata = () => {
     const video = videoRef.current;
@@ -266,10 +237,10 @@ export function VideoPlayer({
   const handleSeek = useCallback((targetTime: number) => {
     const video = videoRef.current;
     if (!video) return;
-    const clamped = Math.max(0, Math.min(video.duration || durationSeconds || 0, targetTime));
+    const clamped = Math.max(0, Math.min(video.duration || asset.duration_seconds || 0, targetTime));
     video.currentTime = clamped;
     setPlayerState((prev) => ({ ...prev, currentTime: clamped }));
-  }, [durationSeconds]);
+  }, [asset.duration_seconds, flashNotification]);
 
   const handleSkip = useCallback((seconds: number) => {
     const video = videoRef.current;
@@ -303,6 +274,11 @@ export function VideoPlayer({
     setPlayerState((prev) => ({ ...prev, playbackRate: rate }));
     setShowSettingsMenu(false);
     flashNotification(`Speed: ${rate}x`);
+  };
+
+  const handleInlineSeekSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    flashNotification('Use S for precise seek');
   };
 
   const toggleFullscreen = useCallback(async () => {
@@ -383,16 +359,16 @@ export function VideoPlayer({
       case 'l': case 'L':
         e.preventDefault(); handleSkip(10); break;
       case ',': case '<':
-        if (fps != null && video.paused) {
+        if (asset.duration_seconds && video.paused) {
           e.preventDefault();
-          handleSeek(video.currentTime - 1 / fps);
+          handleSeek(video.currentTime - 1 / Math.max(asset.duration_seconds, 0.001));
           flashNotification('Step -1 Frame');
         }
         break;
       case '.': case '>':
-        if (fps != null && video.paused) {
+        if (asset.duration_seconds && video.paused) {
           e.preventDefault();
-          handleSeek(video.currentTime + 1 / fps);
+          handleSeek(video.currentTime + 1 / Math.max(asset.duration_seconds, 0.001));
           flashNotification('Step +1 Frame');
         }
         break;
@@ -419,7 +395,7 @@ export function VideoPlayer({
       case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
         e.preventDefault();
         const pct = parseInt(e.key, 10) / 10;
-        handleSeek((video.duration || durationSeconds || 0) * pct);
+        handleSeek((video.duration || asset.duration_seconds || 0) * pct);
         flashNotification(`Jump to ${pct * 100}%`);
         break;
     }
@@ -442,9 +418,9 @@ export function VideoPlayer({
   const playbackSpeeds = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
 
   if (sourceKind === 'unsupported') {
-    const isHls = isHlsAsset({ original: src, stream_url: src });
+    const isHls = isHlsAsset(asset);
     return (
-      <div ref={containerRef} className="relative flex items-center justify-center rounded border border-border bg-black min-h-[360px]" tabIndex={0} role="region" aria-label={`Video player for asset`} onKeyDown={handleKeyDown}>
+      <div ref={containerRef} className="relative flex items-center justify-center rounded border border-border bg-black min-h-[360px]" tabIndex={0} role="region" aria-label={`Video player for ${asset.name}`} onKeyDown={handleKeyDown}>
         <div className="max-w-md px-6 text-center">
           <AlertTriangle className="h-8 w-8 text-destructive mx-auto" />
           <h4 className="mt-3 font-semibold text-foreground text-sm">{isHls ? 'Adaptive streaming not available' : 'Video source unavailable'}</h4>
@@ -455,14 +431,14 @@ export function VideoPlayer({
   }
 
   return (
-    <div ref={containerRef} className={`relative group select-none overflow-hidden rounded border border-border bg-black transition-all duration-300 ${playerState.isTheaterMode ? 'w-full max-h-[85vh]' : 'w-full max-h-[75vh]'}`} onMouseMove={resetControlsTimer} onMouseLeave={() => { if (playerState.isPlaying) { setControlsVisible(false); setShowSettingsMenu(false); } }} tabIndex={0} role="region" aria-label="Video player" onKeyDown={handleKeyDown}>
+    <div ref={containerRef} className={`relative group select-none overflow-hidden rounded border border-border bg-black transition-all duration-300 ${playerState.isTheaterMode ? 'w-full max-h-[85vh]' : 'w-full max-h-[75vh]'}`} onMouseMove={resetControlsTimer} onMouseLeave={() => { if (playerState.isPlaying) { setControlsVisible(false); setShowSettingsMenu(false); } }} tabIndex={0} role="region" aria-label={`Video player for ${asset.name}`} onKeyDown={handleKeyDown}>
       <div className="relative flex h-full w-full items-center justify-center cursor-pointer bg-black min-h-[360px]" onClick={handleVideoAreaClick}>
-        <video ref={videoRef} playsInline poster={thumbnail || undefined} onLoadedMetadata={handleLoadedMetadata} onTimeUpdate={handleTimeUpdate} onPlay={handlePlayState} onPause={handlePlayState} onVolumeChange={handleVolumeChange} onWaiting={handleWaiting} onPlaying={handlePlaying} onError={handleError} className="max-h-[75vh] w-full object-contain" style={{ filter: videoFilter !== 'none' ? videoFilter : undefined }} />
+        <video ref={videoRef} playsInline poster={asset.thumbnail || undefined} onLoadedMetadata={handleLoadedMetadata} onTimeUpdate={handleTimeUpdate} onPlay={handlePlayState} onPause={handlePlayState} onVolumeChange={handleVolumeChange} onWaiting={handleWaiting} onPlaying={handlePlaying} onError={handleError} className="max-h-[75vh] w-full object-contain" style={{ filter: videoFilter }} />
 
         <div className="absolute top-5 left-5 z-20 flex flex-col gap-2 pointer-events-auto">
           <div className="bg-black/60 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded flex items-center gap-2.5 shadow-md">
             <div className="w-2 h-2 rounded-full bg-destructive animate-pulse"></div>
-            <span className="text-[10px] font-bold text-white font-mono uppercase tracking-wider">{formatTimecode(playerState.currentTime, fps)}</span>
+            <span className="text-[10px] font-bold text-white font-mono uppercase tracking-wider">{formatTimecode(playerState.currentTime, null)}</span>
             <span className="text-[10px] text-white/50 uppercase tracking-widest font-mono border-l border-white/20 pl-2">TC</span>
           </div>
           <button onClick={(e) => { e.stopPropagation(); setShowSeekModal(true); }} className="bg-primary/80 hover:bg-primary backdrop-blur-md text-primary-foreground text-[10px] font-bold px-3 py-1.5 rounded uppercase tracking-widest flex items-center gap-2 border border-primary/30 transition-colors shadow-md w-fit">
@@ -507,13 +483,13 @@ export function VideoPlayer({
         </div>
       )}
 
-      {showStatsOverlay && <VideoTechnicalStats asset={asset} playerState={playerState} fps={fps} onClose={() => setShowStatsOverlay(false)} />}
+      {showStatsOverlay && <VideoTechnicalStats asset={asset} playerState={playerState} fps={null} onClose={() => setShowStatsOverlay(false)} />}
 
       <VideoOverlayActions
         videoRef={videoRef}
         currentTime={playerState.currentTime}
-        fps={fps}
-        onAddCuePoint={(newCue) => { setCuePoints((prev) => [...prev, newCue]); }}
+        fps={null}
+        onAddCuePoint={(newCue) => { onCuePointAdd?.(newCue); }}
         loopRange={playerState.loopRange}
         onSetLoopRange={(range) => setPlayerState((prev) => ({ ...prev, loopRange: range }))}
         videoFilter={videoFilter}
@@ -524,7 +500,7 @@ export function VideoPlayer({
       />
 
       <div className={`mt-auto w-full bg-gradient-to-t from-black/95 via-black/80 to-transparent p-5 pb-3 transition-opacity duration-300 ${controlsVisible || !playerState.isPlaying ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={(e) => e.stopPropagation()}>
-        <VideoProgressBar currentTime={playerState.currentTime} duration={playerState.duration} buffered={playerState.buffered} cuePoints={cuePoints} loopRange={playerState.loopRange} onSeek={handleSeek} fps={fps} />
+        <VideoProgressBar currentTime={playerState.currentTime} duration={playerState.duration} buffered={playerState.buffered} cuePoints={cuePoints} loopRange={playerState.loopRange} onSeek={handleSeek} fps={null} />
 
         <div className="flex items-center justify-between pt-2">
           <div className="flex items-center gap-4 sm:gap-6">
@@ -548,10 +524,14 @@ export function VideoPlayer({
               <span className="text-white/60">{formatTime(playerState.duration, playerState.duration >= 3600)}</span>
             </div>
           </div>
-          <div className="flex items-center gap-3 sm:gap-4">
-            <button onClick={() => setShowSettingsMenu(!showSettingsMenu)} className={`transition-colors ${showSettingsMenu ? 'text-primary' : 'text-white/70 hover:text-white'}`} title="Playback Settings">
-              <Settings className="w-4 h-4" />
-            </button>
+<div className="flex items-center gap-3 sm:gap-4">
+             <form onSubmit={handleInlineSeekSubmit} className="hidden sm:flex items-center bg-muted rounded px-2 py-1 gap-1.5 border border-border">
+               <span className="text-[10px] text-muted-foreground font-mono shrink-0">SEEK:</span>
+               <span className="text-[10px] font-mono text-primary w-16">{formatTime(playerState.currentTime)}</span>
+             </form>
+             <button onClick={() => setShowSettingsMenu(!showSettingsMenu)} className={`transition-colors ${showSettingsMenu ? 'text-primary' : 'text-white/70 hover:text-white'}`} title="Playback Settings">
+               <Settings className="w-4 h-4" />
+             </button>
             <button onClick={togglePictureInPicture} className="text-white/70 hover:text-white transition-colors" title="Picture in Picture (P)">
               <PictureInPicture className="w-4 h-4" />
             </button>
@@ -570,7 +550,7 @@ export function VideoPlayer({
         {showSettingsMenu && (
           <div className="absolute right-5 bottom-20 w-52 rounded border border-border bg-popover p-3 text-foreground shadow-2xl z-50 animate-in fade-in zoom-in-95">
             <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground font-mono pb-1.5 border-b border-border">Playback Rate</div>
-            <div className="grid grid-cols-4 gap-1 py-2">
+            <div className="grid grid-cols-4 gap-1">
               {playbackSpeeds.map((spd) => (
                 <button key={spd} onClick={() => setPlaybackSpeed(spd)} className={`rounded py-0.5 text-xs font-mono transition-colors ${playerState.playbackRate === spd ? 'bg-primary font-bold text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}>{spd}x</button>
               ))}
@@ -581,8 +561,8 @@ export function VideoPlayer({
         )}
       </div>
 
-      <SeekToTimeModal isOpen={showSeekModal} onClose={() => setShowSeekModal(false)} currentTime={playerState.currentTime} duration={playerState.duration} fps={fps} cuePoints={cuePoints} onSeek={handleSeek} />
-      <KeyboardShortcutsModal isOpen={showShortcutsModal} onClose={() => setShowShortcutsModal(false)} fpsKnown={fps != null} />
+      <SeekToTimeModal isOpen={showSeekModal} onClose={() => setShowSeekModal(false)} currentTime={playerState.currentTime} duration={playerState.duration} fps={null} cuePoints={cuePoints} onSeek={handleSeek} />
+      <KeyboardShortcutsModal isOpen={showShortcutsModal} onClose={() => setShowShortcutsModal(false)} fpsKnown={false} />
     </div>
   );
 }

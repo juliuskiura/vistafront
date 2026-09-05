@@ -10,8 +10,9 @@ import {
   DialogDescription,
   DialogClose,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { VSButton } from "@/components/shared/components/customUi/VSButton";
 import { formatTime, formatTimecode, parseTimeString } from "@/lib/media/video-utils";
+import type { VideoCuePoint } from "@/lib/apptypes/media_libary";
 
 interface SeekToTimeModalProps {
   isOpen: boolean;
@@ -19,7 +20,7 @@ interface SeekToTimeModalProps {
   currentTime: number;
   duration: number;
   fps?: number | null;
-  cuePoints?: Array<{ id: string; time: number; title: string }>;
+  cuePoints?: VideoCuePoint[];
   onSeek: (targetTime: number) => void;
 }
 
@@ -80,6 +81,16 @@ export function SeekToTimeModal({
     onSeek(newTime);
   };
 
+  const handleInlineSeekSubmit = () => {
+    const parsed = parseTimeString(timeInput, fps);
+    if (parsed != null && !isNaN(parsed) && parsed <= duration) {
+      onSeek(parsed);
+      onClose();
+    } else {
+      setErrorMsg("Invalid time format.");
+    }
+  };
+
   const percentagePresets = [
     { label: "0%", pct: 0 },
     { label: "25%", pct: 0.25 },
@@ -132,9 +143,9 @@ export function SeekToTimeModal({
               className="flex-1 rounded border border-border bg-background px-3 py-1.5 font-mono text-xs text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none"
               autoFocus
             />
-            <Button type="submit" size="sm" variant="default">
+            <VSButton type="submit" size="sm" variant="secondary">
               Jump
-            </Button>
+            </VSButton>
           </div>
           {errorMsg && <p className="text-xs text-destructive font-mono">{errorMsg}</p>}
         </form>
@@ -176,6 +187,22 @@ export function SeekToTimeModal({
           ))}
         </div>
 
+        <div className="space-y-1 pt-2 border-t border-border">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground font-mono">Inline Seek</div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={timeInput}
+              onChange={(e) => { setTimeInput(e.target.value); setErrorMsg(null); }}
+              placeholder="Use S for precise seek"
+              className="flex-1 rounded border border-border bg-background px-3 py-1.5 font-mono text-xs text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none"
+            />
+            <VSButton type="button" size="sm" variant="secondary" onClick={handleInlineSeekSubmit}>
+              Go
+            </VSButton>
+          </div>
+        </div>
+
         {cuePoints.length > 0 && (
           <div className="space-y-1 pt-2 border-t border-border">
             <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground font-mono">Markers</div>
@@ -212,9 +239,7 @@ export function SeekToTimeModal({
         </div>
 
         <DialogClose asChild>
-          <Button type="button" size="sm" variant="ghost" className="w-full">
-            Close
-          </Button>
+          <VSButton appearance="ghost" className="w-full">Close</VSButton>
         </DialogClose>
       </DialogContent>
     </Dialog>

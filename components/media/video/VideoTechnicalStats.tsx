@@ -2,30 +2,13 @@
 
 import React from "react";
 import { Activity, X } from "lucide-react";
-import { formatBitrate, formatFileSize, containerFromExtension } from "@/lib/media/video-utils";
+import { formatBitrate, formatVideoSize, containerFromExtension } from "@/lib/media/video-utils";
 import { isHlsAsset } from "@/lib/media/hls";
 import type { Asset } from "@/lib/api";
-
-interface VideoPlayerState {
-  isPlaying: boolean;
-  currentTime: number;
-  duration: number;
-  buffered: TimeRanges | null;
-  bufferedEnd: number;
-  volume: number;
-  isMuted: boolean;
-  playbackRate: number;
-  isFullscreen: boolean;
-  isPictureInPicture: boolean;
-  isTheaterMode: boolean;
-  loopRange: { start: number; end: number } | null;
-  isLoading: boolean;
-  isBuffering: boolean;
-  error: string | null;
-}
+import type { VideoPlayerState } from "@/lib/apptypes/media_libary";
 
 interface VideoTechnicalStatsProps {
-  asset?: Asset;
+  asset: Asset;
   playerState: VideoPlayerState;
   fps?: number | null;
   onClose: () => void;
@@ -37,19 +20,19 @@ export const VideoTechnicalStats: React.FC<VideoTechnicalStatsProps> = ({
   fps = null,
   onClose,
 }) => {
-  const isHls = asset ? isHlsAsset(asset) : false;
-  const container = asset ? containerFromExtension(asset) : null;
-  const dims = asset?.width && asset.height ? `${asset.width} × ${asset.height}` : "—";
+const isHls = isHlsAsset(asset)
+  const container = asset.extension?.toUpperCase() || "—";
+  const dims = asset.width && asset.height ? `${asset.width} × ${asset.height}` : "—";
 
   const stats = [
     { label: "Stream Type", value: isHls ? "HLS ADAPTIVE (.m3u8)" : "PROGRESSIVE" },
-    { label: "Container", value: container || "—" },
+    { label: "Container", value: container },
     { label: "Dimensions", value: dims },
     { label: "Frame Rate", value: fps != null ? `${fps} fps` : "—" },
     { label: "Video Codec", value: "—" },
     { label: "Audio Codec", value: "—" },
     { label: "Bitrate", value: formatBitrate(null) },
-    { label: "File Size", value: formatFileSize(asset?.size ?? null) },
+    { label: "File Size", value: formatVideoSize(asset.size ?? null) },
     { label: "Playback Speed", value: `${playerState.playbackRate}x` },
     { label: "Buffer Horizon", value: `${Math.max(0, playerState.bufferedEnd - playerState.currentTime).toFixed(2)}s` },
     { label: "Audio Gain", value: playerState.isMuted ? "0% (Muted)" : `${Math.round(playerState.volume * 100)}%` },

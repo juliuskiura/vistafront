@@ -2,12 +2,7 @@
 
 import React, { useRef, useState, useCallback } from "react";
 import { formatTime } from "@/lib/media/video-utils";
-
-interface VideoCuePoint {
-  id: string;
-  time: number;
-  title: string;
-}
+import type { VideoCuePoint } from "@/lib/apptypes/media_libary";
 
 interface VideoProgressBarProps {
   currentTime: number;
@@ -18,6 +13,7 @@ interface VideoProgressBarProps {
   onSeek: (targetTime: number) => void;
   onScrubStart?: () => void;
   onScrubEnd?: () => void;
+  disabled?: boolean;
   fps?: number | null;
 }
 
@@ -30,6 +26,7 @@ export const VideoProgressBar: React.FC<VideoProgressBarProps> = ({
   onSeek,
   onScrubStart,
   onScrubEnd,
+  disabled = false,
   fps = null,
 }) => {
   const barRef = useRef<HTMLDivElement>(null);
@@ -38,7 +35,7 @@ export const VideoProgressBar: React.FC<VideoProgressBarProps> = ({
   const [hoverTime, setHoverTime] = useState<number | null>(null);
   const [activeCuePoint, setActiveCuePoint] = useState<VideoCuePoint | null>(null);
 
-  const disabled = duration <= 0;
+  const isDisabled = disabled || duration <= 0;
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   const getTimeFromPointer = useCallback(
@@ -52,7 +49,7 @@ export const VideoProgressBar: React.FC<VideoProgressBarProps> = ({
   );
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (disabled || duration <= 0) return;
+    if (isDisabled) return;
     e.preventDefault();
     setIsDragging(true);
     onScrubStart?.();
@@ -94,7 +91,7 @@ export const VideoProgressBar: React.FC<VideoProgressBarProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (duration <= 0) return;
+    if (isDisabled) return;
     let step = 5;
     if (e.shiftKey) step = 1;
     if (e.altKey && fps) step = 1 / fps;
@@ -128,12 +125,12 @@ export const VideoProgressBar: React.FC<VideoProgressBarProps> = ({
     const startPct = (loopRange.start / duration) * 100;
     const widthPct = ((loopRange.end - loopRange.start) / duration) * 100;
     return (
-      <div className="absolute top-0 bottom-0 bg-amber-500/35 border-x border-amber-500 pointer-events-none rounded-xs" style={{ left: `${startPct}%`, width: `${widthPct}%` }} title={`Loop: ${formatTime(loopRange.start)} - ${formatTime(loopRange.end)}`} />
+      <div className="absolute top-0 bottom-0 bg-warning/35 border-x border-warning pointer-events-none rounded-xs" style={{ left: `${startPct}%`, width: `${widthPct}%` }} title={`Loop: ${formatTime(loopRange.start)} - ${formatTime(loopRange.end)}`} />
     );
   };
 
   return (
-    <div className="relative w-full select-none py-2 group/progress cursor-pointer" onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerLeave={handlePointerLeave} tabIndex={disabled ? -1 : 0} role="slider" aria-label="Seek video timeline" aria-valuemin={0} aria-valuemax={Math.round(duration)} aria-valuenow={Math.round(currentTime)} aria-valuetext={`${formatTime(currentTime)} of ${formatTime(duration)}`} onKeyDown={handleKeyDown}>
+    <div className="relative w-full select-none py-2 group/progress cursor-pointer" onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerLeave={handlePointerLeave} tabIndex={isDisabled ? -1 : 0} role="slider" aria-label="Seek video timeline" aria-valuemin={0} aria-valuemax={Math.round(duration)} aria-valuenow={Math.round(currentTime)} aria-valuetext={`${formatTime(currentTime)} of ${formatTime(duration)}`} onKeyDown={handleKeyDown}>
       <div ref={barRef} className="relative h-1.5 w-full bg-white/20 rounded-full overflow-visible transition-all group-hover/progress:h-2">
         {renderBufferedSegments()}
         {renderLoopRange()}

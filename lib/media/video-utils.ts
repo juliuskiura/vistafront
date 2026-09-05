@@ -1,4 +1,5 @@
 import type { Asset } from "@/lib/api";
+import type { VideoView } from "@/lib/apptypes/media_libary";
 
 export function formatTime(seconds: number, includeHours: boolean = false): string {
   if (isNaN(seconds) || seconds < 0) return "0:00";
@@ -24,18 +25,14 @@ export function formatTimecode(seconds: number, fps: number | null = null): stri
   return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}:${f.toString().padStart(2, "0")}`;
 }
 
-/** Parses time strings like "1:24", "01:24", "1:05:30", "75", "1m 15s" into seconds. */
 export function parseTimeString(input: string, fps: number | null = null): number | null {
   const clean = input.trim().toLowerCase();
   if (!clean) return null;
-
   if (/^\d+(\.\d+)?$/.test(clean)) {
     return Math.max(0, parseFloat(clean));
   }
-
   const parts = clean.split(":").map((p) => parseFloat(p));
   if (parts.some((p) => isNaN(p))) return null;
-
   if (parts.length === 4) {
     const [h, m, s, f] = parts;
     return h * 3600 + m * 60 + s + (fps ? f / fps : 0);
@@ -46,7 +43,6 @@ export function parseTimeString(input: string, fps: number | null = null): numbe
     const [m, s] = parts;
     return m * 60 + s;
   }
-
   return null;
 }
 
@@ -57,10 +53,48 @@ export function formatBitrate(bps: number | null): string {
 }
 
 export function formatFileSize(bytes: number | null): string {
-  if (!bytes) return "—";
+  if (!bytes && bytes !== 0) return "—";
+  if (bytes === 0) return "0 B";
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
+
+export const formatVideoSize = formatFileSize;
+
+export function formatDate(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+
+  if (diffSec < 60) return "Just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffHour < 24) return `${diffHour}h ago`;
+  if (diffDay < 7) return `${diffDay}d ago`;
+  return date.toLocaleDateString();
+}
+
+export function debounce<T extends (...args: any[]) => void>(fn: T, ms: number): T {
+  let timeout: ReturnType<typeof setTimeout>;
+  return ((...args: any[]) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => fn(...args), ms);
+  }) as T;
+}
+
+export function generateColor(str: string): string {
+  const colors = [
+    "bg-blue-500", "bg-green-500", "bg-yellow-500", "bg-purple-500",
+    "bg-pink-500", "bg-indigo-500", "bg-red-500", "bg-teal-500",
+  ];
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  return colors[Math.abs(hash) % colors.length];
 }
 
 export function containerFromExtension(asset: Asset): string | null {
@@ -73,52 +107,37 @@ export function containerFromExtension(asset: Asset): string | null {
   return map[ext] || ext.toUpperCase();
 }
 
-export interface VideoView {
-  src: string | null;
-  poster: string | null;
-  name: string;
-  sizeBytes: number | null;
-  mimeType: string;
-  extension: string | undefined;
-  container: string | null;
-  durationHint: number | null;
-  widthHint: number | null;
-  heightHint: number | null;
-  fps: number | null;
-  codec: string | null;
-  codecAudio: string | null;
-  bitrate: number | null;
-}
+export type { VideoView } from "@/lib/apptypes/media_libary";
 
 /**
- * Normalize a media/API URL that Django baked an absolute origin into
- * (e.g. `http://127.0.0.1:8000/apis/media/assets/{nanoid}/stream/`) down
- * to a same-origin relative path.
- *
- * Rationale: the browser's session cookies live on the Next.js origin and
- * `/apis/*` is proxied to Django by `next.config.ts`. If the player hits the
- * absolute backend host directly (cross-origin), the session cookie is not
- * sent and the auth-backed `/stream/` endpoint returns 401. Rewriting to a
- * relative path routes the request through the same-origin proxy so cookies
- * attach and playback works, mirroring legacy Vite (`changeOrigin: false`).
+ * Rehost a Django-served URL onto the same origin the browser uses for API
+ * calls. `stream_url`/`original_file` are absolute URLs baked server-side
+ * from Django's Host header (e.g. `http://127.0.0.1:8000/...`), but direct
+ * browser calls authenticate against `NEXT_PUBLIC_BACKEND_URL`. If their
+ * hosts differ (`localhost` vs `127.0.0.1`), the `access` cookie is not sent
+ * and the request 401s. Rewriting the origin to the configured base keeps the
+ * request same-site with the cookie.
  */
-export function toSameOriginApiUrl(url: string | null | undefined): string | null {
+export function toProtocolRelative(
+  url: string | null | undefined,
+): string | null {
   if (!url) return null;
   try {
-    const parsed = new URL(url, "http://current.invalid");
-    if (parsed.pathname.startsWith("/apis/")) {
-      return `${parsed.pathname}${parsed.search}`;
+    const base = new URL(url);
+    const target = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
+    const dj = new URL(target);
+    if (base.origin !== dj.origin) {
+      base.protocol = dj.protocol;
+      base.host = dj.host;
     }
-    // Non-API (object-store/blob) URLs are left untouched.
-    return url;
+    return base.href;
   } catch {
-    // Already relative or malformed — pass through.
-    return url.startsWith("/") ? url : null;
+    return url;
   }
 }
 
 export function toVideoView(asset: Asset): VideoView {
-  const src = toSameOriginApiUrl(asset.stream_url || asset.original);
+  const src = toProtocolRelative(asset.stream_url) || toProtocolRelative(asset.original_file) || null;
   return {
     src,
     poster: asset.thumbnail || null,
@@ -138,5 +157,5 @@ export function toVideoView(asset: Asset): VideoView {
 }
 
 export function isPlayableVideo(asset: Asset): boolean {
-  return asset.asset_type === "video" && !!asset.original;
+  return asset.asset_type === "video" && !!asset.original_file;
 }
