@@ -38,7 +38,7 @@ interface Props {
   pages: ManagedChannel[];
   campaigns: Campaign[];
   platforms: SocialMediaPlatform[];
-  accounts: { nanoid: string; platform: string }[];
+  accounts: { nanoid: string; platform: string; managed_pages?: ManagedChannel[] }[];
   hashtags: Hashtag[];
   workspaceDomain: string;
   editPost: ScheduledPost | null;
@@ -116,9 +116,15 @@ export function ComposeClient({
   });
   const [firstCommentByPage, setFirstCommentByPage] = useState<Record<string, string>>({});
 
-  const accountPlatformMap = useMemo(() => {
+  const pageToPlatformSlug = useMemo(() => {
     const map: Record<string, string> = {};
-    for (const a of accounts) map[a.nanoid] = a.platform;
+    for (const a of accounts) {
+      if (a.platform) {
+        for (const p of a.managed_pages ?? []) {
+          map[p.nanoid] = a.platform;
+        }
+      }
+    }
     return map;
   }, [accounts]);
 
@@ -131,11 +137,9 @@ export function ComposeClient({
   const getPagePlatformSlug = useCallback(
     (page: ManagedChannel): string => {
       if (page.platform) return page.platform;
-      const platformNanoid = accountPlatformMap[page.social_account];
-      const p = platforms.find((pl) => pl.nanoid === platformNanoid);
-      return p?.slug || "";
+      return pageToPlatformSlug[page.nanoid] || "";
     },
-    [accountPlatformMap, platforms],
+    [pageToPlatformSlug],
   );
 
   const activePages = useMemo(() => pages.filter((p) => p.is_active), [pages]);

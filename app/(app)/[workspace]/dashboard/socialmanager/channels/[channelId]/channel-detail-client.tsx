@@ -388,6 +388,7 @@ interface Props {
   allPages: ManagedChannel[];
   workspaceDomain: string;
   channelId: string;
+  pageToAccountNanoid: Record<string, string>;
 }
 
 export function ChannelDetailClient({
@@ -396,6 +397,7 @@ export function ChannelDetailClient({
   platforms,
   workspaceDomain,
   channelId,
+  pageToAccountNanoid,
 }: Props) {
   const ws = workspaceDomain.toLowerCase();
   const basePath = `/${ws}/dashboard/socialmanager`;
@@ -467,12 +469,13 @@ export function ChannelDetailClient({
     if (!channel) return;
     setRevoking(true);
     try {
-      await revokeAccountAction(channel.social_account, ws);
+      const accountNanoid = pageToAccountNanoid[channelId];
+      if (accountNanoid) await revokeAccountAction(accountNanoid, ws);
       router.refresh();
     } finally {
       setRevoking(false);
     }
-  }, [channel, ws, router]);
+  }, [channel, channelId, ws, router, pageToAccountNanoid]);
 
   if (!channel) {
     return (

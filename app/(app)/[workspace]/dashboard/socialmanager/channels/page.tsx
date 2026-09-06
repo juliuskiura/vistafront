@@ -1,5 +1,6 @@
 import { requireWorkspace } from "@/lib/auth/server";
 import { listAccounts } from "@/lib/api";
+import type { SocialAccount } from "@/lib/api/types";
 import { ChannelsClient } from "./channels-client";
 
 /**
@@ -17,9 +18,15 @@ export default async function ChannelsPage({
   const active = await requireWorkspace(slug);
   const ws = active.domain;
 
-  const accounts = await listAccounts(ws).catch(() => []);
+  const accounts = await listAccounts(ws).catch((): SocialAccount[] => []);
 
   const channels = accounts.flatMap((account) => account.managed_pages ?? []);
 
-  return <ChannelsClient channels={channels} workspaceDomain={ws} />;
+  const pageToAccountNanoid = channels.reduce<Record<string, string>>((map, page) => {
+    const account = accounts.find((a) => a.managed_pages?.some((p) => p.nanoid === page.nanoid));
+    if (account) map[page.nanoid] = account.nanoid;
+    return map;
+  }, {});
+
+  return <ChannelsClient channels={channels} workspaceDomain={ws} pageToAccountNanoid={pageToAccountNanoid} />;
 }

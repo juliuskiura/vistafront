@@ -1,5 +1,6 @@
 import { requireWorkspace } from "@/lib/auth/server";
-import { listPages, listPosts, listPlatforms } from "@/lib/api";
+import { listPages, listPosts, listPlatforms, listAccounts } from "@/lib/api";
+import type { SocialAccount } from "@/lib/api/types";
 import { ChannelDetailClient } from "./channel-detail-client";
 
 /**
@@ -16,13 +17,20 @@ export default async function ChannelDetailPage({
   const active = await requireWorkspace(slug);
   const ws = active.domain;
 
-  const [pages, posts, platforms] = await Promise.all([
+  const [pages, posts, platforms, accounts] = await Promise.all([
     listPages({ workspace: ws }).catch(() => []),
     listPosts({ managed_page: channelId, workspace: ws }).catch(() => []),
     listPlatforms({ all: true, workspace: ws }).catch(() => []),
+    listAccounts(ws).catch((): SocialAccount[] => []),
   ]);
 
   const channel = pages.find((p) => p.nanoid === channelId) ?? null;
+
+  const pageToAccountNanoid = pages.reduce<Record<string, string>>((map, page) => {
+    const account = accounts.find((a) => a.managed_pages?.some((p) => p.nanoid === page.nanoid));
+    if (account) map[page.nanoid] = account.nanoid;
+    return map;
+  }, {});
 
   return (
     <ChannelDetailClient
@@ -32,6 +40,7 @@ export default async function ChannelDetailPage({
       allPages={pages}
       workspaceDomain={ws}
       channelId={channelId}
+      pageToAccountNanoid={pageToAccountNanoid}
     />
   );
 }

@@ -14,6 +14,7 @@ import { ShieldCheck, AlertCircle, Lock, Unlink, RefreshCw, ChevronRight, Plus }
 interface Props {
   channels: ManagedChannel[];
   workspaceDomain: string;
+  pageToAccountNanoid: Record<string, string>;
 }
 
 function getTokenStatus(expiresAt: string | null): { status: "active" | "expiring_soon" | "expired"; days: number | null } {
@@ -37,7 +38,7 @@ function toLocaleDateTime(value: string): string {
   });
 }
 
-export function ChannelsClient({ channels, workspaceDomain }: Props) {
+export function ChannelsClient({ channels, workspaceDomain, pageToAccountNanoid }: Props) {
   const ws = workspaceDomain.toLowerCase();
   const [connectOpen, setConnectOpen] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
@@ -48,19 +49,21 @@ export function ChannelsClient({ channels, workspaceDomain }: Props) {
   const handleSync = useCallback(
     async (page: ManagedChannel) => {
       setSyncingId(page.nanoid);
-      await syncAccountAction(page.social_account, ws);
+      const accountNanoid = pageToAccountNanoid[page.nanoid];
+      if (accountNanoid) await syncAccountAction(accountNanoid, ws);
       setSyncingId(null);
       router.refresh();
     },
-    [ws, router],
+    [ws, router, pageToAccountNanoid],
   );
 
   const handleDisconnect = useCallback(
     async (page: ManagedChannel) => {
-      await revokeAccountAction(page.social_account, ws);
+      const accountNanoid = pageToAccountNanoid[page.nanoid];
+      if (accountNanoid) await revokeAccountAction(accountNanoid, ws);
       router.refresh();
     },
-    [ws, router],
+    [ws, router, pageToAccountNanoid],
   );
 
   return (
