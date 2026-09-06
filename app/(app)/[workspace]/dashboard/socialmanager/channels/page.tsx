@@ -1,5 +1,5 @@
 import { requireWorkspace } from "@/lib/auth/server";
-import { listAccounts, listPlatforms } from "@/lib/api";
+import { listAccounts } from "@/lib/api";
 import { ChannelsClient } from "./channels-client";
 
 /**
@@ -17,10 +17,9 @@ export default async function ChannelsPage({
   const active = await requireWorkspace(slug);
   const ws = active.domain;
 
-  const [accounts, platforms] = await Promise.all([
-    listAccounts(ws).catch(() => []),
-    listPlatforms({ all: true, workspace: ws }).catch(() => []),
-  ]);
+  const accounts = await listAccounts(ws).catch(() => []);
 
-  return <ChannelsClient accounts={accounts} platforms={platforms} workspaceDomain={ws} />;
+  const channels = accounts.flatMap((account) => account.managed_pages ?? []);
+
+  return <ChannelsClient channels={channels} workspaceDomain={ws} />;
 }

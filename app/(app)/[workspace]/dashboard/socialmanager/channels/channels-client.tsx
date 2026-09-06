@@ -4,13 +4,12 @@ import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { SocialIcon, hasSocialIcon } from "@/components/social-icons";
-import { getPlatformTheme } from "@/components/platform-themes";
+import { getPlatformStyle } from "@/components/platform-icon";
 import { ConnectAccountModal } from "./connect-account-modal";
 import { syncAccountAction, revokeAccountAction } from "../actions";
 import type { ManagedChannel } from "@/lib/api/types";
-import { ShieldCheck, AlertCircle, Lock, Unlink, RefreshCw, ChevronRight } from "lucide-react";
+import { ShieldCheck, AlertCircle, Lock, Unlink, RefreshCw, ChevronRight, Plus } from "lucide-react";
 
 interface Props {
   channels: ManagedChannel[];
@@ -49,7 +48,7 @@ export function ChannelsClient({ channels, workspaceDomain }: Props) {
   const handleSync = useCallback(
     async (page: ManagedChannel) => {
       setSyncingId(page.nanoid);
-      await syncAccountAction(page.nanoid, ws);
+      await syncAccountAction(page.social_account, ws);
       setSyncingId(null);
       router.refresh();
     },
@@ -58,7 +57,7 @@ export function ChannelsClient({ channels, workspaceDomain }: Props) {
 
   const handleDisconnect = useCallback(
     async (page: ManagedChannel) => {
-      await revokeAccountAction(page.nanoid, ws);
+      await revokeAccountAction(page.social_account, ws);
       router.refresh();
     },
     [ws, router],
@@ -95,7 +94,7 @@ export function ChannelsClient({ channels, workspaceDomain }: Props) {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {channels.map((page) => {
             const isConnected = page.is_active;
-            const style = getPlatformTheme(page.platform);
+            const style = getPlatformStyle(page.platform);
             const token = getTokenStatus(page.token_expires_at);
             return (
               <Card
@@ -108,13 +107,13 @@ export function ChannelsClient({ channels, workspaceDomain }: Props) {
                   >
                     {hasSocialIcon(page.platform) ? (
                       <SocialIcon name={page.platform} className={`h-3.5 w-3.5 ${style.color}`} />
-                    ) : (
-                      <span
-                        className={`w-3.5 h-3.5 rounded-md flex items-center justify-center text-[9px] font-bold ${style.bg} ${style.color} border ${style.border}`}
-                      >
-                        {style.icon}
-                      </span>
-                    )}
+                      ) : (
+                        <span
+                          className={`w-3.5 h-3.5 rounded-md flex items-center justify-center text-[9px] font-bold ${style.bg} ${style.color} border ${style.border}`}
+                        >
+                          {page.platform.slice(0, 2).toUpperCase()}
+                        </span>
+                      )}
                     <span className="capitalize">{style.label}</span>
                   </span>
                   {isConnected ? (
@@ -149,7 +148,7 @@ export function ChannelsClient({ channels, workspaceDomain }: Props) {
                         <span
                           className={`w-4 h-4 rounded-md flex items-center justify-center text-[9px] font-bold ${style.bg} ${style.color} border ${style.border}`}
                         >
-                          {style.icon}
+                          {page.platform.slice(0, 2).toUpperCase()}
                         </span>
                       )}
                     </div>
@@ -228,17 +227,15 @@ export function ChannelsClient({ channels, workspaceDomain }: Props) {
         </div>
       )}
 
-      <Dialog open={connectOpen} onOpenChange={setConnectOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <ConnectAccountModal
-            workspaceDomain={ws}
-            onConnected={() => {
-              setConnectOpen(false);
-              router.refresh();
-            }}
-          />
-        </DialogContent>
-      </Dialog>
+      <ConnectAccountModal
+        workspaceDomain={ws}
+        isOpen={connectOpen}
+        onClose={() => setConnectOpen(false)}
+        onConnected={() => {
+          setConnectOpen(false);
+          router.refresh();
+        }}
+      />
     </div>
   );
 }

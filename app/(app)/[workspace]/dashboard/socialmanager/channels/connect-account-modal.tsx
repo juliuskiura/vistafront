@@ -15,11 +15,8 @@ import {
 } from "lucide-react";
 import type { SocialMediaPlatform } from "@/lib/api/types";
 import { oauthInitAction } from "../actions";
-import {
-  hasSocialIcon,
-  SocialIcon,
-} from "@/components/social-icons";
-import { getPlatformStyle } from "@/components/platform-icon";
+import { hasSocialIcon, SocialIcon } from "@/components/social-icons";
+import { PlatformGlyph, getPlatformStyle } from "@/components/platform-icon";
 
 /* ──────────────────────────────────────────────────────────────────────
  * ConnectAccountModal

@@ -28,7 +28,7 @@ import {
 import {
   initialCampaignState,
   type CampaignActionState,
-} from "./action-state";
+} from "../action-state";
 import { PlatformGlyph, getPlatformStyle } from "@/components/platform-icon";
 import { SocialIcon, hasSocialIcon } from "@/components/social-icons";
 import { Card } from "@/components/ui/card";

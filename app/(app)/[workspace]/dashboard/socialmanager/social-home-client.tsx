@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   BarChart3,
   CalendarDays,
@@ -114,6 +115,7 @@ export function SocialHomePageClient({
 }: Props) {
   const ws = workspaceDomain.toLowerCase();
   const basePath = `/${ws}/dashboard/socialmanager`;
+  const router = useRouter();
 
   /* ── Sync state ── */
   const [syncTaskId, setSyncTaskId] = useState<string | null>(null);
@@ -257,12 +259,16 @@ export function SocialHomePageClient({
               </thead>
               <tbody className="divide-y divide-neutral-100">
                 {recent.map((post) => (
-                  <tr key={post.nanoid} className="hover:bg-neutral-50">
+                  <tr
+                    key={post.nanoid}
+                    className="hover:bg-neutral-50 cursor-pointer"
+                    onClick={() => router.push(`${basePath}/${post.nanoid}`)}
+                  >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        {post.media_image_urls?.[0] ? (
+                        {post.media_image_urls?.[0] || post.media_urls?.[0] ? (
                           <img
-                            src={post.media_image_urls[0]}
+                            src={`/api/socialmanager/media/${post.nanoid}?workspace=${workspaceDomain}`}
                             alt=""
                             className="size-10 shrink-0 rounded-md object-cover"
                           />
@@ -442,7 +448,11 @@ export function SocialHomePageClient({
           {upcoming.length > 0 ? (
             <div className="space-y-3">
               {upcoming.map((post) => (
-                <Card key={post.nanoid} className="p-4">
+                <Link
+                  key={post.nanoid}
+                  href={`${basePath}/${post.nanoid}`}
+                  className="block rounded-xl border bg-card p-4 text-card-foreground transition-all hover:shadow-md"
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm text-neutral-900">{post.content || "No content"}</p>
@@ -472,7 +482,7 @@ export function SocialHomePageClient({
                       ))}
                     </div>
                   )}
-                </Card>
+                </Link>
               ))}
             </div>
           ) : (

@@ -12,6 +12,7 @@ import {
   publishPost,
   cancelPost,
   duplicatePost,
+  deletePost,
   startAiTailor,
   createHashtag,
   createQueue,
@@ -49,6 +50,7 @@ import {
 import type {
   CampaignForm,
   ScheduledPostForm,
+  ScheduledPost,
   PostQueue,
   PostQueueItem,
   PostComment,
@@ -242,43 +244,43 @@ export async function updatePostAction(
 export async function publishPostAction(
   nanoid: string,
   workspace: string,
-): Promise<PostActionState> {
+): Promise<PostActionState | { status: "success"; post: ScheduledPost }> {
   try {
-    await publishPost(nanoid, workspace);
+    const post = await publishPost(nanoid, workspace);
+    return { status: "success", post };
   } catch {
     return { status: "error", message: "Failed to publish post." };
   }
 
   revalidatePath("/", "layout");
-  return { status: "success", message: "Post published." };
 }
 
 export async function cancelPostAction(
   nanoid: string,
   workspace: string,
-): Promise<PostActionState> {
+): Promise<PostActionState | { status: "success"; post: ScheduledPost }> {
   try {
-    await cancelPost(nanoid, workspace);
+    const post = await cancelPost(nanoid, workspace);
+    return { status: "success", post };
   } catch {
     return { status: "error", message: "Failed to cancel post." };
   }
 
   revalidatePath("/", "layout");
-  return { status: "success", message: "Post cancelled." };
 }
 
 export async function duplicatePostAction(
   nanoid: string,
   workspace: string,
-): Promise<PostActionState> {
+): Promise<PostActionState | { status: "success"; post: ScheduledPost }> {
   try {
-    await duplicatePost(nanoid, workspace);
+    const post = await duplicatePost(nanoid, workspace);
+    return { status: "success", post };
   } catch {
     return { status: "error", message: "Failed to duplicate post." };
   }
 
   revalidatePath("/", "layout");
-  return { status: "success", message: "Post duplicated." };
 }
 
 export async function startAiTailorAction(
@@ -744,6 +746,20 @@ export async function deleteMediaSpecAction(
 
   revalidatePath("/", "layout");
   return { status: "success", message: "Media spec deleted." };
+}
+
+export async function deletePostAction(
+  nanoid: string,
+  workspace: string,
+): Promise<{ status: string; message?: string }> {
+  try {
+    await deletePost(nanoid, workspace);
+  } catch {
+    return { status: "error", message: "Failed to delete post." };
+  }
+
+  revalidatePath("/", "layout");
+  return { status: "success", message: "Post deleted." };
 }
 
 /* ──────────────────────────────────────────────────────────────────────

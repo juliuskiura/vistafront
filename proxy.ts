@@ -10,6 +10,7 @@ const PUBLIC_PATHS = [
   "/activate",
   "/verify-email",
   "/restricted",
+  "/api/socialmanager/media",
 ];
 
 function isPublicPath(pathname: string): boolean {

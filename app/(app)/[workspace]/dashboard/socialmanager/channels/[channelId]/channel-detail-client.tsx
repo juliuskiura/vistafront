@@ -716,7 +716,7 @@ export function ChannelDetailClient({
               </thead>
               <tbody className="divide-y divide-neutral-100">
                 {posts.map((post) => {
-                  const media = post.media_image_urls?.[0];
+                  const media = post.media_image_urls?.[0] || post.media_urls?.[0];
                   return (
                     <tr
                       key={post.nanoid}
@@ -726,7 +726,7 @@ export function ChannelDetailClient({
                       <td className="max-w-xs px-4 py-2.5">
                         <div className="flex items-center gap-3">
                           {media ? (
-                            <img src={media} alt="" className="size-10 shrink-0 rounded-md object-cover" />
+                            <img src={`/api/socialmanager/media/${post.nanoid}?workspace=${workspaceDomain}`} alt="" className="size-10 shrink-0 rounded-md object-cover" />
                           ) : (
                             <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-slate-100 text-[10px] font-semibold text-slate-400">
                               TXT
