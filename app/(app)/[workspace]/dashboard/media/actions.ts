@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import {
   bulkDeleteAssets,
   bulkFavoriteAssets,
+  bulkPurgeAssets,
   deleteAsset,
   favoriteAsset,
   getAsset,
@@ -95,6 +96,30 @@ export async function bulkFavoriteAssetsAction(
   const result = await bulkFavoriteAssets(nanoids, favorite, workspace);
   revalidatePath(`/[workspace]/dashboard/media`, "page");
   return result;
+}
+
+export async function bulkRestoreAssetsAction(
+  nanoids: string[],
+  workspace: string,
+): Promise<{ restored: number; failed: number }> {
+  if (!workspace || nanoids.length === 0) return { restored: 0, failed: 0 };
+  const results = await Promise.allSettled(
+    nanoids.map((nanoid) => restoreAsset(nanoid, workspace)),
+  );
+  const failed = results.filter((r) => r.status === "rejected").length;
+  const restored = results.length - failed;
+  revalidatePath(`/[workspace]/dashboard/media`, "page");
+  return { restored, failed };
+}
+
+export async function bulkPurgeAssetsAction(
+  nanoids: string[],
+  workspace: string,
+): Promise<{ deleted: number; failed: number }> {
+  if (!workspace || nanoids.length === 0) return { deleted: 0, failed: 0 };
+  const result = await bulkPurgeAssets(nanoids, workspace);
+  revalidatePath(`/[workspace]/dashboard/media`, "page");
+  return { deleted: result.deleted, failed: 0 };
 }
 
 export async function getAssetMetasAction(

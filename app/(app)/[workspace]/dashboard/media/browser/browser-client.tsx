@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Grid3x3, List, Search, Upload, FolderPlus } from "lucide-react";
 import type { Asset, PaginatedAssets, ViewMode, SortKey, SortDir } from "@/lib/api";
+import { AssetSelectionToolbar } from "@/components/media/asset-selection-toolbar";
 
 interface Props {
   workspaceDomain: string;
@@ -36,6 +37,21 @@ export function BrowserClient({
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [search, setSearch] = useState(initialSearch);
   const [assetTypeFilter, setAssetTypeFilter] = useState(initialAssetType);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const toggleSelection = useCallback((nanoid: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(nanoid)) {
+        next.delete(nanoid);
+      } else {
+        next.add(nanoid);
+      }
+      return next;
+    });
+  }, []);
+
+  const clearSelection = useCallback(() => setSelected(new Set()), []);
 
   const assets = useMemo(() => initialAssets.results ?? [], [initialAssets]);
 
@@ -113,6 +129,11 @@ export function BrowserClient({
     });
     return sorted;
   }, [assets, sortKey, sortDir]);
+
+  const selectedAssets = useMemo(
+    () => sortedAssets.filter((a) => selected.has(a.nanoid)),
+    [sortedAssets, selected],
+  );
 
   const currentPage = Number(searchParams.get("page") ?? "1");
   const totalPages = Math.max(1, Math.ceil((initialAssets.count || 0) / (pageSize || 24)));
@@ -214,6 +235,13 @@ export function BrowserClient({
         </div>
       </div>
 
+      <AssetSelectionToolbar
+        selectedAssets={selectedAssets}
+        workspaceDomain={workspaceDomain}
+        onClear={clearSelection}
+        mode="browser"
+      />
+
       {sortedAssets.length === 0 ? (
         <Card className="rounded-xl border bg-card ring-0 shadow-sm p-8 text-center">
           <p className="text-sm text-muted-foreground">No assets found. Try adjusting your search or upload new files.</p>
@@ -227,6 +255,14 @@ export function BrowserClient({
               onClick={() => router.push(`/${workspaceDomain}/dashboard/media/asset/${asset.nanoid}`)}
             >
               <div className="aspect-square bg-muted/30 flex items-center justify-center relative">
+                <input
+                  type="checkbox"
+                  aria-label="Select asset"
+                  checked={selected.has(asset.nanoid)}
+                  onChange={() => toggleSelection(asset.nanoid)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="absolute top-2 left-2 z-10 size-4 cursor-pointer rounded border-input bg-white/80"
+                />
                 {asset.thumbnail ? (
                   <Image src={asset.thumbnail} alt={asset.name} fill unoptimized className="object-cover" />
                 ) : (
@@ -248,6 +284,14 @@ export function BrowserClient({
               className="flex items-center gap-4 p-3 hover:bg-muted/30 cursor-pointer"
               onClick={() => router.push(`/${workspaceDomain}/dashboard/media/asset/${asset.nanoid}`)}
             >
+              <input
+                type="checkbox"
+                aria-label="Select asset"
+                checked={selected.has(asset.nanoid)}
+                onChange={() => toggleSelection(asset.nanoid)}
+                onClick={(e) => e.stopPropagation()}
+                className="size-4 cursor-pointer rounded border-input"
+              />
               <div className="w-10 h-10 rounded-lg bg-muted/50 flex items-center justify-center flex-shrink-0 relative">
                 {asset.thumbnail ? (
                   <Image src={asset.thumbnail} alt={asset.name} fill className="object-cover rounded-lg" />

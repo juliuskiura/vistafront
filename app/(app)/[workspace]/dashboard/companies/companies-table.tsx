@@ -29,6 +29,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   PROSPECT_LABELS,
   STATUS_COLORS,
@@ -164,6 +165,8 @@ export function CompaniesTable({
       /* storage not available */
     }
   }, [columnVisibility]);
+
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const selectedNanoids = Object.keys(rowSelection).filter(
     (id) => rowSelection[id],
@@ -394,33 +397,31 @@ export function CompaniesTable({
 
   function handleBulkDelete() {
     if (selectedCount === 0) return;
+    setDeleteDialogOpen(true);
+  }
+
+  async function confirmBulkDelete() {
     const nanoids = [...selectedNanoids];
-    const ok = window.confirm(
-      `Delete ${selectedCount} compan${selectedCount === 1 ? "y" : "ies"}? This action cannot be undone.`,
-    );
-    if (!ok) return;
-    startTransition(async () => {
-      try {
-        const { deleted, failed } = await bulkDeleteCompaniesAction(
-          nanoids,
-          workspaceNanoid,
-        );
-        toast.push({
-          variant: failed === 0 ? "success" : "error",
-          message:
-            failed === 0
-              ? `Deleted ${deleted} compan${deleted === 1 ? "y" : "ies"}.`
-              : `Deleted ${deleted}; ${failed} failed.`,
-        });
-        setRowSelection({});
-      } catch (error) {
-        console.error("bulkDeleteCompaniesAction failed:", error);
-        toast.push({
-          variant: "error",
-          message: "Could not delete the selected companies.",
-        });
-      }
-    });
+    try {
+      const { deleted, failed } = await bulkDeleteCompaniesAction(
+        nanoids,
+        workspaceNanoid,
+      );
+      toast.push({
+        variant: failed === 0 ? "success" : "error",
+        message:
+          failed === 0
+            ? `Deleted ${deleted} compan${deleted === 1 ? "y" : "ies"}.`
+            : `Deleted ${deleted}; ${failed} failed.`,
+      });
+      setRowSelection({});
+    } catch (error) {
+      console.error("bulkDeleteCompaniesAction failed:", error);
+      toast.push({
+        variant: "error",
+        message: "Could not delete the selected companies.",
+      });
+    }
   }
 
   return (
@@ -605,6 +606,16 @@ export function CompaniesTable({
         </table>
         </div>
       </Card>
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete companies?"
+        description={`This will permanently delete ${selectedCount} compan${selectedCount === 1 ? "y" : "ies"}. This action cannot be undone.`}
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={confirmBulkDelete}
+        confirming={pending}
+      />
     </div>
   );
 }

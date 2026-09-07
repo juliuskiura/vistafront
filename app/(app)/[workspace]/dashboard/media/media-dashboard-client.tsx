@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Images,
@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { AssetSelectionToolbar } from "@/components/media/asset-selection-toolbar";
 import type { Asset, MediaStats } from "@/lib/api";
 
 const STATS_CONFIG = [
@@ -33,9 +34,26 @@ interface Props {
 
 export function MediaDashboardClient({ workspaceDomain, stats, recentAssets }: Props) {
   const router = useRouter();
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  console.log('recentAssets: ', recentAssets)
+  const toggleSelection = useCallback((nanoid: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(nanoid)) {
+        next.delete(nanoid);
+      } else {
+        next.add(nanoid);
+      }
+      return next;
+    });
+  }, []);
 
+  const clearSelection = useCallback(() => setSelected(new Set()), []);
+
+  const selectedRecentAssets = useMemo(
+    () => recentAssets.filter((a) => selected.has(a.nanoid)),
+    [recentAssets, selected],
+  );
   const quickStats = useMemo(() => {
     if (!stats) return [];
     return [
@@ -112,27 +130,43 @@ export function MediaDashboardClient({ workspaceDomain, stats, recentAssets }: P
           </Button>
         </Card>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-4">
-          {recentAssets.slice(0, 4).map((asset) => (
-            <Card
-              key={asset.nanoid}
-              className="cursor-pointer rounded-xl border bg-card ring-0 shadow-sm overflow-hidden"
-              onClick={() => router.push(`/${workspaceDomain}/dashboard/media/asset/${asset.nanoid}`)}
-            >
-              <div className="aspect-square bg-muted/30 flex items-center justify-center relative">
-                {asset.thumbnail ? (
-                  <Image src={asset.thumbnail} alt={asset.name} fill unoptimized className="object-cover" />
-                ) : (
-                  <FileText className="h-8 w-8 text-muted-foreground" />
-                )}
-              </div>
-              <div className="p-3">
-                <p className="text-sm font-medium truncate">{asset.name}</p>
-                <p className="text-xs text-muted-foreground capitalize">{asset.asset_type}</p>
-              </div>
-            </Card>
-          ))}
-        </div>
+        <>
+          <AssetSelectionToolbar
+            selectedAssets={selectedRecentAssets}
+            workspaceDomain={workspaceDomain}
+            onClear={clearSelection}
+            mode="recent"
+          />
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-4">
+            {recentAssets.slice(0, 4).map((asset) => (
+              <Card
+                key={asset.nanoid}
+                className="cursor-pointer rounded-xl border bg-card ring-0 shadow-sm overflow-hidden"
+                onClick={() => router.push(`/${workspaceDomain}/dashboard/media/asset/${asset.nanoid}`)}
+              >
+                <div className="aspect-square bg-muted/30 flex items-center justify-center relative">
+                  <input
+                    type="checkbox"
+                    aria-label="Select asset"
+                    checked={selected.has(asset.nanoid)}
+                    onChange={() => toggleSelection(asset.nanoid)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute top-2 left-2 z-10 size-4 cursor-pointer rounded border-input bg-white/80"
+                  />
+                  {asset.thumbnail ? (
+                    <Image src={asset.thumbnail} alt={asset.name} fill unoptimized className="object-cover" />
+                  ) : (
+                    <FileText className="h-8 w-8 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="p-3">
+                  <p className="text-sm font-medium truncate">{asset.name}</p>
+                  <p className="text-xs text-muted-foreground capitalize">{asset.asset_type}</p>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
