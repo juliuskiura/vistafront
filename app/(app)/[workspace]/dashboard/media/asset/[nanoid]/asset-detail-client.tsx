@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -214,15 +215,19 @@ export function AssetDetailClient({ workspaceDomain, asset: initialAsset, versio
         <div className="lg:col-span-2">
           <Card className="rounded-xl border bg-card ring-0 shadow-sm overflow-hidden">
               <CardContent className="p-0">
-{asset.asset_type === "video" ? (
-                    <VideoStudio asset={asset} workspaceDomain={workspaceDomain} />
-                 ) : (
-                   <div className="aspect-video bg-muted/30 flex items-center justify-center">
-                     <div className="text-center text-muted-foreground">
-                       <p className="text-sm">No preview available for {asset.asset_type}</p>
-                     </div>
-                   </div>
-                 )}
+                {asset.asset_type === "video" ? (
+                  <VideoStudio asset={asset} workspaceDomain={workspaceDomain} />
+                ) : asset.asset_type === "image" && asset.original_file ? (
+                  <div className="aspect-video bg-muted/30 flex items-center justify-center relative">
+                     <Image src={asset.original_file} alt={asset.name} fill unoptimized className="object-contain" />
+                  </div>
+                ) : (
+                  <div className="aspect-video bg-muted/30 flex items-center justify-center">
+                    <div className="text-center text-muted-foreground">
+                      <p className="text-sm">No preview available for {asset.asset_type}</p>
+                    </div>
+                  </div>
+                )}
               </CardContent>
           </Card>
         </div>

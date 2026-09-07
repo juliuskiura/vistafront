@@ -668,3 +668,62 @@ export function getAnalyticsSyncStatus(
     wsOpts(workspace),
   );
 }
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Reels / Direct video upload
+ * ────────────────────────────────────────────────────────────────────── */
+
+export interface ReelsUploadResult {
+  task_id: string;
+}
+
+export interface ReelsStatusResult {
+  status: string;
+  video_id?: string;
+  error?: string;
+}
+
+export async function uploadReelDirect(
+  formData: FormData,
+  workspace: string,
+): Promise<ReelsUploadResult> {
+  const cookieStore = await (await import("next/headers")).cookies();
+  const access = cookieStore.get("access");
+  const refresh = cookieStore.get("refresh");
+  const csrf = cookieStore.get("csrftoken");
+
+  const headers: HeadersInit = {};
+  const cookieHeader = [access ? `access=${access.value}` : null, refresh ? `refresh=${refresh.value}` : null]
+    .filter(Boolean)
+    .join("; ");
+  if (cookieHeader) headers.Cookie = cookieHeader;
+  if (csrf) headers["X-CSRFToken"] = csrf.value;
+  headers["X-Workspace"] = workspace;
+
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000"}/apis/socialmanager/reels/upload/`,
+    {
+      method: "POST",
+      headers,
+      body: formData,
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Upload failed: ${response.status} ${errorText}`);
+  }
+
+  return response.json();
+}
+
+export async function getReelStatus(
+  taskId: string,
+  workspace: string,
+): Promise<ReelsStatusResult> {
+  return serverFetch<ReelsStatusResult>(
+    `/apis/socialmanager/reels/status/${encodeURIComponent(taskId)}/`,
+    wsOpts(workspace),
+  );
+}

@@ -186,7 +186,7 @@ export function SocialHomePageClient({
         .slice(0, 8),
     [posts],
   );
-
+console.log('recent: ', recent)
   const stats = [
     { label: "Connected", value: connectedPages.length, icon: Wifi, color: "text-indigo-600", bg: "bg-indigo-50" },
     { label: "Scheduled", value: scheduled.length, icon: Clock, color: "text-violet-600", bg: "bg-violet-50" },

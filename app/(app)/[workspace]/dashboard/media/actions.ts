@@ -17,14 +17,11 @@ import {
   type AssetMeta,
 } from "@/lib/api";
 
-export interface MediaActionState {
+interface MediaActionState {
   status: "idle" | "success" | "error";
   message?: string;
 }
 
-export const initialMediaActionState: MediaActionState = {
-  status: "idle",
-};
 
 export async function deleteAssetAction(
   nanoid: string,

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { requireWorkspace } from "@/lib/auth/server";
 import { getTrashedAssets } from "@/lib/api";
 import type { Asset } from "@/lib/api";
@@ -30,7 +31,7 @@ export default async function MediaTrashPage({
               className="group relative aspect-square rounded-lg border bg-muted/50 overflow-hidden cursor-pointer hover:border-primary/50 transition-colors"
             >
               {asset.thumbnail ? (
-                <img src={asset.thumbnail} alt={asset.name} className="w-full h-full object-cover" />
+                <Image src={asset.thumbnail} alt={asset.name} fill unoptimized className="object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-muted-foreground capitalize">
                   {asset.asset_type}

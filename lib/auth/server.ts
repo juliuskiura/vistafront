@@ -1,3 +1,5 @@
+"use server";
+
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { listWorkspaces, type Workspace } from "@/lib/api";

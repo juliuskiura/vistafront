@@ -76,10 +76,8 @@ export function UserAccountMenu({ user, settingsHref }: Props) {
     setOpen(false);
     try {
       await logoutAction();
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Could not sign out.";
-      toast.push({ variant: "error", message });
+    } catch {
+      /* redirect() throws */
     }
   }
 

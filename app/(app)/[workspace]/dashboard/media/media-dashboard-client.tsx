@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -32,6 +33,8 @@ interface Props {
 
 export function MediaDashboardClient({ workspaceDomain, stats, recentAssets }: Props) {
   const router = useRouter();
+
+  console.log('recentAssets: ', recentAssets)
 
   const quickStats = useMemo(() => {
     if (!stats) return [];
@@ -116,9 +119,9 @@ export function MediaDashboardClient({ workspaceDomain, stats, recentAssets }: P
               className="cursor-pointer rounded-xl border bg-card ring-0 shadow-sm overflow-hidden"
               onClick={() => router.push(`/${workspaceDomain}/dashboard/media/asset/${asset.nanoid}`)}
             >
-              <div className="aspect-square bg-muted/30 flex items-center justify-center">
+              <div className="aspect-square bg-muted/30 flex items-center justify-center relative">
                 {asset.thumbnail ? (
-                  <img src={asset.thumbnail} alt={asset.name} className="w-full h-full object-cover" />
+                  <Image src={asset.thumbnail} alt={asset.name} fill unoptimized className="object-cover" />
                 ) : (
                   <FileText className="h-8 w-8 text-muted-foreground" />
                 )}

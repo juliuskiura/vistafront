@@ -1,14 +1,8 @@
 import { requireWorkspace } from "@/lib/auth/server";
-import { listAccounts } from "@/lib/api";
-import type { SocialAccount } from "@/lib/api/types";
+import { listAccounts, listPlatforms } from "@/lib/api";
+import type { SocialAccount, SocialMediaPlatform } from "@/lib/api/types";
 import { ChannelsClient } from "./channels-client";
 
-/**
- * Connected Channels (Server Component).
- *
- * Lists every social account and its managed pages/channels.
- * The connect modal, sync, and revoke flows are client-side interactive.
- */
 export default async function ChannelsPage({
   params,
 }: {
@@ -18,7 +12,10 @@ export default async function ChannelsPage({
   const active = await requireWorkspace(slug);
   const ws = active.domain;
 
-  const accounts = await listAccounts(ws).catch((): SocialAccount[] => []);
+  const [accounts, platforms] = await Promise.all([
+    listAccounts(ws).catch((): SocialAccount[] => []),
+    listPlatforms({ all: true, workspace: ws }).catch((): SocialMediaPlatform[] => []),
+  ]);
 
   const channels = accounts.flatMap((account) => account.managed_pages ?? []);
 
@@ -28,5 +25,5 @@ export default async function ChannelsPage({
     return map;
   }, {});
 
-  return <ChannelsClient channels={channels} workspaceDomain={ws} pageToAccountNanoid={pageToAccountNanoid} />;
+  return <ChannelsClient channels={channels} workspaceDomain={ws} pageToAccountNanoid={pageToAccountNanoid} platforms={platforms} />;
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useMemo, useState, useCallback, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -225,9 +226,9 @@ export function BrowserClient({
               className="cursor-pointer rounded-xl border bg-card ring-0 shadow-sm overflow-hidden"
               onClick={() => router.push(`/${workspaceDomain}/dashboard/media/asset/${asset.nanoid}`)}
             >
-              <div className="aspect-square bg-muted/30 flex items-center justify-center">
+              <div className="aspect-square bg-muted/30 flex items-center justify-center relative">
                 {asset.thumbnail ? (
-                  <img src={asset.thumbnail} alt={asset.name} className="w-full h-full object-cover" />
+                  <Image src={asset.thumbnail} alt={asset.name} fill unoptimized className="object-cover" />
                 ) : (
                   <FileTextIcon className="h-8 w-8 text-muted-foreground" />
                 )}
@@ -247,9 +248,9 @@ export function BrowserClient({
               className="flex items-center gap-4 p-3 hover:bg-muted/30 cursor-pointer"
               onClick={() => router.push(`/${workspaceDomain}/dashboard/media/asset/${asset.nanoid}`)}
             >
-              <div className="w-10 h-10 rounded-lg bg-muted/50 flex items-center justify-center flex-shrink-0">
+              <div className="w-10 h-10 rounded-lg bg-muted/50 flex items-center justify-center flex-shrink-0 relative">
                 {asset.thumbnail ? (
-                  <img src={asset.thumbnail} alt={asset.name} className="w-full h-full object-cover rounded-lg" />
+                  <Image src={asset.thumbnail} alt={asset.name} fill className="object-cover rounded-lg" />
                 ) : (
                   <FileTextIcon className="h-5 w-5 text-muted-foreground" />
                 )}

@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Zap,
+  ImagePlus,
 } from "lucide-react";
 
 import type {
@@ -19,20 +20,26 @@ import type {
   ManagedChannel,
   ScheduledPost,
   SocialMediaPlatform,
+  Asset,
 } from "@/lib/api/types";
 import {
   createPostAction,
   updatePostAction,
   createCampaignAction,
+  verifyPageAction,
 } from "../actions";
 import {
   initialCampaignState,
   type CampaignActionState,
 } from "../action-state";
 import { PlatformGlyph, getPlatformStyle } from "@/components/platform-icon";
-import { SocialIcon, hasSocialIcon } from "@/components/social-icons";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+
+import SocialMediaTextEditor from "@/components/socialmanager/social-media-text-editor";
+import PlatformComposeCard from "@/components/socialmanager/platform-compose-card";
+import VideoDirectUploader from "@/components/socialmanager/video-direct-uploader";
+import ConnectAccountModal from "@/components/socialmanager/connect-account-modal";
+import AssetPicker from "@/components/media/asset-picker";
 
 interface Props {
   pages: ManagedChannel[];
@@ -63,6 +70,11 @@ export function ComposeClient({
     return [];
   });
   const [content, setContent] = useState(editPost?.content ?? "");
+  const [mediaUrls, setMediaUrls] = useState<string[]>([]);
+  const [mediaAssetNanoids, setMediaAssetNanoids] = useState<string[]>([]);
+  const [baseAssets, setBaseAssets] = useState<Asset[]>([]);
+  const [pickerSlug, setPickerSlug] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [scheduledAt, setScheduledAt] = useState(
     editPost?.scheduled_at ?? new Date(Date.now() + 86400000).toISOString(),
   );
@@ -83,7 +95,7 @@ export function ComposeClient({
     for (const r of editPost.recipients) {
       init[r.managed_page] = {
         content: r.content ?? editPost.content,
-        format: r.format ?? "post",
+        format: "post",
         linkUrl: r.link_url ?? "",
         firstComment: "",
       };
@@ -97,7 +109,6 @@ export function ComposeClient({
   const [newCampaignDesc, setNewCampaignDesc] = useState("");
   const [campaignAction, setCampaignAction] = useState<CampaignActionState>(initialCampaignState);
   const [campaigns, setCampaigns] = useState<Campaign[]>(initialCampaigns);
-  const [hashtagInputByPage, setHashtagInputByPage] = useState<Record<string, string>>({});
   const [hashtagsByPage, setHashtagsByPage] = useState<Record<string, string[]>>(() => {
     if (!editPost) return {};
     const init: Record<string, string[]> = {};
@@ -115,6 +126,9 @@ export function ComposeClient({
     return init;
   });
   const [firstCommentByPage, setFirstCommentByPage] = useState<Record<string, string>>({});
+  const [connectErrors, setConnectErrors] = useState<Record<string, string>>({});
+  const [connectOpen, setConnectOpen] = useState(false);
+  const [publishError, setPublishError] = useState("");
 
   const pageToPlatformSlug = useMemo(() => {
     const map: Record<string, string> = {};
@@ -131,6 +145,12 @@ export function ComposeClient({
   const platformBySlug = useMemo(() => {
     const map: Record<string, SocialMediaPlatform> = {};
     for (const p of platforms) map[p.slug] = p;
+    return map;
+  }, [platforms]);
+
+  const platformByNanoid = useMemo(() => {
+    const map: Record<string, SocialMediaPlatform> = {};
+    for (const p of platforms) map[p.nanoid] = p;
     return map;
   }, [platforms]);
 
@@ -173,11 +193,41 @@ export function ComposeClient({
   const togglePage = useCallback(
     (nanoid: string) => {
       setSelectedPageIds((prev) => {
-        const next = prev.includes(nanoid) ? prev.filter((id) => id !== nanoid) : [...prev, nanoid];
-        return next;
+        const isSelected = prev.includes(nanoid);
+        if (isSelected) {
+          setConnectErrors((ce) => {
+            if (!(nanoid in ce)) return ce;
+            const next = { ...ce };
+            delete next[nanoid];
+            return next;
+          });
+          return prev.filter((id) => id !== nanoid);
+        }
+        return [...prev, nanoid];
       });
     },
     [],
+  );
+
+  const verifyAndFlag = useCallback(
+    async (page: ManagedChannel) => {
+      try {
+        const res = await verifyPageAction(page.nanoid, ws);
+        if (res.ok) {
+          setConnectErrors((prev) => {
+            if (!(page.nanoid in prev)) return prev;
+            const next = { ...prev };
+            delete next[page.nanoid];
+            return next;
+          });
+        } else {
+          setConnectErrors((prev) => ({ ...prev, [page.nanoid]: res.error || "Cannot connect to the account" }));
+        }
+      } catch {
+        setConnectErrors((prev) => ({ ...prev, [page.nanoid]: "Cannot verify the account connection" }));
+      }
+    },
+    [ws],
   );
 
   const canProceed = selectedPages.length > 0 && content.trim().length > 0;
@@ -186,7 +236,6 @@ export function ComposeClient({
     if (!canProceed) return;
     const initial: typeof variants = {};
     for (const page of selectedPages) {
-      const slug = getPagePlatformSlug(page);
       initial[page.nanoid] = {
         content,
         format: "post",
@@ -196,13 +245,14 @@ export function ComposeClient({
     }
     setVariants(initial);
     setStep(2);
-  }, [canProceed, content, selectedPages, getPagePlatformSlug]);
+  }, [canProceed, content, selectedPages]);
+
+  const handleChannelConnected = useCallback(() => {
+    setConnectOpen(false);
+  }, []);
 
   const buildFormData = useCallback(
     (statusOverride?: string) => {
-      const pageMap: Record<string, ManagedChannel> = {};
-      for (const p of selectedPages) pageMap[p.nanoid] = p;
-
       const recipients = selectedPages.map((page) => {
         const slug = getPagePlatformSlug(page);
         const v = variants[page.nanoid];
@@ -232,6 +282,8 @@ export function ComposeClient({
 
       const formData = new FormData();
       formData.append("content", content);
+      if (mediaUrls.length > 0) formData.append("media_urls", JSON.stringify(mediaUrls));
+      if (mediaAssetNanoids.length > 0) formData.append("media_assets", JSON.stringify(mediaAssetNanoids));
       if (campaignId) formData.append("campaign", campaignId);
 
       if (publishNow) {
@@ -250,6 +302,8 @@ export function ComposeClient({
     [
       selectedPages,
       content,
+      mediaUrls,
+      mediaAssetNanoids,
       variants,
       hashtagsByPage,
       firstCommentByPage,
@@ -265,8 +319,20 @@ export function ComposeClient({
     submittingRef.current = true;
     setStatus("submitting");
     setErrorMsg("");
+    setPublishError("");
 
     try {
+      if (!publishNow && Object.values(connectErrors).some((msg) => msg)) {
+        const tokenIssues = selectedPages
+          .filter((p) => connectErrors[p.nanoid])
+          .map((p) => p.page_name);
+        setPublishError(
+          `Cannot schedule: ${tokenIssues.join(", ")} ${tokenIssues.length === 1 ? "has" : "have"} a connection problem. Reconnect the account in Channels first.`,
+        );
+        setStatus("error");
+        return;
+      }
+
       let result;
       const formData = buildFormData(publishNow ? undefined : "scheduled");
 
@@ -280,6 +346,8 @@ export function ComposeClient({
           first_comments: formData.has("first_comments_json")
             ? JSON.parse(formData.get("first_comments_json") as string)
             : undefined,
+          media_urls: mediaUrls.length > 0 ? mediaUrls : undefined,
+          media_assets: mediaAssetNanoids.length > 0 ? mediaAssetNanoids : undefined,
         }, ws);
       } else {
         result = await createPostAction({ status: "idle" }, formData, ws);
@@ -298,7 +366,7 @@ export function ComposeClient({
     } finally {
       submittingRef.current = false;
     }
-  }, [buildFormData, editPost, content, campaignId, publishNow, scheduledAt, ws, router]);
+  }, [buildFormData, editPost, content, campaignId, publishNow, scheduledAt, mediaUrls, mediaAssetNanoids, connectErrors, selectedPages, ws, router]);
 
   const handleCreateCampaign = useCallback(async () => {
     if (!newCampaignName.trim()) return;
@@ -336,7 +404,6 @@ export function ComposeClient({
       if (current.includes(clean)) return prev;
       return { ...prev, [pageNanoid]: [...current, clean] };
     });
-    setHashtagInputByPage((prev) => ({ ...prev, [pageNanoid]: "" }));
   }, []);
 
   const removeHashtag = useCallback((pageNanoid: string, idx: number) => {
@@ -358,6 +425,16 @@ export function ComposeClient({
     },
     [scheduledAt],
   );
+
+  const handleAttachRendition = useCallback((asset: { nanoid: string; original_file: string }) => {
+    setMediaAssetNanoids((prev) => (prev.includes(asset.nanoid) ? prev : [...prev, asset.nanoid]));
+    setMediaUrls((prev) => (prev.includes(asset.original_file) ? prev : [...prev, asset.original_file]));
+    setBaseAssets((prev) =>
+      prev.some((a) => a.nanoid === asset.nanoid)
+        ? prev
+        : [...prev, { ...(prev[0] ?? {}), ...asset } as Asset],
+    );
+  }, []);
 
   const renderDevicePreview = () => {
     const firstSlug = selectedSlugs[0];
@@ -400,6 +477,11 @@ export function ComposeClient({
               </div>
             </div>
           </div>
+          {mediaUrls.length > 0 && (
+            <div className="rounded-xl overflow-hidden aspect-square bg-slate-100 border border-slate-200">
+              <img src={mediaUrls[0]} alt="" className="w-full h-full object-cover" />
+            </div>
+          )}
           <p className="text-[11px] leading-relaxed text-slate-800">{previewContent || "Your post preview..."}</p>
           {tags.length > 0 && (
             <p className="text-[10px] font-medium text-indigo-600">{tags.join(" ")}</p>
@@ -462,9 +544,21 @@ export function ComposeClient({
             {step === 1 && (
               <>
                 <div>
-                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-700">
-                    Where do you want to publish?
-                  </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                      Where do you want to publish?
+                    </label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setConnectOpen(true)}
+                      className="!px-2 !py-1 !text-[11px] !rounded-lg gap-1.5"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Connect Channel
+                    </Button>
+                  </div>
                   {Object.keys(pagesByPlatform).length === 0 && (
                     <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
                       <span>No connected channels yet. Connect one to start cross-posting.</span>
@@ -486,40 +580,53 @@ export function ComposeClient({
                           <div className="divide-y divide-slate-100">
                             {slugPages.map((page) => {
                               const checked = selectedPageIds.includes(page.nanoid);
+                              const pageError = connectErrors[page.nanoid];
                               return (
-                                <button
-                                  key={page.nanoid}
-                                  type="button"
-                                  onClick={() => togglePage(page.nanoid)}
-                                  className={`flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors hover:bg-slate-50 ${checked ? "bg-indigo-50/50" : ""}`}
-                                >
-                                  <span
-                                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${
-                                      checked
-                                        ? "border-indigo-600 bg-indigo-600 text-white"
-                                        : "border-slate-300 bg-white"
-                                    }`}
+                                <div key={page.nanoid} className="flex flex-col">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      togglePage(page.nanoid);
+                                      if (!checked) {
+                                        void verifyAndFlag(page);
+                                      }
+                                    }}
+                                    className={`flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors hover:bg-slate-50 ${checked ? "bg-indigo-50/50" : ""}`}
                                   >
-                                    {checked && <CheckCircle2 className="h-3.5 w-3.5" />}
-                                  </span>
-                                  {page.profile_picture_url ? (
-                                    <img
-                                      src={page.profile_picture_url}
-                                      alt=""
-                                      className="h-7 w-7 shrink-0 rounded-full object-cover bg-slate-100"
-                                    />
-                                  ) : (
-                                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-amber-500 to-pink-500 text-[10px] font-bold text-white">
-                                      {page.page_name.slice(0, 2).toUpperCase()}
+                                    <span
+                                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${
+                                        checked
+                                          ? "border-indigo-600 bg-indigo-600 text-white"
+                                          : "border-slate-300 bg-white"
+                                      }`}
+                                    >
+                                      {checked && <CheckCircle2 className="h-3.5 w-3.5" />}
                                     </span>
-                                  )}
-                                  <div className="min-w-0">
-                                    <p className="truncate text-xs font-medium text-slate-800">{page.page_name}</p>
-                                    {page.username && (
-                                      <p className="truncate text-[10px] text-slate-400">@{page.username}</p>
+                                    {page.profile_picture_url ? (
+                                      <img
+                                        src={page.profile_picture_url}
+                                        alt=""
+                                        className="h-7 w-7 shrink-0 rounded-full object-cover bg-slate-100"
+                                      />
+                                    ) : (
+                                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-amber-500 to-pink-500 text-[10px] font-bold text-white">
+                                        {page.page_name.slice(0, 2).toUpperCase()}
+                                      </span>
                                     )}
-                                  </div>
-                                </button>
+                                    <div className="min-w-0">
+                                      <p className="truncate text-xs font-medium text-slate-800">{page.page_name}</p>
+                                      {page.username && (
+                                        <p className="truncate text-[10px] text-slate-400">@{page.username}</p>
+                                      )}
+                                    </div>
+                                  </button>
+                                  {pageError && (
+                                    <div className="px-3 py-2 bg-amber-50 border-t border-amber-200 text-[11px] text-amber-800 flex items-start gap-1.5">
+                                      <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                                      <span>{pageError}</span>
+                                    </div>
+                                  )}
+                                </div>
                               );
                             })}
                           </div>
@@ -533,12 +640,19 @@ export function ComposeClient({
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
                     Base Post Message
                   </label>
-                  <textarea
+                  <SocialMediaTextEditor
                     value={content}
-                    onChange={(e) => setContent(e.target.value)}
+                    onChange={setContent}
                     placeholder="Write master caption here... (This will be adapted per network below)"
-                    rows={5}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    showCharCount={false}
+                    mediaUrls={mediaUrls}
+                    onRemoveMedia={(i) => {
+                      setMediaUrls((prev) => prev.filter((_, idx) => idx !== i));
+                      setMediaAssetNanoids((prev) => prev.filter((_, idx) => idx !== i));
+                      setBaseAssets((prev) => prev.filter((_, idx) => idx !== i));
+                    }}
+                    onAddMedia={() => { setPickerSlug(null); setPickerOpen(true); }}
+                    minRows={4}
                   />
                   <div className="flex items-center justify-between text-xs text-slate-500">
                     <span>{content.length} characters</span>
@@ -547,6 +661,12 @@ export function ComposeClient({
                     )}
                   </div>
                 </div>
+
+                <VideoDirectUploader
+                  caption={content}
+                  className="mt-3"
+                  workspaceDomain={ws}
+                />
               </>
             )}
 
@@ -558,139 +678,56 @@ export function ComposeClient({
                 <div className="space-y-4">
                   {selectedPages.map((page) => {
                     const slug = getPagePlatformSlug(page);
+                    const platform = platformByNanoid[slug];
+                    if (!platform) return null;
                     const v = variants[page.nanoid] ?? { content, format: "post", linkUrl: "", firstComment: "" };
-                    const style = getPlatformStyle(slug);
                     const tags = hashtagsByPage[page.nanoid] ?? [];
-                    const input = hashtagInputByPage[page.nanoid] ?? "";
-                    const platform = platformBySlug[slug];
-                    const charLimit = platform ? undefined : undefined;
+                    const showLinkPost = slug === "facebook" && v.format === "link_post";
 
                     return (
-                      <div key={page.nanoid} className="rounded-xl border border-slate-200 bg-white p-4">
-                        <div className="mb-3 flex items-center gap-3">
-                          <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${style.bg} ${style.border}`}>
-                            <PlatformGlyph platform={slug} size="md" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-slate-900">{page.page_name}</p>
-                            <p className="text-xs text-slate-500">{style.label}</p>
-                          </div>
-                          {charLimit && (
-                            <span className="ml-auto text-[10px] text-slate-400">{(v.content || "").length}/{charLimit}</span>
-                          )}
-                        </div>
-                        <div className="space-y-3">
-                          <textarea
-                            value={v.content}
-                            onChange={(e) =>
-                              setVariants((prev) => ({
-                                ...prev,
-                                [page.nanoid]: { ...v, content: e.target.value },
-                              }))
-                            }
-                            rows={3}
-                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                          />
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <label className="mb-1 block text-xs font-medium text-slate-700">Format</label>
-                              <select
-                                value={v.format}
-                                onChange={(e) =>
-                                  setVariants((prev) => ({
-                                    ...prev,
-                                    [page.nanoid]: { ...v, format: e.target.value },
-                                  }))
-                                }
-                                className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                              >
-                                <option value="post">Post</option>
-                                <option value="image">Image</option>
-                                <option value="video">Video</option>
-                                <option value="link_post">Link Post</option>
-                              </select>
-                            </div>
-                            {v.format === "link_post" && (
-                              <div>
-                                <label className="mb-1 block text-xs font-medium text-slate-700">Link URL</label>
-                                <input
-                                  type="url"
-                                  value={v.linkUrl}
-                                  onChange={(e) =>
-                                    setVariants((prev) => ({
-                                      ...prev,
-                                      [page.nanoid]: { ...v, linkUrl: e.target.value },
-                                    }))
-                                  }
-                                  placeholder="https://..."
-                                  className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                                />
-                              </div>
-                            )}
-                          </div>
-                          <div>
-                            <label className="mb-1 block text-xs font-medium text-slate-700">First Comment</label>
-                            <input
-                              type="text"
-                              value={v.firstComment}
-                              onChange={(e) =>
-                                setVariants((prev) => ({
-                                  ...prev,
-                                  [page.nanoid]: { ...v, firstComment: e.target.value },
-                                }))
-                              }
-                              placeholder="Optional first comment"
-                              className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                            />
-                          </div>
-                          <div>
-                            <label className="mb-1 block text-xs font-medium text-slate-700">Hashtags</label>
-                            <div className="flex flex-wrap gap-1.5 mb-1.5">
-                              {tags.map((tag, idx) => (
-                                <span
-                                  key={idx}
-                                  className="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-700"
-                                >
-                                  {tag}
-                                  <button
-                                    type="button"
-                                    onClick={() => removeHashtag(page.nanoid, idx)}
-                                    className="ml-0.5 text-indigo-400 hover:text-indigo-700"
-                                  >
-                                    &times;
-                                  </button>
-                                </span>
-                              ))}
-                            </div>
-                            <div className="flex gap-2">
-                              <input
-                                type="text"
-                                value={input}
-                                onChange={(e) =>
-                                  setHashtagInputByPage((prev) => ({ ...prev, [page.nanoid]: e.target.value }))
-                                }
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter" && input.trim()) {
-                                    e.preventDefault();
-                                    addHashtag(page.nanoid, input.trim());
-                                  }
-                                }}
-                                placeholder="#hashtag"
-                                className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (input.trim()) addHashtag(page.nanoid, input.trim());
-                                }}
-                                className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
-                              >
-                                Add
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                      <PlatformComposeCard
+                        key={page.nanoid}
+                        slug={slug}
+                        platform={platform}
+                        channel={page}
+                        label={getPlatformStyle(slug).label}
+                        content={getActiveContent(page.nanoid)}
+                        onContentChange={(text) => {
+                          setVariants((prev) => ({
+                            ...prev,
+                            [page.nanoid]: { ...v, content: text },
+                          }));
+                        }}
+                        mediaUrls={mediaUrls}
+                        onAddMedia={() => { setPickerSlug(slug); setPickerOpen(true); }}
+                        onRemoveMedia={(i) => setMediaUrls((prev) => prev.filter((_, idx) => idx !== i))}
+                        hashtags={tags}
+                        onAddHashtag={(t) => addHashtag(page.nanoid, t)}
+                        onRemoveHashtag={(i) => removeHashtag(page.nanoid, i)}
+                        format={v.format}
+                        onFormatChange={(format) => {
+                          setVariants((prev) => ({
+                            ...prev,
+                            [page.nanoid]: { ...v, format },
+                          }));
+                        }}
+                        linkUrl={v.linkUrl}
+                        onLinkUrlChange={(linkUrl) => {
+                          setVariants((prev) => ({
+                            ...prev,
+                            [page.nanoid]: { ...v, linkUrl },
+                          }));
+                        }}
+                        showLinkPost={showLinkPost}
+                        firstComment={firstCommentByPage[page.nanoid] ?? ""}
+                        onFirstCommentChange={(val) => {
+                          setFirstCommentByPage((prev) => ({ ...prev, [page.nanoid]: val }));
+                        }}
+                        mediaAssets={baseAssets}
+                        platformSlug={slug}
+                        onAttachRendition={handleAttachRendition}
+                        workspaceDomain={ws}
+                      />
                     );
                   })}
                 </div>
@@ -752,6 +789,12 @@ export function ComposeClient({
                       Publish time: <span className="font-semibold text-slate-800">Now</span>
                     </p>
                   )}
+                  {publishError && (
+                    <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-700">
+                      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                      <span>{publishError}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -770,14 +813,14 @@ export function ComposeClient({
                         <option key={c.nanoid} value={c.nanoid}>{c.name}</option>
                       ))}
                     </select>
-                    <button
+                    <Button
                       type="button"
                       onClick={() => setCampaignModalOpen(true)}
                       className="inline-flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-100"
                     >
                       <Plus className="h-3.5 w-3.5" />
                       New
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </>
@@ -873,7 +916,7 @@ export function ComposeClient({
                   className="rounded-xl bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-500 px-5 py-2.5 text-white shadow-lg shadow-indigo-500/25 hover:from-indigo-600 hover:to-pink-600"
                 >
                   {status === "submitting"
-                    ? "Submitting\u2026"
+                    ? "Submitting…"
                     : editPost
                       ? "Update Post"
                       : `Submit across ${selectedSlugs.length} Platform${selectedSlugs.length !== 1 ? "s" : ""}`}
@@ -937,6 +980,34 @@ export function ComposeClient({
             </div>
           </div>
         )}
+
+        <ConnectAccountModal
+          isOpen={connectOpen}
+          onClose={() => setConnectOpen(false)}
+          onConnected={handleChannelConnected}
+          workspaceDomain={ws}
+          platforms={platforms}
+        />
+
+        <AssetPicker
+          mode="multiple"
+          open={pickerOpen}
+          onOpenChange={setPickerOpen}
+          onSelect={(assets) => {
+            const incoming = Array.isArray(assets) ? assets : [assets];
+            const urls = incoming.map((a) => a.original_file);
+            const nanoids = incoming.map((a) => a.nanoid);
+            if (pickerSlug) {
+              // Platform-specific media: handled by PlatformComposeCard's internal state
+            } else {
+              setMediaUrls((prev) => [...prev, ...urls]);
+              setMediaAssetNanoids((prev) => [...prev, ...nanoids]);
+              setBaseAssets((prev) => [...prev, ...incoming]);
+            }
+          }}
+          title="Attach Media Assets"
+          workspaceDomain={ws}
+        />
 
         {status === "success" && (
           <div className="fixed bottom-4 right-4 z-50 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 shadow-lg">

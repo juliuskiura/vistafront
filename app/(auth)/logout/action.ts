@@ -22,6 +22,8 @@ export async function logoutAction(): Promise<void> {
   const accessToken = await getAccessToken();
   const refreshToken = await getRefreshToken();
 
+  await clearAuthCookies();
+
   if (refreshToken) {
     try {
       await fetch(`${BACKEND_URL}/apis/auth/jwt/logout/`, {
@@ -38,12 +40,9 @@ export async function logoutAction(): Promise<void> {
         cache: "no-store",
       });
     } catch (error) {
-      // Even if the backend is unreachable, we still want to clear local
-      // cookies and bounce the user to the login page.
       console.error("Logout error:", error);
     }
   }
 
-  await clearAuthCookies();
   redirect("/login");
 }

@@ -6,15 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SocialIcon, hasSocialIcon } from "@/components/social-icons";
 import { getPlatformStyle } from "@/components/platform-icon";
-import { ConnectAccountModal } from "./connect-account-modal";
+import ConnectAccountModal from "@/components/socialmanager/connect-account-modal";
 import { syncAccountAction, revokeAccountAction } from "../actions";
-import type { ManagedChannel } from "@/lib/api/types";
+import type { ManagedChannel, SocialMediaPlatform } from "@/lib/api/types";
 import { ShieldCheck, AlertCircle, Lock, Unlink, RefreshCw, ChevronRight, Plus } from "lucide-react";
 
 interface Props {
   channels: ManagedChannel[];
   workspaceDomain: string;
   pageToAccountNanoid: Record<string, string>;
+  platforms: SocialMediaPlatform[];
 }
 
 function getTokenStatus(expiresAt: string | null): { status: "active" | "expiring_soon" | "expired"; days: number | null } {
@@ -38,7 +39,7 @@ function toLocaleDateTime(value: string): string {
   });
 }
 
-export function ChannelsClient({ channels, workspaceDomain, pageToAccountNanoid }: Props) {
+export function ChannelsClient({ channels, workspaceDomain, pageToAccountNanoid, platforms }: Props) {
   const ws = workspaceDomain.toLowerCase();
   const [connectOpen, setConnectOpen] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
@@ -238,6 +239,7 @@ export function ChannelsClient({ channels, workspaceDomain, pageToAccountNanoid 
           setConnectOpen(false);
           router.refresh();
         }}
+        platforms={platforms}
       />
     </div>
   );

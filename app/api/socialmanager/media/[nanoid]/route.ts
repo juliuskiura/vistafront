@@ -1,5 +1,4 @@
 import { cookies } from "next/headers";
-import { serverFetch } from "@/lib/api/server-fetch";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:8000";
 
@@ -21,10 +20,38 @@ export async function GET(request: Request) {
   }
 
   try {
-    const response = await serverFetch<ArrayBuffer>(
-      `/apis/socialmanager/posts/${encodeURIComponent(nanoid)}/media/`,
-      { workspace },
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get("access");
+    const refreshToken = cookieStore.get("refresh");
+
+    const headers: HeadersInit = {};
+    const cookieHeader = [
+      accessToken ? `access=${accessToken.value}` : null,
+      refreshToken ? `refresh=${refreshToken.value}` : null,
+    ]
+      .filter(Boolean)
+      .join("; ");
+    if (cookieHeader) headers.Cookie = cookieHeader;
+    headers["X-Workspace"] = workspace;
+
+    const response = await fetch(
+      `${BACKEND_URL}/apis/socialmanager/posts/${encodeURIComponent(nanoid)}/media/`,
+      {
+        headers,
+        cache: "no-store",
+      }
     );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return new Response(
+        JSON.stringify({ error: `Media fetch failed: ${response.status}`, details: errorText }),
+        {
+          status: response.status,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }
 
     const contentType = response.headers.get("Content-Type") || "image/jpeg";
     const buffer = await response.arrayBuffer();
