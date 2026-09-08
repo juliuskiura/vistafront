@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { Play } from "lucide-react";
 import { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { AssetSelectionToolbar } from "@/components/media/asset-selection-toolbar";
@@ -72,6 +73,13 @@ export function TrashClient({ workspaceDomain, assets }: Props) {
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-muted-foreground capitalize">
                     {asset.asset_type}
+                  </div>
+                )}
+                {asset.asset_type === "video" && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                    <div className="flex size-10 items-center justify-center rounded-full bg-black/50 backdrop-blur-sm">
+                      <Play className="size-5 text-white fill-white ml-0.5" />
+                    </div>
                   </div>
                 )}
                 <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/60 to-transparent">

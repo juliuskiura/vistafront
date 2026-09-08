@@ -69,13 +69,18 @@ export default function SocialMediaTextEditor({
   firstComment,
   onFirstCommentChange,
   onFirstCommentAi,
+  mediaAssets = [],
 }: SocialMediaTextEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const selectionRef = useRef<{ start: number; end: number }>({ start: value.length, end: value.length });
   const [aiOpen, setAiOpen] = useState(false);
 
   const overLimit = charLimit != null && value.length > charLimit;
-  const canAddMore = !maxMedia || mediaUrls.length < maxMedia;
+  const mediaItems = (mediaAssets && mediaAssets.length > 0)
+    ? mediaAssets.map((a) => ({ src: a.thumbnail || a.original_file, alt: a.name, key: a.nanoid }))
+    : mediaUrls.map((url, i) => ({ src: url, alt: "", key: `url-${i}` }));
+  const mediaItemCount = mediaItems.length;
+  const canAddMore = !maxMedia || mediaItemCount < maxMedia;
   const showFirstComment = firstComment !== undefined;
 
   const resize = useCallback(() => {
@@ -145,14 +150,14 @@ export default function SocialMediaTextEditor({
         />
       </div>
 
-      {(mediaUrls.length > 0 || (onAddMedia && canAddMore)) && (
+      {(mediaItemCount > 0 || (onAddMedia && canAddMore)) && (
         <div className="flex flex-wrap gap-2 px-4 pb-3">
-          {mediaUrls.map((url, i) => (
+          {mediaItems.map((item, i) => (
             <div
-              key={i}
+              key={item.key || i}
               className="group relative size-20 overflow-hidden rounded-xl border border-slate-200 bg-slate-100"
             >
-              <img src={url} alt="" className="h-full w-full object-cover" />
+              <img src={item.src} alt={item.alt} className="h-full w-full object-cover" />
               {onRemoveMedia && (
                 <button
                   type="button"

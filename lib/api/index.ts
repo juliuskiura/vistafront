@@ -194,6 +194,7 @@ export {
   getAssets,
   getCollections,
   getCollection,
+  getFilteredAssets,
   getFolder,
   getFolderTree,
   getFolders,

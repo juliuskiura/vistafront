@@ -9,7 +9,7 @@ import {
   Card,
   CardContent,
 } from "@/components/ui/card";
-import { Grid3x3, List, Search, Upload, FolderPlus } from "lucide-react";
+import { Grid3x3, List, Search, Upload, FolderPlus, Play } from "lucide-react";
 import type { Asset, PaginatedAssets, ViewMode, SortKey, SortDir } from "@/lib/api";
 import { AssetSelectionToolbar } from "@/components/media/asset-selection-toolbar";
 
@@ -54,7 +54,7 @@ export function BrowserClient({
   const clearSelection = useCallback(() => setSelected(new Set()), []);
 
   const assets = useMemo(() => initialAssets.results ?? [], [initialAssets]);
-
+  console.log('assets: ', assets);
   const updateSearchParams = useCallback(
     (updates: Record<string, string | undefined>) => {
       const params = new URLSearchParams(searchParams.toString());
@@ -268,6 +268,13 @@ export function BrowserClient({
                 ) : (
                   <FileTextIcon className="h-8 w-8 text-muted-foreground" />
                 )}
+                {asset.asset_type === "video" && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                    <div className="flex size-12 items-center justify-center rounded-full bg-black/50 backdrop-blur-sm">
+                      <Play className="size-6 text-white fill-white ml-0.5" />
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="p-3">
                 <p className="text-sm font-medium truncate">{asset.name}</p>
@@ -297,6 +304,11 @@ export function BrowserClient({
                   <Image src={asset.thumbnail} alt={asset.name} fill className="object-cover rounded-lg" />
                 ) : (
                   <FileTextIcon className="h-5 w-5 text-muted-foreground" />
+                )}
+                {asset.asset_type === "video" && (
+                  <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/30">
+                    <Play className="size-4 text-white fill-white ml-0.5" />
+                  </div>
                 )}
               </div>
               <div className="flex-1 min-w-0">

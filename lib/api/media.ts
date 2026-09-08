@@ -1,3 +1,22 @@
+/**
+ * Media Library API — the single allowed way to reach the Django backend.
+ *
+ * Rule (see AGENTS.md "Backend access rule"): every call to Django must go
+ * through the shared base in `lib/api/server-fetch.ts` — `serverFetch` for
+ * reads, `serverMutate` for writes. They forward httpOnly cookies,
+ * `X-Workspace` and CSRF, and refresh the JWT on 401/403.
+ *
+ *   - Server Components / Server Actions call these wrappers directly.
+ *   - Client Components call a Next Route Handler (`app/api/…/route.ts`)
+ *     that itself delegates to `serverFetch`/`serverMutate`.
+ *
+ * The ONLY two exceptions in this file are marked below:
+ *   - `createAsset` and `patchAssetMultipart` (multipart `FormData`, which
+ *     `serverFetch`/`serverMutate` — JSON-only — cannot carry) — the "media
+ *     upload" exception. They hand-roll `fetch` with cookie/CSRF headers.
+ * Everything else MUST use `serverFetch`/`serverMutate`; no bespoke
+ * `fetch` to a backend URL is allowed anywhere else in this module.
+ */
 import { serverFetch, serverMutate } from "./server-fetch";
 import { toQueryString } from "./query-string";
 import type {
@@ -102,6 +121,9 @@ export async function createAsset(
   form: FormData,
   workspace: string,
 ): Promise<Asset> {
+  // EXCEPTION: media upload — multipart FormData can't go through the
+  // JSON-only `serverFetch`/`serverMutate` base, so it hand-rolls the POST
+  // with cookie/CSRF headers. Everything else in this file uses the base.
   const cookieStore = await (await import("next/headers")).cookies();
   const accessToken = cookieStore.get("access");
   const refreshToken = cookieStore.get("refresh");
@@ -260,6 +282,9 @@ export async function patchAssetMultipart(
   data: FormData,
   workspace: string,
 ): Promise<Asset> {
+  // EXCEPTION: media upload — multipart FormData can't go through the
+  // JSON-only `serverFetch`/`serverMutate` base, so it hand-rolls the PATCH
+  // with cookie/CSRF headers. Everything else in this file uses the base.
   const cookieStore = await (await import("next/headers")).cookies();
   const accessToken = cookieStore.get("access");
   const refreshToken = cookieStore.get("refresh");
@@ -380,6 +405,45 @@ export async function searchAssets(
     searchParams.set("favorite", String(filters.favorite));
   if (filters.archived !== null && filters.archived !== undefined)
     searchParams.set("archived", String(filters.archived));
+
+  return serverFetch<PaginatedAssets>(
+    `/apis/media/search/${searchParams.toString() ? `?${searchParams.toString()}` : ""}`,
+    wsOpts(workspace),
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Filtered Assets (uses search endpoint for filtering support)
+ * ────────────────────────────────────────────────────────────────────── */
+
+export async function getFilteredAssets(
+  opts: {
+    params?: Partial<SearchFilters>;
+    page?: number;
+    page_size?: number;
+    workspace: string;
+  },
+): Promise<PaginatedAssets> {
+  const { workspace, params = {}, page = 1, page_size = 24 } = opts;
+  const searchParams = new URLSearchParams();
+  searchParams.set("page", String(page));
+  searchParams.set("page_size", String(page_size));
+  searchParams.set("text", ""); // empty text to use search endpoint without filtering
+  if ((params as SearchFilters).asset_type) searchParams.set("asset_type", String((params as SearchFilters).asset_type));
+  if ((params as SearchFilters).tags?.length) searchParams.set("tags", (params as SearchFilters).tags!.join(","));
+  if ((params as SearchFilters).folder) searchParams.set("folder", String((params as SearchFilters).folder));
+  if ((params as SearchFilters).collection) searchParams.set("collection", String((params as SearchFilters).collection));
+  if ((params as SearchFilters).date_from) searchParams.set("date_from", String((params as SearchFilters).date_from));
+  if ((params as SearchFilters).date_to) searchParams.set("date_to", String((params as SearchFilters).date_to));
+  if ((params as SearchFilters).uploader) searchParams.set("uploader", String((params as SearchFilters).uploader));
+  if ((params as SearchFilters).dominant_color) searchParams.set("dominant_color", String((params as SearchFilters).dominant_color));
+  const fav = (params as SearchFilters).favorite;
+  if (fav !== null && fav !== undefined) searchParams.set("favorite", String(fav));
+  const arch = (params as SearchFilters).archived;
+  if (arch !== null && arch !== undefined) searchParams.set("archived", String(arch));
+  if ((params as SearchFilters).width) searchParams.set("width", String((params as SearchFilters).width));
+  if ((params as SearchFilters).height) searchParams.set("height", String((params as SearchFilters).height));
+  if ((params as SearchFilters).orientation) searchParams.set("orientation", String((params as SearchFilters).orientation));
 
   return serverFetch<PaginatedAssets>(
     `/apis/media/search/${searchParams.toString() ? `?${searchParams.toString()}` : ""}`,

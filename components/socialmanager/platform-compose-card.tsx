@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "lucide-react";
 import { cn } from "@/lib/utils";
 import SocialMediaTextEditor from "./social-media-text-editor";
@@ -66,6 +66,11 @@ export default function PlatformComposeCard({
   const [formats, setFormats] = useState<Array<{ format: string; display_name: string }>>([]);
   const [charLimit, setCharLimit] = useState<number | null>(null);
   const [aiCommentOpen, setAiCommentOpen] = useState(false);
+  const onFormatChangeRef = useRef(onFormatChange);
+
+  useEffect(() => {
+    onFormatChangeRef.current = onFormatChange;
+  }, [onFormatChange]);
 
   useEffect(() => {
     let cancelled = false;
@@ -80,7 +85,7 @@ export default function PlatformComposeCard({
         setFormats(activeFormats.map((f) => ({ format: f.format, display_name: f.display_name })));
         setCharLimit(constraints[0]?.character_limit ?? null);
         if (activeFormats.length > 0 && !activeFormats.some((f) => f.format === format)) {
-          onFormatChange(activeFormats[0].format);
+          onFormatChangeRef.current(activeFormats[0].format);
         }
       } catch {
         // fallback to hardcoded formats
@@ -96,7 +101,7 @@ export default function PlatformComposeCard({
     return () => {
       cancelled = true;
     };
-  }, [platform.nanoid, slug, format, onFormatChange, workspaceDomain]);
+  }, [platform.nanoid, slug, format, workspaceDomain]);
 
   return (
     <div className="rounded-2xl border border-primary-300 bg-white p-6 space-y-4">

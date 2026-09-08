@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Image as ImageIcon,
   ArrowUpRight,
+  Play,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -157,6 +158,13 @@ export function MediaDashboardClient({ workspaceDomain, stats, recentAssets }: P
                     <Image src={asset.thumbnail} alt={asset.name} fill unoptimized className="object-cover" />
                   ) : (
                     <FileText className="h-8 w-8 text-muted-foreground" />
+                  )}
+                  {asset.asset_type === "video" && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                      <div className="flex size-10 items-center justify-center rounded-full bg-black/50 backdrop-blur-sm">
+                        <Play className="size-5 text-white fill-white ml-0.5" />
+                      </div>
+                    </div>
                   )}
                 </div>
                 <div className="p-3">

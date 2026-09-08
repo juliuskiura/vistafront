@@ -229,6 +229,32 @@ export async function serverFetch<T>(path: string): Promise<T> {
 | Live data on a long-lived page (background refetch, polling) | Server Component prefetch + `<HydrationBoundary>` + Client `useQuery` (see §5) |
 | Search/filter/pagination | Server Component with `searchParams` |
 
+### Backend access rule — everything goes through `serverFetch`/`serverMutate`
+
+The Django backend may **only** be reached through the shared base in
+`lib/api/server-fetch.ts` (`serverFetch` for reads, `serverMutate` for writes) —
+never with a raw `fetch("http://…/.env BACKEND_URL…/apis/…")` in application code.
+
+- **Server Components / Server Actions:** call `lib/api/<feature>.ts` wrappers,
+  which call `serverFetch`/`serverMutate` directly. This is the allowed path —
+  `serverFetch` already forwards httpOnly cookies + `X-Workspace` + CSRF and
+  refreshes the JWT on 401/403.
+- **Client Components (`"use client"`):** cannot call `serverFetch` (it is
+  `"use server"`). They must call a **Next Route Handler** (`app/api/…/route.ts`)
+  that delegates to `serverFetch`/`serverMutate` and forwards cookies +
+  `X-Workspace`. Never `fetch("/apis/…")` directly from a client component.
+- **Exceptions** (may bypass the base):
+  - **Media player / video playback** (`hooks/useMedia.ts`, `VideoStudio`) —
+    talks to Django directly with `NEXT_PUBLIC_BACKEND_URL` for streaming/
+    presigned-URL refresh.
+  - **Media upload** (`createAsset`, `patchAssetMultipart` in `lib/api/media.ts`)
+    — multipart `FormData` which `serverFetch`/`serverMutate` (JSON-only) cannot
+    carry; they hand-roll `fetch` with cookie/CSRF headers. Everything else in
+    the upload flow (presign, initiate, parts, commit, config) goes through the base.
+
+When adding a new `lib/api/<feature>.ts` function: use `serverFetch`/`serverMutate`
+or a Route Handler + `serverFetch` — never a bespoke `fetch` to the backend URL.
+
 ### Mutations
 
 | Scenario | Solution |
@@ -395,6 +421,17 @@ export function TodayBoard({ workspace }: { workspace: string }) {
 ```
 
 ### Rules
+
+
+### Modular Component Tree Generation
+* **Line Limit & Splitting:** Every single file must stay under a strict threshold of **300 lines of code**. If a component layout or logic expands past this, abstract the UI into local sub-components or extract logic into custom hooks/utilities.
+* **Domain Directory Integration:** Identify the existing parent category directory that matches the functionality (e.g., `components/marketing/`, `components/dashboard/header/`, `components/ui/`). Create a dedicated sub-directory inside it named after the specific feature so that components that achieve a common task can be grouped together.
+* **Next.js Architecture Patterns:** Organize the feature directory using a self-contained component tree:
+  * `index.ts/js` (The clean barrel file exporting only the primary component)
+  * `PrimaryComponent.tsx` (The main orchestrator file. Clearly mark as `'use client'` at the very top if it handles interactivity/state; keep it as a Server Component by default if it just renders layout and fetches data)
+  * `_components/` (A local subdirectory prefixed with an underscore containing isolated sub-components used *only* by this feature)
+* **Output Format:** Deliver the generated solution as distinctly labeled, separate code blocks displaying the exact target file path for every file in the tree.
+
 
 - **Always pair the client `useQuery` with a server-side `prefetchQuery` under `<HydrationBoundary>`.** First paint must contain real data — never show a spinner when the data was already known server-side.
 - **Include the workspace slug in the query key.** `["companies", workspace]`, `["today", workspace]`. Never use a bare `["companies"]` — it leaks data across workspaces in the cache.
