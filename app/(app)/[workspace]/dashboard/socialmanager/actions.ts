@@ -184,7 +184,7 @@ export async function createPostAction(
   _prev: PostActionState,
   formData: FormData,
   workspace: string,
-): Promise<PostActionState> {
+): Promise<PostActionState | { status: "success"; post: ScheduledPost }> {
   const parsed = PostSchema.safeParse({
     content: formData.get("content"),
     campaign: formData.get("campaign") || null,
@@ -217,13 +217,12 @@ export async function createPostAction(
         : undefined,
     };
 
-    await createPost(payload, workspace);
+    const post = await createPost(payload, workspace);
+    revalidatePath("/", "layout");
+    return { status: "success", post };
   } catch {
     return { status: "error", message: "Failed to create post." };
   }
-
-  revalidatePath("/", "layout");
-  return { status: "success", message: "Post created." };
 }
 
 export async function updatePostAction(

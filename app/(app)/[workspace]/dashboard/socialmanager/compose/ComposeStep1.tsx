@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
-import { CalendarIcon, Plus, Layers, CheckCircle2, AlertCircle } from "lucide-react";
+import { Plus, Layers, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ManagedChannel, SocialMediaPlatform, Hashtag, Asset, Campaign } from "@/lib/api/types";
 import { verifyPageAction } from "../actions";
@@ -25,10 +25,6 @@ interface ComposeStep1Props {
   setMediaAssetNanoids: React.Dispatch<React.SetStateAction<string[]>>;
   baseAssets: Asset[];
   setBaseAssets: React.Dispatch<React.SetStateAction<Asset[]>>;
-  scheduledAt: string;
-  setScheduledAt: React.Dispatch<React.SetStateAction<string>>;
-  publishNow: boolean;
-  setPublishNow: React.Dispatch<React.SetStateAction<boolean>>;
   campaignId: string | null;
   setCampaignId: React.Dispatch<React.SetStateAction<string | null>>;
   campaigns: Campaign[];
@@ -37,8 +33,6 @@ interface ComposeStep1Props {
   setConnectErrors: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   connectOpen: boolean;
   setConnectOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  publishError: string;
-  setPublishError: React.Dispatch<React.SetStateAction<string>>;
   campaignModalOpen: boolean;
   setCampaignModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
   newCampaignName: string;
@@ -70,10 +64,6 @@ export function ComposeStep1({
   setMediaAssetNanoids,
   baseAssets,
   setBaseAssets,
-  scheduledAt,
-  setScheduledAt,
-  publishNow,
-  setPublishNow,
   campaignId,
   setCampaignId,
   campaigns,
@@ -82,8 +72,6 @@ export function ComposeStep1({
   setConnectErrors,
   connectOpen,
   setConnectOpen,
-  publishError,
-  setPublishError,
   campaignModalOpen,
   setCampaignModalOpen,
   newCampaignName,
@@ -192,18 +180,6 @@ export function ComposeStep1({
     setMediaAssetNanoids((prev) => prev.filter((_, idx) => idx !== i));
     setBaseAssets((prev) => prev.filter((_, idx) => idx !== i));
   }, [setMediaUrls, setMediaAssetNanoids, setBaseAssets]);
-
-  const setDateTime = useCallback(
-    (d?: Date, t?: string) => {
-      const base = d ?? (scheduledAt ? new Date(scheduledAt) : undefined);
-      if (!base) return;
-      const [h, m] = (t ?? new Date().toTimeString().slice(0, 5)).split(":").map(Number);
-      const next = new Date(base);
-      next.setHours(h, m, 0, 0);
-      setScheduledAt(next.toISOString());
-    },
-    [scheduledAt, setScheduledAt],
-  );
 
   const handleAttachRendition = useCallback((asset: { nanoid: string; original_file: string }) => {
     setMediaAssetNanoids((prev) => (prev.includes(asset.nanoid) ? prev : [...prev, asset.nanoid]));
@@ -341,6 +317,7 @@ export function ComposeStep1({
           placeholder="Write master caption here... (This will be adapted per network below)"
           showCharCount={false}
           mediaUrls={mediaUrls}
+          mediaAssets={baseAssets}
           onRemoveMedia={handleRemoveMedia}
           onAddMedia={handleAddMedia}
           minRows={4}
@@ -351,67 +328,6 @@ export function ComposeStep1({
             <span>Posting to {selectedPages.length} channel{selectedPages.length !== 1 ? "s" : ""}</span>
           )}
         </div>
-      </div>
-
-      <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
-        <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-700">
-          <CalendarIcon className="h-4 w-4 text-indigo-600" />
-          Set Schedule
-        </label>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setPublishNow(true)}
-            className={`flex-1 rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
-              publishNow
-                ? "bg-indigo-600 text-white"
-                : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-            }`}
-          >
-            Publish Now
-          </button>
-          <button
-            type="button"
-            onClick={() => setPublishNow(false)}
-            className={`flex-1 rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
-              !publishNow
-                ? "bg-indigo-600 text-white"
-                : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-            }`}
-          >
-            Schedule for a Specific Date
-          </button>
-        </div>
-        {!publishNow && (
-          <div className="flex gap-2">
-            <input
-              type="date"
-              value={scheduledAt ? new Date(scheduledAt).toISOString().split("T")[0] : ""}
-              onChange={(e) => {
-                const date = e.target.value ? new Date(e.target.value) : undefined;
-                setDateTime(date);
-              }}
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            />
-            <input
-              type="time"
-              value={scheduledAt ? new Date(scheduledAt).toTimeString().slice(0, 5) : ""}
-              onChange={(e) => setDateTime(undefined, e.target.value)}
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-mono focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            />
-          </div>
-        )}
-        {publishNow && (
-          <p className="text-sm text-slate-500">
-            Publish time: <span className="font-semibold text-slate-800">Now</span>
-          </p>
-        )}
-        {publishError && (
-          <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-700">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>{publishError}</span>
-          </div>
-        )}
       </div>
 
       <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-4">

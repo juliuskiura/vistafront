@@ -644,6 +644,16 @@ export function PostDetailClient({ post: initialPost, comments: initialComments,
                   <Send className="size-3.5" /> Publish now
                 </Button>
               )}
+              {post.status === "draft" && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700"
+                  onClick={() => handleAction("delete")}
+                >
+                  <Trash2 className="size-3.5" /> Delete
+                </Button>
+              )}
             </div>
           </div>
         </div>

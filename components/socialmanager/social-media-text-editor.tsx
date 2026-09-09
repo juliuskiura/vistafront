@@ -1,13 +1,21 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Hash, ImagePlus, Smile, Sparkles, X, Link2, HelpCircle, Plus } from "lucide-react";
+import { Hash, ImagePlus, Smile, Sparkles, X, Link2, HelpCircle, Plus, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import EmojiPicker from "./emoji-picker";
 import HashtagPicker from "./hashtag-picker";
 import AiOptimizerSheet from "./ai-optimizer-sheet";
 import type { Asset } from "@/lib/api/types";
+
+function isVideoUrl(url: string) {
+  const clean = url.split("?")[0].split("#")[0].toLowerCase();
+  return (
+    /\.(mp4|mov|webm|mkv|avi|m4v|flv|wmv|ogv|mpeg|mpg|3gp)$/.test(clean) ||
+    clean.startsWith("data:video")
+  );
+}
 
 export interface SocialMediaTextEditorProps {
   value: string;
@@ -77,8 +85,19 @@ export default function SocialMediaTextEditor({
 
   const overLimit = charLimit != null && value.length > charLimit;
   const mediaItems = (mediaAssets && mediaAssets.length > 0)
-    ? mediaAssets.map((a) => ({ src: a.thumbnail || a.original_file, alt: a.name, key: a.nanoid }))
-    : mediaUrls.map((url, i) => ({ src: url, alt: "", key: `url-${i}` }));
+    ? mediaAssets.map((a) => {
+        const isVideo = a.asset_type === "video";
+        return {
+          src: isVideo && !a.thumbnail ? "" : a.thumbnail || a.original_file,
+          alt: a.name,
+          key: a.nanoid,
+          isVideo,
+        };
+      })
+    : mediaUrls.map((url, i) => {
+        const isVideo = isVideoUrl(url);
+        return { src: isVideo ? "" : url, alt: "", key: `url-${i}`, isVideo };
+      });
   const mediaItemCount = mediaItems.length;
   const canAddMore = !maxMedia || mediaItemCount < maxMedia;
   const showFirstComment = firstComment !== undefined;
@@ -157,7 +176,24 @@ export default function SocialMediaTextEditor({
               key={item.key || i}
               className="group relative size-20 overflow-hidden rounded-xl border border-slate-200 bg-slate-100"
             >
-              <img src={item.src} alt={item.alt} className="h-full w-full object-cover" />
+              {item.src ? (
+                <img src={item.src} alt={item.alt} className="h-full w-full object-cover" />
+              ) : (
+                <span className="flex h-full w-full items-center justify-center text-slate-400">
+                  {item.isVideo ? (
+                    <Play className="size-7 text-slate-500" />
+                  ) : (
+                    <ImagePlus className="size-7 text-slate-300" />
+                  )}
+                </span>
+              )}
+              {item.isVideo && (
+                <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20">
+                  <span className="flex size-7 items-center justify-center rounded-full bg-black/55">
+                    <Play className="ml-0.5 size-3.5 fill-white text-white" />
+                  </span>
+                </span>
+              )}
               {onRemoveMedia && (
                 <button
                   type="button"

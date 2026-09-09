@@ -14,6 +14,7 @@ import {
   createPostAction,
   updatePostAction,
   createCampaignAction,
+  publishPostAction,
   verifyPageAction,
 } from "../actions";
 import {
@@ -137,12 +138,6 @@ export function ComposeClient({
     return map;
   }, [platforms]);
 
-  const platformByNanoid = useMemo(() => {
-    const map: Record<string, SocialMediaPlatform> = {};
-    for (const p of platforms) map[p.nanoid] = p;
-    return map;
-  }, [platforms]);
-
   const getPagePlatformSlug = useCallback(
     (page: ManagedChannel): string => {
       if (page.platform) return page.platform;
@@ -188,7 +183,7 @@ export function ComposeClient({
   }, []);
 
   const buildFormData = useCallback(
-    (statusOverride?: string) => {
+    (opts: { status?: string; scheduled?: boolean } = {}) => {
       const recipients = selectedPages.map((page) => {
         const slug = getPagePlatformSlug(page);
         const v = variants[page.nanoid];
@@ -222,12 +217,8 @@ export function ComposeClient({
       if (mediaAssetNanoids.length > 0) formData.append("media_assets", JSON.stringify(mediaAssetNanoids));
       if (campaignId) formData.append("campaign", campaignId);
 
-      if (publishNow) {
-        if (statusOverride) formData.append("status", statusOverride);
-      } else {
-        formData.append("scheduled_at", scheduledAt);
-        formData.append("status", statusOverride || "scheduled");
-      }
+      if (opts.scheduled) formData.append("scheduled_at", scheduledAt);
+      if (opts.status) formData.append("status", opts.status);
 
       if (recipients.length) formData.append("recipients_json", JSON.stringify(recipients));
       if (Object.keys(firstComments).length)
@@ -244,65 +235,109 @@ export function ComposeClient({
       hashtagsByPage,
       firstCommentByPage,
       campaignId,
-      publishNow,
       scheduledAt,
       getPagePlatformSlug,
     ],
   );
 
-  const handleSubmit = useCallback(async () => {
-    if (submittingRef.current) return;
-    submittingRef.current = true;
-    setStatus("submitting");
-    setErrorMsg("");
-    setPublishError("");
+  const handleSubmit = useCallback(
+    async (saveAsDraft = false) => {
+      if (submittingRef.current) return;
+      submittingRef.current = true;
+      setStatus("submitting");
+      setErrorMsg("");
+      setPublishError("");
 
-    try {
-      if (!publishNow && Object.values(connectErrors).some((msg) => msg)) {
-        const tokenIssues = selectedPages
-          .filter((p) => connectErrors[p.nanoid])
-          .map((p) => p.page_name);
-        setPublishError(
-          `Cannot schedule: ${tokenIssues.join(", ")} ${tokenIssues.length === 1 ? "has" : "have"} a connection problem. Reconnect the account in Channels first.`,
+      try {
+        const isSchedule = !saveAsDraft && !publishNow;
+        const shouldPublish = !saveAsDraft && publishNow;
+
+        if (!saveAsDraft && Object.values(connectErrors).some((msg) => msg)) {
+          const tokenIssues = selectedPages
+            .filter((p) => connectErrors[p.nanoid])
+            .map((p) => p.page_name);
+          setPublishError(
+            `Cannot ${isSchedule ? "schedule" : "publish"}: ${tokenIssues.join(", ")} ${tokenIssues.length === 1 ? "has" : "have"} a connection problem. Reconnect the account in Channels first.`,
+          );
+          setStatus("error");
+          return;
+        }
+
+        const formData = buildFormData(
+          saveAsDraft
+            ? { status: "draft" }
+            : isSchedule
+              ? { status: "scheduled", scheduled: true }
+              : {},
         );
-        setStatus("error");
-        return;
-      }
 
-      let result;
-      const formData = buildFormData(publishNow ? undefined : "scheduled");
+        let result;
+        let postNanoid: string | undefined;
 
-      if (editPost) {
-        result = await updatePostAction(editPost.nanoid, {
-          content,
-          campaign: campaignId || undefined,
-          scheduled_at: publishNow ? undefined : scheduledAt || undefined,
-          status: publishNow ? undefined : "scheduled",
-          recipients: JSON.parse(formData.get("recipients_json") as string),
-          first_comments: formData.has("first_comments_json")
-            ? JSON.parse(formData.get("first_comments_json") as string)
-            : undefined,
-          media_urls: mediaUrls.length > 0 ? mediaUrls : undefined,
-          media_assets: mediaAssetNanoids.length > 0 ? mediaAssetNanoids : undefined,
-        }, ws);
-      } else {
-        result = await createPostAction({ status: "idle" }, formData, ws);
-      }
+        if (editPost) {
+          postNanoid = editPost.nanoid;
+          result = await updatePostAction(
+            editPost.nanoid,
+            {
+              content,
+              campaign: campaignId || undefined,
+              scheduled_at: isSchedule ? scheduledAt || undefined : undefined,
+              status: saveAsDraft ? "draft" : isSchedule ? "scheduled" : undefined,
+              recipients: JSON.parse(formData.get("recipients_json") as string),
+              first_comments: formData.has("first_comments_json")
+                ? JSON.parse(formData.get("first_comments_json") as string)
+                : undefined,
+              media_urls: mediaUrls.length > 0 ? mediaUrls : undefined,
+              media_assets: mediaAssetNanoids.length > 0 ? mediaAssetNanoids : undefined,
+            },
+            ws,
+          );
+        } else {
+          result = await createPostAction({ status: "idle" }, formData, ws);
+          if (result.status === "success" && "post" in result) {
+            postNanoid = result.post.nanoid;
+          }
+        }
 
-      if (result.status === "success") {
+        if (result.status !== "success") {
+          setStatus("error");
+          setErrorMsg(result.message || "Failed to save post.");
+          return;
+        }
+
+        if (shouldPublish && postNanoid) {
+          const pub = await publishPostAction(postNanoid, ws);
+          if (pub.status !== "success") {
+            setStatus("error");
+            setErrorMsg("Post saved but failed to publish.");
+            return;
+          }
+        }
+
         setStatus("success");
         setTimeout(() => router.push(`/${ws}/dashboard/socialmanager`), 1500);
-      } else {
+      } catch {
         setStatus("error");
-        setErrorMsg(result.message || "Failed to create post.");
+        setErrorMsg("An unexpected error occurred.");
+      } finally {
+        submittingRef.current = false;
       }
-    } catch {
-      setStatus("error");
-      setErrorMsg("An unexpected error occurred.");
-    } finally {
-      submittingRef.current = false;
-    }
-  }, [buildFormData, editPost, content, campaignId, publishNow, scheduledAt, mediaUrls, mediaAssetNanoids, connectErrors, selectedPages, ws, router]);
+    },
+    [
+      buildFormData,
+      editPost,
+      content,
+      campaignId,
+      publishNow,
+      scheduledAt,
+      mediaUrls,
+      mediaAssetNanoids,
+      connectErrors,
+      selectedPages,
+      ws,
+      router,
+    ],
+  );
 
   const handleNext = useCallback(() => {
     if (!selectedPages.length || !content.trim()) return;
@@ -371,10 +406,6 @@ export function ComposeClient({
                 setMediaAssetNanoids={setMediaAssetNanoids}
                 baseAssets={baseAssets}
                 setBaseAssets={setBaseAssets}
-                scheduledAt={scheduledAt}
-                setScheduledAt={setScheduledAt}
-                publishNow={publishNow}
-                setPublishNow={setPublishNow}
                 campaignId={campaignId}
                 setCampaignId={setCampaignId}
                 campaigns={campaigns}
@@ -383,8 +414,6 @@ export function ComposeClient({
                 setConnectErrors={setConnectErrors}
                 connectOpen={connectOpen}
                 setConnectOpen={setConnectOpen}
-                publishError={publishError}
-                setPublishError={setPublishError}
                 campaignModalOpen={campaignModalOpen}
                 setCampaignModalOpen={setCampaignModalOpen}
                 newCampaignName={newCampaignName}
@@ -404,6 +433,11 @@ export function ComposeClient({
                 selectedPages={selectedPages}
                 platforms={platforms}
                 workspaceDomain={ws}
+                scheduledAt={scheduledAt}
+                setScheduledAt={setScheduledAt}
+                publishNow={publishNow}
+                setPublishNow={setPublishNow}
+                publishError={publishError}
                 variants={variants}
                 setVariants={setVariants}
                 content={content}
@@ -420,7 +454,7 @@ export function ComposeClient({
                 firstCommentByPage={firstCommentByPage}
                 setFirstCommentByPage={setFirstCommentByPage}
                 getPagePlatformSlug={getPagePlatformSlug}
-                platformByNanoid={platformByNanoid}
+                platformBySlug={platformBySlug}
                 getActiveContent={getActiveContent}
                 handleAttachRendition={handleAttachRendition}
               />
@@ -457,9 +491,9 @@ export function ComposeClient({
           selectedSlugs={selectedSlugs}
           onBack={() => setStep(1)}
           onNext={handleNext}
-          onSubmit={handleSubmit}
+          onSubmit={() => handleSubmit()}
           onDiscard={() => router.back()}
-          onSaveDraft={() => handleSubmit()}
+          onSaveDraft={() => handleSubmit(true)}
         />
 
         <CampaignModal
