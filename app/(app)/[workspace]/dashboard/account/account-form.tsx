@@ -13,14 +13,15 @@ import {
   updateAccountAction,
   type AccountActionState,
 } from "@/app/(app)/[workspace]/dashboard/account/actions";
-import type { PersonalDetails } from "@/lib/api";
+import type { ClientBusiness } from "@/lib/api";
 
 interface Props {
-  details: PersonalDetails;
+  org: ClientBusiness;
+  workspaceDomain: string;
 }
 
-function initialsOf(d: PersonalDetails): string {
-  const base = `${d.first_name ?? ""} ${d.last_name ?? ""}`.trim();
+function initialsOf(d: ClientBusiness): string {
+  const base = d.legal_name ?? "";
   if (base) {
     return base
       .split(/\s+/)
@@ -29,21 +30,20 @@ function initialsOf(d: PersonalDetails): string {
       .slice(0, 2)
       .toUpperCase();
   }
-  return (d.email ?? "?").slice(0, 1).toUpperCase();
+  return (d.business_email ?? "?").slice(0, 1).toUpperCase();
 }
 
-function fullName(d: PersonalDetails): string {
-  const base = `${d.first_name ?? ""} ${d.last_name ?? ""}`.trim();
-  return base || d.email;
+function fullName(d: ClientBusiness): string {
+  return d.legal_name ?? d.business_email ?? "";
 }
 
 /**
- * Account → Personal details form (Client Component island).
+ * Account → Organization details form (Client Component island).
  *
  * The form posts to `updateAccountAction` and reflects the resulting state
  * via `useActionState`. Toast feedback is shown for non-field errors.
  */
-export function AccountForm({ details }: Props) {
+export function AccountForm({ org, workspaceDomain }: Props) {
   const router = useRouter();
   const toast = useToast();
   const [state, formAction, pending] = useActionState<AccountActionState, FormData>(
@@ -74,52 +74,54 @@ export function AccountForm({ details }: Props) {
       <CardHeader>
         <div className="flex items-center gap-3">
           <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-base font-semibold text-primary">
-            {initialsOf(details)}
+            {initialsOf(org)}
           </span>
           <div className="min-w-0">
-            <CardTitle>{fullName(details)}</CardTitle>
-            <p className="text-xs text-muted-foreground">{details.email}</p>
+            <CardTitle>{fullName(org)}</CardTitle>
+            <p className="text-xs text-muted-foreground">{org.business_email}</p>
           </div>
         </div>
       </CardHeader>
       <CardContent>
         <form action={formAction} className="space-y-4" noValidate>
+          <input type="hidden" name="org_nanoid" value={org.nanoid} />
+          <input type="hidden" name="workspace_domain" value={workspaceDomain} />
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="account-first-name">First name</Label>
+              <Label htmlFor="account-legal-name">Organization name</Label>
               <Input
-                id="account-first-name"
-                name="first_name"
-                defaultValue={details.first_name ?? ""}
+                id="account-legal-name"
+                name="legal_name"
+                defaultValue={org.legal_name ?? ""}
                 required
-                aria-invalid={!!errors.first_name}
+                aria-invalid={!!errors.legal_name}
               />
-              {errors.first_name?.[0] ? (
-                <p className="text-xs text-destructive">{errors.first_name[0]}</p>
+              {errors.legal_name?.[0] ? (
+                <p className="text-xs text-destructive">{errors.legal_name[0]}</p>
               ) : null}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="account-last-name">Last name</Label>
+              <Label htmlFor="account-registration">Registration number</Label>
               <Input
-                id="account-last-name"
-                name="last_name"
-                defaultValue={details.last_name ?? ""}
+                id="account-registration"
+                name="registration_number"
+                defaultValue={org.registration_number ?? ""}
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="account-email">Email</Label>
+            <Label htmlFor="account-email">Business email</Label>
             <Input
               id="account-email"
-              name="email"
+              name="business_email"
               type="email"
-              defaultValue={details.email}
+              defaultValue={org.business_email}
               required
-              aria-invalid={!!errors.email}
+              aria-invalid={!!errors.business_email}
             />
-            {errors.email?.[0] ? (
-              <p className="text-xs text-destructive">{errors.email[0]}</p>
+            {errors.business_email?.[0] ? (
+              <p className="text-xs text-destructive">{errors.business_email[0]}</p>
             ) : null}
           </div>
 
@@ -129,7 +131,7 @@ export function AccountForm({ details }: Props) {
               <Input
                 id="account-phone-country"
                 name="phone_country_code"
-                defaultValue={details.phone_country_code}
+                defaultValue={org.phone_country_code}
                 placeholder="+254"
               />
             </div>
@@ -138,7 +140,7 @@ export function AccountForm({ details }: Props) {
               <Input
                 id="account-phone"
                 name="phone_number"
-                defaultValue={details.phone_number}
+                defaultValue={org.phone_number}
               />
             </div>
           </div>
@@ -149,7 +151,7 @@ export function AccountForm({ details }: Props) {
               <Input
                 id="account-country"
                 name="country"
-                defaultValue={details.country}
+                defaultValue={org.country}
               />
             </div>
             <div className="space-y-2">
@@ -157,7 +159,7 @@ export function AccountForm({ details }: Props) {
               <Input
                 id="account-city"
                 name="city"
-                defaultValue={details.city}
+                defaultValue={org.city}
               />
             </div>
           </div>
@@ -167,8 +169,19 @@ export function AccountForm({ details }: Props) {
             <Input
               id="account-location"
               name="location"
-              defaultValue={details.location}
+              defaultValue={org.location}
             />
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="account-tax">Tax ID</Label>
+              <Input
+                id="account-tax"
+                name="tax_id"
+                defaultValue={org.tax_id}
+              />
+            </div>
           </div>
 
           {formError ? (
