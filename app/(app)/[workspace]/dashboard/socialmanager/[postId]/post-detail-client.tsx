@@ -32,6 +32,7 @@ import type { ScheduledPost, PostComment, MetricSnapshot } from "@/lib/api/types
 import { PlatformGlyph, getPlatformStyle } from "@/components/platform-icon";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   publishPostAction,
   cancelPostAction,
@@ -433,6 +434,7 @@ export function PostDetailClient({ post: initialPost, comments: initialComments,
   const [comments, setComments] = useState<PostComment[]>(initialComments);
   const [syncingComments, setSyncingComments] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const onRefreshComments = useCallback(async () => {
     setSyncingComments(true);
@@ -495,8 +497,8 @@ export function PostDetailClient({ post: initialPost, comments: initialComments,
             break;
           }
           case "delete": {
-            if (!confirm("Delete this post? This action cannot be undone.")) return;
             await deletePostAction(post.nanoid, workspaceDomain);
+            setDeleteDialogOpen(false);
             router.push(`${basePath}`);
             break;
           }
@@ -649,7 +651,7 @@ export function PostDetailClient({ post: initialPost, comments: initialComments,
                   size="sm"
                   variant="outline"
                   className="gap-1.5 border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700"
-                  onClick={() => handleAction("delete")}
+                  onClick={() => setDeleteDialogOpen(true)}
                 >
                   <Trash2 className="size-3.5" /> Delete
                 </Button>
@@ -670,6 +672,16 @@ export function PostDetailClient({ post: initialPost, comments: initialComments,
         comments={comments}
         onRefresh={onRefreshComments}
         syncing={syncingComments}
+      />
+
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete draft post?"
+        description="This will permanently delete this draft. This action cannot be undone."
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={() => handleAction("delete")}
       />
     </div>
   );

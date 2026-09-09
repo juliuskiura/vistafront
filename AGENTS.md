@@ -590,6 +590,38 @@ await createProject(body);
 Do not change the backend code. Your is to call the endpoint and ensure the frontend and nextjs use the backend as-is
 ---
 
+### 8. Destructive actions MUST use `ConfirmDialog`, never native `alert`/`confirm`
+
+Any destructive action — deleting a post, queue, asset, company, platform, etc. — must
+confirm with the shared `ConfirmDialog` component in `components/ui/confirm-dialog.tsx`.
+**Never use the native `confirm(...)` / `alert(...)` dialogs** for delete or other
+destructive confirmations; they are inconsistent with the UI, unstylable, and block the
+event loop.
+
+- Import: `import { ConfirmDialog } from "@/components/ui/confirm-dialog";`
+- Wire it with a piece of local state that flips when the destructive action is requested:
+
+```tsx
+const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+<Button variant="destructive" onClick={() => setDeleteDialogOpen(true)}>Delete</Button>
+
+<ConfirmDialog
+  open={deleteDialogOpen}
+  onOpenChange={setDeleteDialogOpen}
+  title="Delete post?"
+  description="This action cannot be undone."
+  confirmLabel="Delete"
+  variant="destructive"
+  onConfirm={() => deletePostAction(post.nanoid, ws)}
+/>
+```
+
+Allowed alternatives if `ConfirmDialog` does not fit the use case: use the underlying
+`Dialog` primitives (radix `Dialog`, `AlertDialog`, etc.) — the point is a styled,
+non-blocking confirmation, not the native browser dialog.
+---
+
 ## Verification Checklist
 
 Before marking any work complete:
@@ -606,5 +638,6 @@ Before marking any work complete:
 - [ ] No `serverFetch` / `serverMutate` under `/onboarding/*`, `/login`, `/signup`, `/password/*`, `/activate/*`, `/verify-email` sets `X-Workspace`
 - [ ] TanStack Query callers prefetch on the server under `<HydrationBoundary>` and include the workspace in the query key
 - [ ] Forms with rich client validation use React Hook Form + the Zod schema that the Server Action also uses
+- [ ] No destructive/delete action uses native `confirm()` / `alert()` — it uses `ConfirmDialog` (or another styled dialog)
 
 <!-- END:nextjs-agent-rules -->
