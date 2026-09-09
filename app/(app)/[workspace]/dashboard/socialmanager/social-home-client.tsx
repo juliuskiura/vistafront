@@ -267,7 +267,7 @@ export function SocialHomePageClient({
                       <div className="flex items-center gap-3">
                         {post.media_image_urls?.[0] || post.media_urls?.[0] ? (
                           <img
-                            src={`/api/socialmanager/media/${post.nanoid}?workspace=${workspaceDomain}`}
+                            src={post.media_image_urls?.[0] || post.media_urls?.[0] || ""}
                             alt=""
                             className="size-10 shrink-0 rounded-md object-cover"
                           />

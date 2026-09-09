@@ -181,10 +181,9 @@ function SparkAreaChart({ data }: { data: number[] }) {
  * Sub-components
  * ────────────────────────────────────────────────────────────────────── */
 
-function PostMediaPreview({ post, workspaceDomain }: { post: ScheduledPost; workspaceDomain: string }) {
-  const images = (post.media_image_urls || post.media_urls || []).map(
-    (url) => `/api/socialmanager/media/${post.nanoid}?workspace=${workspaceDomain}`,
-  );
+function PostMediaPreview({ post }: { post: ScheduledPost }) {
+  const imageUrls = post.media_image_urls;
+  const images = imageUrls?.length ? imageUrls : post.media_urls;
   if (images.length === 0) {
     return (
       <div className="flex aspect-[16/9] w-full items-center justify-center rounded-2xl border border-dashed border-neutral-200 bg-neutral-50">
@@ -543,7 +542,7 @@ export function PostDetailClient({ post: initialPost, comments: initialComments,
         <div className="grid gap-6 p-5 sm:grid-cols-[minmax(0,1fr)_320px]">
           {/* Left: media + caption */}
           <div className="space-y-4">
-            <PostMediaPreview post={post} workspaceDomain={workspaceDomain} />
+            <PostMediaPreview post={post} />
 
             <div className="space-y-2">
               <p className="whitespace-pre-wrap text-sm leading-relaxed text-neutral-900">

@@ -7,9 +7,16 @@ import { Card } from "@/components/ui/card";
 import { SocialIcon, hasSocialIcon } from "@/components/social-icons";
 import { getPlatformStyle } from "@/components/platform-icon";
 import ConnectAccountModal from "@/components/socialmanager/connect-account-modal";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { syncAccountAction, revokeAccountAction } from "../actions";
-import type { ManagedChannel, SocialMediaPlatform } from "@/lib/api/types";
+import type { ManagedChannel, SocialMediaPlatform, SocialPlatform } from "@/lib/api/types";
 import { ShieldCheck, AlertCircle, Lock, Unlink, RefreshCw, ChevronRight, Plus } from "lucide-react";
+
+interface ConnectIntent {
+  open: boolean;
+  preselectedPlatform?: SocialPlatform;
+  rerequest?: boolean;
+}
 
 interface Props {
   channels: ManagedChannel[];
@@ -41,7 +48,9 @@ function toLocaleDateTime(value: string): string {
 
 export function ChannelsClient({ channels, workspaceDomain, pageToAccountNanoid, platforms }: Props) {
   const ws = workspaceDomain.toLowerCase();
-  const [connectOpen, setConnectOpen] = useState(false);
+  const [connectIntent, setConnectIntent] = useState<ConnectIntent>({ open: false });
+  const [disconnectTarget, setDisconnectTarget] = useState<ManagedChannel | null>(null);
+  const [disconnecting, setDisconnecting] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const router = useRouter();
 
@@ -67,6 +76,16 @@ export function ChannelsClient({ channels, workspaceDomain, pageToAccountNanoid,
     [ws, router, pageToAccountNanoid],
   );
 
+  const handleConfirmDisconnect = useCallback(async () => {
+    if (!disconnectTarget) return;
+    setDisconnecting(true);
+    try {
+      await handleDisconnect(disconnectTarget);
+    } finally {
+      setDisconnecting(false);
+    }
+  }, [disconnectTarget, handleDisconnect]);
+
   return (
     <div className="space-y-6">
       <div className="bg-card p-6 rounded-3xl border shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -82,7 +101,7 @@ export function ChannelsClient({ channels, workspaceDomain, pageToAccountNanoid,
           </p>
         </div>
         <Button
-          onClick={() => setConnectOpen(true)}
+          onClick={() => setConnectIntent({ open: true })}
           className="flex items-center justify-center gap-2 bg-primary text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-xs transition-all shrink-0"
         >
           <Plus className="w-4 h-4" />
@@ -202,7 +221,7 @@ export function ChannelsClient({ channels, workspaceDomain, pageToAccountNanoid,
                 </div>
                 <div className="mt-4 flex items-center justify-between pt-3 border-t border-slate-100">
                   <button
-                    onClick={() => router.push(`/dashboard/socialmanager/channels/${page.nanoid}`)}
+                    onClick={() => router.push(`/${ws}/dashboard/socialmanager/channels/${page.nanoid}`)}
                     className="text-[11px] font-semibold text-slate-600 hover:text-primary flex items-center gap-1 transition-colors"
                   >
                     View details
@@ -217,7 +236,11 @@ export function ChannelsClient({ channels, workspaceDomain, pageToAccountNanoid,
                     Sync Audience
                   </button>
                   <Button
-                    onClick={() => isConnected && handleDisconnect(page)}
+                    onClick={() =>
+                      isConnected
+                        ? setDisconnectTarget(page)
+                        : setConnectIntent({ open: true, preselectedPlatform: page.platform as SocialPlatform, rerequest: true })
+                    }
                     variant={isConnected ? "outline" : "default"}
                     className={isConnected ? "border-rose-200 text-rose-700 hover:bg-rose-50" : "bg-emerald-600 text-white hover:bg-emerald-700"}
                     size="sm"
@@ -233,13 +256,28 @@ export function ChannelsClient({ channels, workspaceDomain, pageToAccountNanoid,
 
       <ConnectAccountModal
         workspaceDomain={ws}
-        isOpen={connectOpen}
-        onClose={() => setConnectOpen(false)}
+        isOpen={connectIntent.open}
+        onClose={() => setConnectIntent((prev) => ({ ...prev, open: false }))}
         onConnected={() => {
-          setConnectOpen(false);
+          setConnectIntent({ open: false });
           router.refresh();
         }}
         platforms={platforms}
+        preselectedPlatform={connectIntent.preselectedPlatform}
+        rerequest={connectIntent.rerequest}
+      />
+
+      <ConfirmDialog
+        open={disconnectTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDisconnectTarget(null);
+        }}
+        title="Disconnect channel?"
+        description="This will revoke access to this channel and remove it from your connected channels. Posts already published will not be deleted."
+        confirmLabel={disconnecting ? "Disconnecting…" : "Disconnect"}
+        variant="destructive"
+        onConfirm={handleConfirmDisconnect}
+        confirming={disconnecting}
       />
     </div>
   );
