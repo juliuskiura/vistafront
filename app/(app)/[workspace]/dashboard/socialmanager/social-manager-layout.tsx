@@ -18,6 +18,7 @@ import {
   type InnerNavItem,
   type InnerNavGroup,
 } from "@/components/workspace/workspace-inner-nav";
+import { Banner } from "@/components/banner";
 
 /* ──────────────────────────────────────────────────────────────────────
  * Social Manager Layout
@@ -66,28 +67,14 @@ export function SocialManagerLayout({
   return (
     <div className="flex flex-col">
       {isHome && (
-        <div className="flex flex-col justify-between gap-4 bg-gradient-to-r from-primary-600 to-secondary-600 p-6 text-white md:flex-row md:items-center">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">Welcome to Social Manager</h2>
-            <p className="mt-1 text-sm text-primary-100">
-              Plan, schedule, and publish across all your social channels from one place.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href={`${basePath}/compose`}
-              className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2 text-sm font-medium text-primary-700 transition-all hover:bg-primary-50"
-            >
-              <PenLine className="size-4" /> New Post
-            </Link>
-            <Link
-              href={`${basePath}/channels`}
-              className="inline-flex items-center gap-2 rounded-md border border-primary-300 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-primary-900/90 hover:border-white hover:text-white"
-            >
-              <Plus className="size-4" /> Connect Account
-            </Link>
-          </div>
-        </div>
+        <Banner
+          title="Welcome to Social Manager"
+          description="Plan, schedule, and publish across all your social channels from one place."
+          actions={[
+            { label: "New Post", icon: PenLine, href: `${basePath}/compose` },
+            { label: "Connect Account", icon: Plus, href: `${basePath}/channels`, variant: "secondary" },
+          ]}
+        />
       )}
 
       <WorkspaceInnerNav

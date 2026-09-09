@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   HardDrive,
   Images,
@@ -16,6 +16,7 @@ import {
   WorkspaceInnerNav,
   type InnerNavGroup,
 } from "@/components/workspace/workspace-inner-nav";
+import { Banner } from "@/components/banner";
 
 const NAV_GROUPS: InnerNavGroup[] = [
   {
@@ -57,7 +58,6 @@ export function MediaLayout({
   workspaceDomain,
 }: MediaLayoutProps) {
   const pathname = usePathname();
-  const router = useRouter();
 
   const basePath = `/${workspaceDomain}/dashboard/media`;
 
@@ -66,30 +66,19 @@ export function MediaLayout({
   return (
     <div className="flex min-h-full flex-col">
       {isHome && (
-        <div className="-mx-4 -mt-4 flex flex-col justify-between gap-4 bg-gradient-to-r from-primary-600 to-secondary-600 p-6 text-white md:-mx-6 md:-mt-6 md:flex-row md:items-center">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">Welcome to Media Library</h2>
-            <p className="max-w-xl text-xs text-primary-100 leading-relaxed">
-              Centralized digital asset repository. Manage images, videos, documents, collections, and folders in one place.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => router.push(`${basePath}/upload`)}
-              className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2 text-sm font-medium text-primary-700 transition-all hover:bg-primary-50"
-            >
-              <Upload className="size-4" /> Upload
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push(`${basePath}/browser`)}
-              className="inline-flex items-center gap-2 rounded-md border border-primary-300 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-primary-900/90 hover:border-white hover:text-white"
-            >
-              <Images className="size-4" /> Browse Assets
-            </button>
-          </div>
-        </div>
+        <Banner
+          title="Welcome to Media Library"
+          description="Centralized digital asset repository. Manage images, videos, documents, collections, and folders in one place."
+          actions={[
+            { label: "Upload", icon: Upload, href: `${basePath}/upload` },
+            { label: "Browse Assets", icon: Images, href: `${basePath}/browser`, variant: "secondary" },
+          ]}
+        >
+          <div className="absolute -left-16 -top-16 h-64 w-64 rounded-full bg-[#4d7fff]/60 blur-3xl" />
+          <div className="absolute right-0 top-1/3 h-72 w-72 rounded-full bg-[#00e5ff]/40 blur-3xl" />
+          <div className="absolute -bottom-20 left-1/4 h-72 w-72 rounded-full bg-[#7a5cff]/50 blur-3xl" />
+          <div className="absolute -right-8 -bottom-8 h-56 w-56 rounded-full bg-[#19e664]/30 blur-3xl" />
+        </Banner>
       )}
 
       <WorkspaceInnerNav
