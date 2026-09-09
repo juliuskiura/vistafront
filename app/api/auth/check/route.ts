@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { listWorkspaces } from "@/lib/api";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:8000";
 
@@ -16,6 +17,17 @@ function destinationFor(req: NextRequest): string {
   return nextUrl && nextUrl.startsWith("/") && !nextUrl.startsWith("//")
     ? nextUrl
     : "/dashboard";
+}
+
+async function isValidWorkspaceDestination(destination: string): Promise<boolean> {
+  const pathSegment = destination.split("/").filter(Boolean)[0]?.toLowerCase();
+  if (!pathSegment) return true; // Non-workspace paths are always valid
+  try {
+    const workspaces = await listWorkspaces();
+    return workspaces.some((ws) => ws.domain.toLowerCase() === pathSegment);
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -59,7 +71,9 @@ export async function GET(req: NextRequest) {
 
   // 1. Access token present → verify it against Django.
   if (access && (await verify(access))) {
-    const res = NextResponse.redirect(new URL(destination, req.url));
+    const validDestination = await isValidWorkspaceDestination(destination);
+    const redirectUrl = validDestination ? destination : "/dashboard";
+    const res = NextResponse.redirect(new URL(redirectUrl, req.url));
     res.cookies.delete("auth_next_url");
     return res;
   }
@@ -104,8 +118,10 @@ export async function GET(req: NextRequest) {
           // token is still technically valid: they get logged out instead of
           // ping-ponging between /dashboard and /login forever.
           if (await verify(newAccess)) {
+            const validDestination = await isValidWorkspaceDestination(destination);
+            const redirectUrl = validDestination ? destination : "/dashboard";
             const res = NextResponse.redirect(
-              new URL(destination, req.url),
+              new URL(redirectUrl, req.url),
             );
             res.cookies.delete("auth_next_url");
             res.cookies.set("access", newAccess, authCookieOptions());

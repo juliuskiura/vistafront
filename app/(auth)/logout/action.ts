@@ -1,5 +1,6 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import {
@@ -43,6 +44,11 @@ export async function logoutAction(): Promise<void> {
       console.error("Logout error:", error);
     }
   }
+
+  // Clear the auth_next_url cookie to prevent stale workspace redirects
+  // when a different user logs in on the same machine
+  const cookieStore = await cookies();
+  cookieStore.delete("auth_next_url");
 
   redirect("/login");
 }

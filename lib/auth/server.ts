@@ -138,6 +138,27 @@ export async function requireWorkspace(slug: string): Promise<WorkspaceItem> {
   );
 
   if (!match) {
+    // Check if the user has a redirect_url pointing to a workspace
+    // they belong to (from their last_workspace profile attribute).
+    // If so, redirect there instead of showing /restricted.
+    if (user.redirect_url) {
+      const redirectMatch = workspaces.find(
+        (ws) => user.redirect_url && ws.url === user.redirect_url,
+      );
+      if (redirectMatch) {
+        redirect(redirectMatch.url);
+      }
+      // Also try matching by domain in the redirect_url
+      const redirectDomain = user.redirect_url.split("/")[1]?.toLowerCase();
+      if (redirectDomain) {
+        const domainMatch = workspaces.find(
+          (ws) => ws.domain.toLowerCase() === redirectDomain,
+        );
+        if (domainMatch) {
+          redirect(domainMatch.url);
+        }
+      }
+    }
     redirect("/restricted");
   }
 

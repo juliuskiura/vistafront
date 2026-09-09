@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { getAuthUser } from "@/lib/auth/server";
+import { listWorkspaces } from "@/lib/api";
 import type { AuthActionState } from "@/lib/auth/action-state";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:8000";
@@ -75,12 +76,28 @@ export async function loginAction(
 
   // If the user was redirected here while trying to reach a protected page,
   // send them back there instead of the onboarding default.
+  // Validate the destination against the user's workspaces to avoid
+  // redirecting to a workspace they don't belong to (which would land
+  // on /restricted).
   const cookieStore = await cookies();
   const nextUrl = cookieStore.get("auth_next_url")?.value;
 
   if (nextUrl && nextUrl.startsWith("/") && !nextUrl.startsWith("//")) {
-    cookieStore.delete("auth_next_url");
-    redirect(nextUrl);
+    const pathSegment = nextUrl.split("/").filter(Boolean)[0]?.toLowerCase();
+    if (pathSegment) {
+      try {
+        const workspaces = await listWorkspaces();
+        const belongsToWorkspace = workspaces.some(
+          (ws) => ws.domain.toLowerCase() === pathSegment,
+        );
+        if (belongsToWorkspace) {
+          cookieStore.delete("auth_next_url");
+          redirect(nextUrl);
+        }
+      } catch {
+        // If we can't load workspaces, fall through to the default redirect.
+      }
+    }
   }
 
   redirect(user.redirect_url || "/onboarding");
