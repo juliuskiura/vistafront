@@ -333,6 +333,18 @@ export function verifyPage(
   );
 }
 
+export function updateManagedChannel(
+  nanoid: string,
+  body: Partial<Pick<ManagedChannel, "is_active">>,
+  workspace: string,
+): Promise<ManagedChannel> {
+  return serverMutate<ManagedChannel>(`/apis/socialmanager/pages/${nanoid}/`, {
+    body,
+    method: "PATCH",
+    workspace,
+  });
+}
+
 export function getConnectedInstagram(
   nanoid: string,
   workspace: string,

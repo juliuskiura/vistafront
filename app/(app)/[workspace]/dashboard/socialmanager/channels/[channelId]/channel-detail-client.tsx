@@ -27,7 +27,6 @@ interface Props {
   allPages: ManagedChannel[];
   workspaceDomain: string;
   channelId: string;
-  pageToAccountNanoid: Record<string, string>;
 }
 
 export function ChannelDetailClient({
@@ -37,7 +36,6 @@ export function ChannelDetailClient({
   allPages,
   workspaceDomain,
   channelId,
-  pageToAccountNanoid,
 }: Props) {
   const ws = workspaceDomain.toLowerCase();
   const basePath = `/${ws}/dashboard/socialmanager`;
@@ -170,7 +168,6 @@ export function ChannelDetailClient({
       <ChannelActions
         syncResult={syncResult}
         igResult={igResult}
-        pageToAccountNanoid={pageToAccountNanoid}
         workspaceDomain={workspaceDomain}
         channelId={channelId}
       />

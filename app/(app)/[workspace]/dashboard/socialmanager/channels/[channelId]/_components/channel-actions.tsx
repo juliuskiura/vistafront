@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SocialIcon } from "@/components/social-icons";
 import type { ConnectedInstagramResult, PostsSyncStatusResult } from "@/lib/api/types";
-import { revokeAccountAction } from "../../../actions";
+import { disconnectChannelAction } from "../../../actions";
 
 export type SyncResult = NonNullable<PostsSyncStatusResult["result"]>;
 export type InstagramResult = ConnectedInstagramResult;
@@ -17,7 +17,6 @@ export type InstagramResult = ConnectedInstagramResult;
 interface ChannelActionsProps {
   syncResult: SyncResult | null;
   igResult: InstagramResult | null;
-  pageToAccountNanoid: Record<string, string>;
   workspaceDomain: string;
   channelId: string;
 }
@@ -25,7 +24,6 @@ interface ChannelActionsProps {
 export function ChannelActions({
   syncResult,
   igResult,
-  pageToAccountNanoid,
   workspaceDomain,
   channelId,
 }: ChannelActionsProps) {
@@ -37,8 +35,7 @@ export function ChannelActions({
   const handleRevoke = async () => {
     setRevoking(true);
     try {
-      const accountNanoid = pageToAccountNanoid[channelId];
-      if (accountNanoid) await revokeAccountAction(accountNanoid, ws);
+      await disconnectChannelAction(channelId, ws);
       router.refresh();
     } finally {
       setRevoking(false);

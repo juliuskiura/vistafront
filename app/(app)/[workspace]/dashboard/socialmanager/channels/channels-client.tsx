@@ -8,7 +8,7 @@ import { SocialIcon, hasSocialIcon } from "@/components/social-icons";
 import { getPlatformStyle } from "@/components/platform-icon";
 import ConnectAccountModal from "@/components/socialmanager/connect-account-modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { syncAccountAction, revokeAccountAction } from "../actions";
+import { syncAccountAction, disconnectChannelAction } from "../actions";
 import type { ManagedChannel, SocialMediaPlatform, SocialPlatform } from "@/lib/api/types";
 import { ShieldCheck, AlertCircle, Lock, Unlink, RefreshCw, ChevronRight, Plus } from "lucide-react";
 
@@ -69,11 +69,10 @@ export function ChannelsClient({ channels, workspaceDomain, pageToAccountNanoid,
 
   const handleDisconnect = useCallback(
     async (page: ManagedChannel) => {
-      const accountNanoid = pageToAccountNanoid[page.nanoid];
-      if (accountNanoid) await revokeAccountAction(accountNanoid, ws);
+      await disconnectChannelAction(page.nanoid, ws);
       router.refresh();
     },
-    [ws, router, pageToAccountNanoid],
+    [ws, router],
   );
 
   const handleConfirmDisconnect = useCallback(async () => {

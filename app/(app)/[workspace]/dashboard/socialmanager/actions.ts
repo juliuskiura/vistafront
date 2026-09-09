@@ -28,6 +28,7 @@ import {
   oauthInit,
   getConnectedInstagram,
   verifyPage,
+  updateManagedChannel,
   syncPosts,
   getPostsSyncStatus,
   syncAnalytics,
@@ -500,6 +501,20 @@ export async function verifyPageAction(
   } catch {
     return { ok: false, error: "Verification request failed." };
   }
+}
+
+export async function disconnectChannelAction(
+  nanoid: string,
+  workspace: string,
+): Promise<AccountActionState> {
+  try {
+    await updateManagedChannel(nanoid, { is_active: false }, workspace);
+  } catch {
+    return { status: "error", message: "Failed to disconnect channel." };
+  }
+
+  revalidatePath("/", "layout");
+  return { status: "success", message: "Channel disconnected." };
 }
 
 export async function getConnectedInstagramAction(

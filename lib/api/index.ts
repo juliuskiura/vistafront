@@ -158,6 +158,7 @@ export {
   updatePost,
   updateQueue,
   updateQueueItem,
+  updateManagedChannel,
   verifyPage,
 } from "./socialmanager";
 
