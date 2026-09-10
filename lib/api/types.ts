@@ -822,6 +822,7 @@ export interface SocialMediaPlatform {
   redirect_uri: string | null;
   scopes: string | null;
   is_active: boolean;
+  oauth_callback_uri: string;
   created_at: string;
   updated_at: string;
 }

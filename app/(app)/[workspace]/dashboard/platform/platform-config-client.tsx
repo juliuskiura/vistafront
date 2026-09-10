@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/lib/context";
 import {
   Plus,
   Trash2,
@@ -37,7 +38,7 @@ import {
   createMediaSpecAction,
   updateMediaSpecAction,
   deleteMediaSpecAction,
-} from "../actions";
+} from "../socialmanager/actions";
 
 /* ──────────────────────────────────────────────────────────────────────
  * Platform Config Client — configure platforms, OAuth credentials,
@@ -51,6 +52,54 @@ interface Props {
   workspaceDomain: string;
 }
 
+interface ActionResultLike {
+  status?: string;
+  message?: string;
+}
+
+/**
+ * Awaits a Server Action, surfaces success/error via toast, and refreshes the
+ * route so the page re-renders from fresh server-fetched props. Returns whether
+ * the action reported success. Mutations must not be fire-and-forget: the
+ * Server Component below is the single source of truth for the lists, and
+ * `router.refresh()` is what pulls the saved data back into the UI.
+ */
+function useMutator() {
+  const toast = useToast();
+  const router = useRouter();
+
+  return useCallback(
+    async (action: Promise<ActionResultLike>, successMsg: string): Promise<boolean> => {
+      let res: ActionResultLike | undefined;
+      try {
+        res = await action;
+      } catch {
+        toast.push({
+          variant: "error",
+          message: "Something went wrong on the server. Please try again.",
+        });
+        return false;
+      }
+      if (res?.status !== "success") {
+        toast.push({
+          variant: "error",
+          message: res?.message || "Something went wrong. Please try again.",
+        });
+        return false;
+      }
+      toast.push({ variant: "success", message: successMsg });
+      try {
+        router.refresh();
+      } catch {
+        // The mutation already committed server-side; a failed revalidation
+        // only delays the refreshed props until the next navigation.
+      }
+      return true;
+    },
+    [toast, router],
+  );
+}
+
 function formatDate(iso: string): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString(undefined, {
@@ -60,16 +109,102 @@ function formatDate(iso: string): string {
   });
 }
 
+/**
+ * Comma-separated scope input rendered as removable pills. The stored value
+ * stays comma-separated text (e.g. "pages_show_list,manage_pages") so it
+ * round-trips to the backend unchanged; pills are only a visual layer. Typing
+ * a scope and a comma immediately turns the text into a pill.
+ */
+function ScopePillInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  placeholder?: string;
+}) {
+  const pills = useMemo(
+    () =>
+      value
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+    [value],
+  );
+  const [text, setText] = useState("");
+
+  const commit = () => {
+    const next = text.trim();
+    if (!next) return;
+    onChange([...pills, next].join(","));
+    setText("");
+  };
+
+  const removePill = (index: number) => {
+    onChange(pills.filter((_, i) => i !== index).join(","));
+  };
+
+  const handleChange = (raw: string) => {
+    if (!raw.includes(",")) {
+      setText(raw);
+      return;
+    }
+    const parts = raw.split(",");
+    const tail = parts.pop() ?? "";
+    const toCommit = parts.map((s) => s.trim()).filter(Boolean);
+    if (toCommit.length) {
+      onChange([...pills, ...toCommit].join(","));
+    }
+    setText(tail);
+  };
+
+  return (
+    <div className="flex min-h-[2rem] flex-wrap items-center gap-1 rounded-lg border border-input bg-white px-2 py-1">
+      {pills.map((pill, i) => (
+        <span
+          key={`${pill}-${i}`}
+          className="inline-flex items-center gap-1 rounded-full bg-indigo-100 px-2 py-0.5 font-mono text-[10px] text-indigo-800"
+        >
+          {pill}
+          <button
+            type="button"
+            aria-label={`Remove ${pill}`}
+            onClick={() => removePill(i)}
+            className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full text-indigo-500 hover:bg-indigo-200"
+          >
+            ×
+          </button>
+        </span>
+      ))}
+      <input
+        type="text"
+        value={text}
+        onChange={(e) => handleChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit();
+          if (e.key === "Backspace" && text === "" && pills.length) removePill(pills.length - 1);
+        }}
+        onBlur={commit}
+        placeholder={pills.length ? "" : placeholder}
+        className="h-5 min-w-[8rem] flex-1 bg-transparent font-mono text-xs outline-none placeholder:text-slate-400"
+      />
+    </div>
+  );
+}
+
 function PlatformForm({
   platform,
   onSave,
   onDelete,
   isNew,
+  saving = false,
 }: {
   platform: Partial<SocialMediaPlatform>;
   onSave: (data: Record<string, unknown>) => void;
   onDelete?: () => void;
   isNew?: boolean;
+  saving?: boolean;
 }) {
   const [name, setName] = useState(platform.name || "");
   const [slug, setSlug] = useState(platform.slug || "");
@@ -102,6 +237,7 @@ function PlatformForm({
             size="sm"
             variant="ghost"
             className="h-7 w-7 p-0"
+            disabled={saving}
             onClick={() =>
               onSave({
                 name,
@@ -120,7 +256,7 @@ function PlatformForm({
             <Save className="h-3.5 w-3.5" />
           </Button>
           {!isNew && onDelete && (
-            <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-500 hover:text-red-700" onClick={onDelete}>
+            <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-500 hover:text-red-700" disabled={saving} onClick={onDelete}>
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
           )}
@@ -145,7 +281,7 @@ function PlatformForm({
         </div>
         <div className="col-span-2">
           <Label className="text-[10px]">Scopes</Label>
-          <Input value={scopes} onChange={(e) => setScopes(e.target.value)} className="h-8 text-xs bg-white font-mono" />
+          <ScopePillInput value={scopes} onChange={setScopes} placeholder="e.g. pages_show_list, manage_pages" />
         </div>
         <div>
           <Label className="text-[10px]">Color</Label>
@@ -181,6 +317,7 @@ function ConstraintList({
 }) {
   const [newConstraint, setNewConstraint] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const mutate = useMutator();
   const filtered = constraints.filter((c) => c.content_format === contentFormatNanoid);
 
   return (
@@ -204,19 +341,22 @@ function ConstraintList({
               type="button"
               size="sm"
               className="h-6 text-xs"
-              onClick={() => {
+              onClick={async () => {
                 const cl = (document.getElementById(`nc-${contentFormatNanoid}-cl`) as HTMLInputElement)?.value;
                 const mh = (document.getElementById(`nc-${contentFormatNanoid}-mh`) as HTMLInputElement)?.value;
-                createConstraintAction(
-                  {
-                    platform: platformSlug,
-                    content_format: contentFormatNanoid,
-                    character_limit: cl ? Number(cl) : null,
-                    max_hashtags: mh ? Number(mh) : null,
-                  },
-                  ws,
-                );
                 setNewConstraint(false);
+                await mutate(
+                  createConstraintAction(
+                    {
+                      platform: platformSlug,
+                      content_format: contentFormatNanoid,
+                      character_limit: cl ? Number(cl) : null,
+                      max_hashtags: mh ? Number(mh) : null,
+                    },
+                    ws,
+                  ),
+                  "Constraint created.",
+                );
               }}
             >
               Create
@@ -269,31 +409,34 @@ function ConstraintList({
                 </label>
               </div>
               <div className="flex justify-end gap-2">
-                <Button type="button" size="sm" variant="ghost" className="h-6 text-[10px] text-red-500" onClick={() => deleteConstraintAction(c.nanoid, ws)}>
+                <Button type="button" size="sm" variant="ghost" className="h-6 text-[10px] text-red-500" onClick={() => mutate(deleteConstraintAction(c.nanoid, ws), "Constraint deleted.")}>
                   <Trash2 className="h-3 w-3" />
                 </Button>
                 <Button
                   type="button"
                   size="sm"
                   className="h-6 text-[10px]"
-                  onClick={() => {
+                  onClick={async () => {
                     const cl = (document.getElementById(`cn-${c.nanoid}-cl`) as HTMLInputElement)?.value;
                     const mh = (document.getElementById(`cn-${c.nanoid}-mh`) as HTMLInputElement)?.value;
                     const api = (document.getElementById(`cn-${c.nanoid}-api`) as HTMLInputElement)?.value;
                     const ep = (document.getElementById(`cn-${c.nanoid}-ep`) as HTMLInputElement)?.value;
                     const ref = (document.getElementById(`cn-${c.nanoid}-ref`) as HTMLInputElement)?.value;
                     const eph = (document.getElementById(`cn-${c.nanoid}-eph`) as HTMLInputElement)?.checked;
-                    updateConstraintAction(
-                      c.nanoid,
-                      {
-                        character_limit: cl ? Number(cl) : null,
-                        max_hashtags: mh ? Number(mh) : null,
-                        is_ephemeral: eph,
-                        publishing_api: api || "",
-                        publishing_endpoint: ep || "",
-                        reference_url: ref || "",
-                      },
-                      ws,
+                    await mutate(
+                      updateConstraintAction(
+                        c.nanoid,
+                        {
+                          character_limit: cl ? Number(cl) : null,
+                          max_hashtags: mh ? Number(mh) : null,
+                          is_ephemeral: eph,
+                          publishing_api: api || "",
+                          publishing_endpoint: ep || "",
+                          reference_url: ref || "",
+                        },
+                        ws,
+                      ),
+                      "Constraint updated.",
                     );
                   }}
                 >
@@ -322,6 +465,7 @@ function MediaSpecList({
   const [newType, setNewType] = useState("");
   const [newAspect, setNewAspect] = useState("");
   const [newMaxWidth, setNewMaxWidth] = useState("");
+  const mutate = useMutator();
 
   const readNum = (id: string) => {
     const v = (document.getElementById(id) as HTMLInputElement)?.value;
@@ -350,21 +494,24 @@ function MediaSpecList({
               type="button"
               size="sm"
               className="h-6 text-xs"
-              onClick={() => {
+              onClick={async () => {
                 if (newType) {
-                  createMediaSpecAction(
-                    {
-                      content_constraint: constraintNanoid,
-                      media_type: newType as MediaConstraint["media_type"],
-                      aspect_ratio: newAspect || "",
-                      max_width: newMaxWidth ? Number(newMaxWidth) : null,
-                    },
-                    ws,
-                  );
                   setShowNew(false);
                   setNewType("");
                   setNewAspect("");
                   setNewMaxWidth("");
+                  await mutate(
+                    createMediaSpecAction(
+                      {
+                        content_constraint: constraintNanoid,
+                        media_type: newType as MediaConstraint["media_type"],
+                        aspect_ratio: newAspect || "",
+                        max_width: newMaxWidth ? Number(newMaxWidth) : null,
+                      },
+                      ws,
+                    ),
+                    "Media spec created.",
+                  );
                 }
               }}
             >
@@ -419,25 +566,28 @@ function MediaSpecList({
                   </div>
                 </div>
                 <div className="flex justify-end gap-2">
-                  <Button type="button" size="sm" variant="ghost" className="h-6 text-[10px] text-red-500" onClick={() => deleteMediaSpecAction(s.nanoid, ws)}>
+                  <Button type="button" size="sm" variant="ghost" className="h-6 text-[10px] text-red-500" onClick={() => mutate(deleteMediaSpecAction(s.nanoid, ws), "Media spec deleted.")}>
                     <Trash2 className="h-3 w-3" />
                   </Button>
                   <Button
                     type="button"
                     size="sm"
                     className="h-6 text-[10px]"
-                    onClick={() =>
-                      updateMediaSpecAction(
-                        s.nanoid,
-                        {
-                          min_width: readNum(`ms-${s.nanoid}-minw`),
-                          max_width: readNum(`ms-${s.nanoid}-maxw`),
-                          min_height: readNum(`ms-${s.nanoid}-minh`),
-                          max_height: readNum(`ms-${s.nanoid}-maxh`),
-                          min_duration: readNum(`ms-${s.nanoid}-mind`),
-                          max_duration: readNum(`ms-${s.nanoid}-maxd`),
-                        },
-                        ws,
+                    onClick={async () =>
+                      await mutate(
+                        updateMediaSpecAction(
+                          s.nanoid,
+                          {
+                            min_width: readNum(`ms-${s.nanoid}-minw`),
+                            max_width: readNum(`ms-${s.nanoid}-maxw`),
+                            min_height: readNum(`ms-${s.nanoid}-minh`),
+                            max_height: readNum(`ms-${s.nanoid}-maxh`),
+                            min_duration: readNum(`ms-${s.nanoid}-mind`),
+                            max_duration: readNum(`ms-${s.nanoid}-maxd`),
+                          },
+                          ws,
+                        ),
+                        "Media spec updated.",
                       )
                     }
                   >
@@ -453,12 +603,13 @@ function MediaSpecList({
   );
 }
 
-function OauthSetupCard({ platformSlug, platformName }: { platformSlug: string; platformName: string }) {
+function OauthSetupCard({ platformSlug, platformName, callbackUri }: { platformSlug: string; platformName: string; callbackUri?: string }) {
   const [copied, setCopied] = useState(false);
   const secretEnvVar = `${platformSlug.toUpperCase()}_SECRET`;
-  const redirectUri = `/oauth/callback/${platformSlug}`;
+  const redirectUri = callbackUri || "";
 
   const copy = async () => {
+    if (!redirectUri) return;
     try {
       await navigator.clipboard.writeText(redirectUri);
       setCopied(true);
@@ -483,8 +634,8 @@ function OauthSetupCard({ platformSlug, platformName }: { platformSlug: string; 
         </li>
       </ol>
       <div className="flex items-center gap-2">
-        <code className="flex-1 truncate rounded bg-white border border-slate-200 px-2 py-1 text-[10px] font-mono text-slate-700">{redirectUri}</code>
-        <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={copy}>
+        <code className="flex-1 truncate rounded bg-white border border-slate-200 px-2 py-1 text-[10px] font-mono text-slate-700">{redirectUri || "—"}</code>
+        <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={copy} disabled={!redirectUri}>
           {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
         </Button>
       </div>
@@ -498,7 +649,7 @@ function ConfigDetailsTable({ platform }: { platform: SocialMediaPlatform }) {
     ["Slug", <span key="slug" className="font-mono">{platform.slug}</span>],
     ["Status", platform.is_active ? "Active" : "Inactive"],
     ["Client ID", platform.client_id ? <span key="cid" className="font-mono">{platform.client_id.slice(0, 20)}…</span> : "—"],
-    ["Redirect URI", platform.redirect_uri ? <span key="ru" className="font-mono text-[10px] break-all">{platform.redirect_uri}</span> : "—"],
+    ["Redirect URI", platform.oauth_callback_uri ? <span key="ru" className="font-mono text-[10px] break-all">{platform.oauth_callback_uri}</span> : "—"],
     [
       "Scopes",
       platform.scopes
@@ -534,6 +685,7 @@ function NewFormatForm({ platformNanoid, ws, onCreated }: { platformNanoid: stri
   const [format, setFormat] = useState("");
   const [code, setCode] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const mutate = useMutator();
   return (
     <div className="rounded-lg border border-dashed border-slate-300 p-3 space-y-2 bg-white">
       <div className="grid grid-cols-3 gap-2">
@@ -546,13 +698,18 @@ function NewFormatForm({ platformNanoid, ws, onCreated }: { platformNanoid: stri
           type="button"
           size="sm"
           className="h-7 text-xs"
-          onClick={() => {
+          onClick={async () => {
             if (format && code && displayName) {
-              createContentFormatAction({ platform: platformNanoid, format, code, display_name: displayName }, ws);
-              setFormat("");
-              setCode("");
-              setDisplayName("");
-              onCreated?.();
+              const ok = await mutate(
+                createContentFormatAction({ platform: platformNanoid, format, code, display_name: displayName }, ws),
+                "Content format created.",
+              );
+              if (ok) {
+                setFormat("");
+                setCode("");
+                setDisplayName("");
+                onCreated?.();
+              }
             }
           }}
         >
@@ -580,6 +737,7 @@ function FormatDetail({
   const [key, setKey] = useState(format.format);
   const [code, setCode] = useState(format.code);
   const [active, setActive] = useState(format.is_active);
+  const mutate = useMutator();
 
   return (
     <div className="rounded-lg border bg-slate-50 p-3 space-y-3 mt-3">
@@ -623,16 +781,19 @@ function FormatDetail({
               Active
             </label>
             <div className="flex justify-end gap-2">
-              <Button type="button" size="sm" variant="ghost" className="h-7 text-xs text-red-500" onClick={() => { deleteContentFormatAction(format.nanoid, ws); onClose(); }}>
+              <Button type="button" size="sm" variant="ghost" className="h-7 text-xs text-red-500" onClick={async () => { await mutate(deleteContentFormatAction(format.nanoid, ws), "Content format deleted."); onClose(); }}>
                 <Trash2 className="h-3 w-3" />
               </Button>
               <Button
                 type="button"
                 size="sm"
                 className="h-7 text-xs"
-                onClick={() => {
-                  updateContentFormatAction(format.nanoid, { format: key, code, display_name: name, is_active: active }, ws);
+                onClick={async () => {
                   setEditing(false);
+                  await mutate(
+                    updateContentFormatAction(format.nanoid, { format: key, code, display_name: name, is_active: active }, ws),
+                    "Content format updated.",
+                  );
                 }}
               >
                 <Save className="h-3 w-3 mr-1" /> Save
@@ -673,8 +834,9 @@ function PlatformDetail({
   constraints: ContentConstraint[];
   onClose: () => void;
 }) {
-  const router = useRouter();
+  const mutate = useMutator();
   const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [showNewFormat, setShowNewFormat] = useState(false);
   const [selectedFormat, setSelectedFormat] = useState<PlatformContentFormat | null>(null);
   const platformFormats = formats.filter((f) => f.platform === platform.nanoid);
@@ -695,20 +857,24 @@ function PlatformDetail({
       {editing ? (
         <PlatformForm
           platform={platform}
-          onSave={(d) => {
-            updatePlatformAction(platform.nanoid, d, ws);
-            setEditing(false);
-            router.refresh();
+          saving={saving}
+          onSave={async (d) => {
+            setSaving(true);
+            const ok = await mutate(updatePlatformAction(platform.nanoid, d, ws), "Platform updated.");
+            setSaving(false);
+            if (ok) setEditing(false);
           }}
-          onDelete={() => {
-            deletePlatformAction(platform.nanoid, ws);
-            onClose();
+          onDelete={async () => {
+            setSaving(true);
+            const ok = await mutate(deletePlatformAction(platform.nanoid, ws), "Platform deleted.");
+            setSaving(false);
+            if (ok) onClose();
           }}
         />
       ) : (
         <div className="space-y-3">
           <ConfigDetailsTable platform={platform} />
-          <OauthSetupCard platformSlug={platform.slug} platformName={platform.name} />
+          <OauthSetupCard platformSlug={platform.slug} platformName={platform.name} callbackUri={platform.oauth_callback_uri} />
         </div>
       )}
 
@@ -781,17 +947,19 @@ function PlatformDetail({
 }
 
 export function PlatformConfigClient({
-  platforms: initialPlatforms,
-  contentFormats: initialFormats,
+  platforms,
+  contentFormats: formats,
   constraints,
   workspaceDomain,
 }: Props) {
   const ws = workspaceDomain.toLowerCase();
-  const router = useRouter();
-  const [platforms, setPlatforms] = useState(initialPlatforms);
-  const [formats, setFormats] = useState(initialFormats);
+  const mutate = useMutator();
   const [showNew, setShowNew] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [selectedPlatform, setSelectedPlatform] = useState<SocialMediaPlatform | null>(null);
+  const selected = selectedPlatform
+    ? platforms.find((p) => p.nanoid === selectedPlatform.nanoid) ?? selectedPlatform
+    : null;
 
   const formatCountBySlug = useMemo(() => {
     const m: Record<string, number> = {};
@@ -806,23 +974,21 @@ export function PlatformConfigClient({
           <h2 className="text-xl font-bold text-slate-900">Platform Configuration</h2>
           <p className="text-sm text-slate-500 mt-1">Configure social media platforms, OAuth credentials, and content constraints.</p>
         </div>
-        {!selectedPlatform && (
+        {!selected && (
           <Button size="sm" onClick={() => setShowNew(!showNew)}>
             <Plus className="h-4 w-4 mr-2" /> Add Platform
           </Button>
         )}
       </div>
 
-      {selectedPlatform ? (
+      {selected ? (
         <PlatformDetail
-          platform={selectedPlatform}
+          key={selected.nanoid}
+          platform={selected}
           ws={ws}
           formats={formats}
           constraints={constraints}
-          onClose={() => {
-            setSelectedPlatform(null);
-            router.refresh();
-          }}
+          onClose={() => setSelectedPlatform(null)}
         />
       ) : (
         <>
@@ -830,10 +996,12 @@ export function PlatformConfigClient({
             <PlatformForm
               platform={{}}
               isNew
-              onSave={(data) => {
-                createPlatformAction(data, ws);
-                setShowNew(false);
-                router.refresh();
+              saving={creating}
+              onSave={async (data) => {
+                setCreating(true);
+                const ok = await mutate(createPlatformAction(data, ws), "Platform created.");
+                setCreating(false);
+                if (ok) setShowNew(false);
               }}
               onDelete={() => setShowNew(false)}
             />
