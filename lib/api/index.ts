@@ -70,6 +70,10 @@ export { getDashboardWidgets, getNavigationSidebar } from "./dashboard";
 
 export { getPersonalDetails, updatePersonalDetails } from "./profile";
 
+export { getOrganization, updateOrganization } from "./organization";
+
+export { changePassword } from "./auth";
+
 export {
   createNote,
   createNoteType,

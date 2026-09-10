@@ -20,6 +20,8 @@ export interface Workspace {
   url: string;
   /** App keys the org is entitled to under its active subscription. */
   app_access: string[];
+  /** Nanoid of the ClientBusiness (Organization) that owns this workspace. */
+  client_business: string;
 }
 
 export interface ClientBusiness {

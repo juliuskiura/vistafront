@@ -1,0 +1,1 @@
+export { default, type ConnectAccountModalProps } from "./ConnectAccountModal";
