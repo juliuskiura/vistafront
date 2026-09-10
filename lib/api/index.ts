@@ -230,3 +230,21 @@ export {
   updateCollection,
   updateFolder,
 } from "./media";
+
+export {
+  listRooms,
+  getRoom,
+  createRoom,
+  assignAgent,
+  closeRoom,
+  transferRoom,
+  getMessages,
+  sendMessage,
+  markRead,
+  getUnreadCount,
+  listAgents,
+  getAgent,
+  type ChatRoom,
+  type ChatMessage,
+  type ChatAgent,
+} from "./livechat";

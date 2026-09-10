@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ComponentType, type SVGProps } from "react";
 import { ChevronsLeft, ChevronsRight, Menu, X } from "lucide-react";
+import { ChatIcon } from "@/lib/icons";
 
 import { Button } from "@/components/ui/button";
 import { Fab } from "@/components/ui/fab";
@@ -19,6 +20,7 @@ import { resolveIcon } from "@/lib/nav-icons";
 import type { NavItem, Workspace } from "@/lib/api";
 import { WorkspaceSwitcher } from "@/components/workspace/workspace-switcher";
 import { UserAccountMenu } from "@/components/workspace/user-account-menu";
+import { ChatSheet } from "@/components/workspace/chat-sheet";
 
 interface Props {
   workspace: Pick<Workspace, "nanoid" | "name" | "domain">;
@@ -317,6 +319,7 @@ export function WorkspaceShell({
           <h1 className="text-lg font-semibold">{pageTitle}</h1>
           <div className="ml-auto flex items-center gap-2">
             <WorkspaceSwitcher active={workspace} workspaces={workspaces} />
+            <ChatSheet workspaceDomain={workspace.domain} />
             <UserAccountMenu user={user} />
           </div>
         </header>
