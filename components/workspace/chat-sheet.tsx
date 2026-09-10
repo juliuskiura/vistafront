@@ -1,15 +1,17 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Send } from "lucide-react";
+import { Send, X, CheckCheck } from "lucide-react";
 import { ChatIcon } from "@/lib/icons";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/lib/context";
 
 import { Button } from "@/components/ui/button";
+import { Fab } from "@/components/ui/fab";
 import { Input } from "@/components/ui/input";
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetHeader,
   SheetTitle,
@@ -63,19 +65,16 @@ export function ChatSheet({ workspaceDomain }: { workspaceDomain: string }) {
     refetchInterval: open ? 15000 : false,
   });
 
-  // Update local messages when fetched messages change
   useEffect(() => {
     if (fetchedMessages) {
       setMessages(fetchedMessages);
     }
   }, [fetchedMessages]);
 
-  // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // WebSocket connection
   useEffect(() => {
     if (!room?.nanoid || !open) {
       if (wsRef.current) {
@@ -105,12 +104,9 @@ export function ChatSheet({ workspaceDomain }: { workspaceDomain: string }) {
           if (data.type === "message") {
             setMessages((prev) => [...prev, data.message]);
           } else if (data.type === "typing") {
-            // Handle typing indicator if needed
           } else if (data.type === "system") {
-            // Handle system messages
           }
         } catch {
-          // Ignore parse errors
         }
       };
 
@@ -124,7 +120,6 @@ export function ChatSheet({ workspaceDomain }: { workspaceDomain: string }) {
         setWsReady(false);
       };
     } catch {
-      // WebSocket not available
     }
 
     return () => {
@@ -138,7 +133,6 @@ export function ChatSheet({ workspaceDomain }: { workspaceDomain: string }) {
   const handleSendMessage = useCallback(() => {
     if (!message.trim() || !room?.nanoid) return;
 
-    // Optimistic send
     const optimisticMessage: ChatMessage = {
       nanoid: `temp-${Date.now()}`,
       content: message.trim(),
@@ -149,13 +143,11 @@ export function ChatSheet({ workspaceDomain }: { workspaceDomain: string }) {
     setMessages((prev) => [...prev, optimisticMessage]);
     setMessage("");
 
-    // Send via WebSocket
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(
         JSON.stringify({ action: "send_message", content: message.trim() }),
       );
     } else {
-      // Fallback: send via Route Handler
       fetch(`/api/livechat/messages?room=${room.nanoid}&workspace=${workspaceDomain}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -183,60 +175,103 @@ export function ChatSheet({ workspaceDomain }: { workspaceDomain: string }) {
           aria-label="Open chat"
           className="relative"
         >
-          <ChatIcon />
+          <ChatIcon size={32} />
           {rooms && rooms.length > 0 && (
-            <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-primary" />
+            <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-primary animate-pulse" />
           )}
         </Button>
       </SheetTrigger>
-      <SheetContent side="right" className="w-80 sm:max-w-md flex flex-col">
-        <SheetHeader>
-          <SheetTitle>Chat</SheetTitle>
-        </SheetHeader>
-
-        <ScrollArea className="flex-1 px-4">
-          <div className="space-y-3 py-4">
-            {messages.map((msg) => (
-              <div
-                key={msg.nanoid}
-                className={`flex ${msg.sender_name === "You" ? "justify-end" : "justify-start"}`}
-              >
-                <div
-                  className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
-                    msg.sender_name === "You"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground"
-                  }`}
-                >
-                  <p className="text-xs font-semibold mb-1">
-                    {msg.sender_name}
-                  </p>
-                  <p>{msg.content}</p>
-                  <p className="text-[10px] opacity-60 mt-1">
-                    {new Date(msg.created_at).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </p>
-                </div>
+      <SheetContent
+        side="right"
+        className="w-[420px] sm:max-w-[520px] flex flex-col overflow-hidden"
+        showCloseButton={false}
+      >
+        {/* Gradient header */}
+        <div className="relative bg-gradient-to-r from-primary/90 to-primary/70 px-5 py-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <ChatIcon size={28} />
+              <div>
+                <SheetTitle className="text-base font-bold text-primary-foreground">
+                  Chat with Vistasolve
+                </SheetTitle>
+                <p className="text-[11px] text-primary-foreground/70">
+                  {wsReady ? "Online" : "Connecting..."}
+                </p>
               </div>
-            ))}
+            </div>
+            <SheetClose asChild>
+              <Fab variant="outline" size="sm" aria-label="Close chat">
+                <X className="size-4" />
+              </Fab>
+            </SheetClose>
+          </div>
+        </div>
+
+        {/* Premium message area */}
+        <ScrollArea className="flex-1 px-0">
+          <div className="space-y-1 px-5 py-5">
+            {messages.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-16 opacity-60">
+                <ChatIcon size={40} />
+                <p className="mt-3 text-sm font-medium">No messages yet</p>
+                <p className="text-xs">Start a conversation below</p>
+              </div>
+            )}
+            {messages.map((msg, index) => {
+              const isSent = msg.sender_name === "You";
+              return (
+                <div
+                  key={msg.nanoid}
+                  className={`flex ${isSent ? "justify-end" : "justify-start"}`}
+                >
+                  <div
+                    className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm shadow-sm ${
+                      isSent
+                        ? "bg-primary text-primary-foreground rounded-br-sm"
+                        : "bg-muted/80 text-muted-foreground rounded-bl-sm backdrop-blur-sm"
+                    }`}
+                  >
+                    {!isSent && (
+                      <p className="text-[11px] font-semibold mb-1 text-foreground/80">
+                        {msg.sender_name}
+                      </p>
+                    )}
+                    <p className="leading-relaxed">{msg.content}</p>
+                    <div className="flex items-center gap-1 mt-1 justify-end">
+                      <p className="text-[10px] opacity-50">
+                        {new Date(msg.created_at).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                      {isSent && (
+                        <CheckCheck className="size-3 opacity-50" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
             <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
 
-        <div className="border-t p-4">
-          <div className="flex gap-2">
+        {/* Premium input area */}
+        <div className="border-t border-sidebar-divider bg-background/95 backdrop-blur-sm p-4">
+          <div className="flex items-end gap-2 rounded-xl border border-sidebar-divider bg-card px-4 py-2 shadow-sm focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20 transition-all">
             <Input
               placeholder="Type a message..."
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="flex-1"
+              className="flex-1 border-none bg-transparent p-0 text-sm shadow-none focus-visible:ring-0 focus-visible:border-none"
             />
             <Button
               type="button"
               size="icon"
+              variant="default"
+              className="size-8 shrink-0 rounded-lg"
               onClick={handleSendMessage}
               disabled={!message.trim() || !wsReady}
             >
@@ -244,7 +279,7 @@ export function ChatSheet({ workspaceDomain }: { workspaceDomain: string }) {
             </Button>
           </div>
           {!wsReady && room && (
-            <p className="text-[10px] text-muted-foreground mt-1">
+            <p className="text-[10px] text-muted-foreground mt-2 text-center">
               Connecting...
             </p>
           )}

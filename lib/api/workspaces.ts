@@ -3,6 +3,7 @@ import { toQueryString } from "./query-string";
 import type {
   CreateWorkspaceBody,
   DomainAvailability,
+  Paginated,
   UpdateWorkspaceBody,
   Workspace,
   WorkspaceMember,
@@ -17,7 +18,13 @@ import type {
  * no ``X-Workspace`` header is sent.
  */
 export async function listWorkspaces(): Promise<Workspace[]> {
-  return serverFetch<Workspace[]>("/apis/workspaces/workspaces/");
+  const data = await serverFetch<Workspace[] | Paginated<Workspace>>(
+    "/apis/workspaces/workspaces/",
+  );
+  if (Array.isArray(data)) {
+    return data;
+  }
+  return data.results;
 }
 
 /**

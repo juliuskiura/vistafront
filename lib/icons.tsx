@@ -1,7 +1,52 @@
 "use client";
 
-export const ChatIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 20 20">
+import type { CSSProperties, ReactNode, SVGProps } from "react";
+
+interface IconBaseProps extends Omit<SVGProps<SVGSVGElement>, "color"> {
+  color?: string;
+  className?: string;
+  strokeWidth?: number;
+  size?: number | string;
+  children: ReactNode;
+  viewBox?: string;
+  fill?: string;
+}
+
+function IconBase({
+  children,
+  viewBox = "0 0 24 24",
+  fill = "none",
+  color,
+  strokeWidth = 2,
+  className,
+  style,
+  size,
+  ...rest
+}: IconBaseProps) {
+  const dimension = size ?? "1em";
+  const resolvedStyle: CSSProperties = { color, ...style };
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={dimension}
+      height={dimension}
+      viewBox={viewBox}
+      className={className}
+      style={resolvedStyle}
+      fill={fill}
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={strokeWidth}
+      {...rest}
+    >
+      {children}
+    </svg>
+  );
+}
+
+export const ChatIcon = ({ size = 32 }: { size?: number }) => (
+  <IconBase size={size} viewBox="0 0 20 20" fill="none" strokeWidth={0} className="size-9">
     <path d="M0 0h20v20H0z" fill="none" />
     <g fill="none">
       <path fill="url(#SVGVwWdHdlx)" d="M11.5 5a6.5 6.5 0 0 1 5.675 9.672l.796 2.082a1 1 0 0 1-1.204 1.32l-2.488-.697A6.5 6.5 0 1 1 11.5 5" />
@@ -23,5 +68,5 @@ export const ChatIcon = () => (
         </radialGradient>
       </defs>
     </g>
-  </svg>
+  </IconBase>
 );

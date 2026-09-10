@@ -1,5 +1,5 @@
 import { serverFetch } from "./server-fetch";
-import type { DashboardWidget, NavItem } from "./types";
+import type { DashboardWidget, NavItem, Paginated } from "./types";
 
 /**
  * Server-rendered dashboard widgets for the current workspace.
@@ -9,7 +9,14 @@ import type { DashboardWidget, NavItem } from "./types";
  * resolves the active tenant.
  */
 export async function getDashboardWidgets(workspace: string): Promise<DashboardWidget[]> {
-  return serverFetch<DashboardWidget[]>("/apis/dashboard/widgets/", { workspace });
+  const data = await serverFetch<DashboardWidget[] | Paginated<DashboardWidget>>(
+    "/apis/dashboard/widgets/",
+    { workspace },
+  );
+  if (Array.isArray(data)) {
+    return data;
+  }
+  return data.results;
 }
 
 /**
@@ -19,5 +26,9 @@ export async function getDashboardWidgets(workspace: string): Promise<DashboardW
  * correct `to` paths for the active workspace.
  */
 export async function getNavigationSidebar(): Promise<NavItem[]> {
-  return serverFetch<NavItem[]>("/apis/navigation/sidebar/");
+  const data = await serverFetch<NavItem[] | Paginated<NavItem>>("/apis/navigation/sidebar/");
+  if (Array.isArray(data)) {
+    return data;
+  }
+  return data.results;
 }

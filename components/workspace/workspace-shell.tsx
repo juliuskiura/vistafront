@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ComponentType, type SVGProps } from "react";
 import { ChevronsLeft, ChevronsRight, Menu, X } from "lucide-react";
-import { ChatIcon } from "@/lib/icons";
 
 import { Button } from "@/components/ui/button";
 import { Fab } from "@/components/ui/fab";
@@ -318,8 +317,8 @@ export function WorkspaceShell({
           </Button>
           <h1 className="text-lg font-semibold">{pageTitle}</h1>
           <div className="ml-auto flex items-center gap-2">
-            <WorkspaceSwitcher active={workspace} workspaces={workspaces} />
             <ChatSheet workspaceDomain={workspace.domain} />
+            <WorkspaceSwitcher active={workspace} workspaces={workspaces} />
             <UserAccountMenu user={user} />
           </div>
         </header>
