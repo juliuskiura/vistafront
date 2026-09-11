@@ -20,6 +20,7 @@ import { resolveIcon } from "@/lib/nav-icons";
 import type { NavItem, Workspace } from "@/lib/api";
 import { WorkspaceSwitcher } from "@/components/workspace/workspace-switcher";
 import { UserAccountMenu } from "@/components/workspace/user-account-menu";
+import { ChatSheet } from "@/components/workspace/chat-sheet";
 
 interface Props {
   workspace: Pick<Workspace, "nanoid" | "name" | "domain">;
@@ -29,6 +30,7 @@ interface Props {
     firstName: string | null;
     lastName?: string | null;
     email: string | null;
+    isAdmin: boolean;
   };
   children: React.ReactNode;
 }
@@ -317,14 +319,18 @@ export function WorkspaceShell({
           </Button>
           <h1 className="text-lg font-semibold">{pageTitle}</h1>
             <div className="ml-auto flex items-center gap-2">
-            <Link
-              href={`/${workspace.domain}/dashboard/livechat`}
-              className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
-              title="Live Chat"
-            >
-              <ChatIcon size={18} />
-              <span className="hidden sm:inline">Chat</span>
-            </Link>
+            {user.isAdmin ? (
+              <Link
+                href={`/${workspace.domain}/dashboard/livechat`}
+                className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                title="Live Chat"
+              >
+                <ChatIcon size={18} />
+                <span className="hidden sm:inline">Chat</span>
+              </Link>
+            ) : (
+              <ChatSheet workspaceDomain={workspace.domain} />
+            )}
             <WorkspaceSwitcher active={workspace} workspaces={workspaces} />
             <UserAccountMenu user={user} />
           </div>

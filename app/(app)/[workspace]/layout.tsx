@@ -39,6 +39,7 @@ export default async function WorkspaceLayout({
         firstName: user.first_name,
         lastName: user.last_name,
         email: user.email,
+        isAdmin: user.is_admin,
       }}
     >
       {children}
