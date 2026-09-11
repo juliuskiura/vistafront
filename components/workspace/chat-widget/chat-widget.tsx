@@ -45,18 +45,6 @@ export function ChatWidget({ userName = null }: ChatWidgetProps) {
     }
   };
 
-  const handleClose = async () => {
-    if (!room?.nanoid) return;
-    try {
-      await fetch(`/api/livechat/rooms/${room.nanoid}/close`, { method: "POST" });
-    } catch {
-      toast({ variant: "error", message: "Failed to close chat" });
-    }
-    queryClient.invalidateQueries({ queryKey: ["chatRooms"] });
-    setMinimized(true);
-    setUnread(0);
-  };
-
   const room = isPending ? null : currentRoom;
 
   return (
@@ -68,7 +56,6 @@ export function ChatWidget({ userName = null }: ChatWidgetProps) {
       userName={userName}
       starting={starting}
       onStart={handleStart}
-      onClose={handleClose}
       onMinimize={() => setMinimized(true)}
       onOpen={() => setMinimized(false)}
     />
@@ -82,7 +69,6 @@ interface ChatWidgetInnerProps {
   userName?: string | null;
   starting: boolean;
   onStart: () => void;
-  onClose: () => void;
   onMinimize: () => void;
   onOpen: () => void;
 }
@@ -94,12 +80,25 @@ function ChatWidgetInner({
   userName,
   starting,
   onStart,
-  onClose,
   onMinimize,
   onOpen,
 }: ChatWidgetInnerProps) {
   const [unread, setUnread] = useState(0);
   const tempIdRef = useRef(0);
+  const queryClient = useQueryClient();
+  const { push: toast } = useToast();
+
+  const handleClose = async () => {
+    if (!room?.nanoid) return;
+    try {
+      await fetch(`/api/livechat/rooms/${room.nanoid}/close`, { method: "POST" });
+    } catch {
+      toast({ variant: "error", message: "Failed to close chat" });
+    }
+    queryClient.invalidateQueries({ queryKey: ["chatRooms"] });
+    setMinimized(true);
+    setUnread(0);
+  };
 
   const { data: history } = useQuery<ChatMessage[]>({
     queryKey: ["chatMessages", room?.nanoid],
@@ -152,7 +151,7 @@ function ChatWidgetInner({
       userName={userName}
       starting={starting}
       onStart={onStart}
-      onClose={onClose}
+      onClose={handleClose}
       onMinimize={onMinimize}
       onSend={handleSend}
     />
