@@ -87,8 +87,7 @@ export function ChatWidget({ userName = null }: ChatWidgetProps) {
   const room = isPending ? null : currentRoom;
 
   return (
-    <ChatWidgetInner
-      key={roomNanoidRef.current ?? "no-room"}
+      <ChatWidgetInner
       room={room}
       minimized={minimized}
       minimizedRef={minimizedRef}
