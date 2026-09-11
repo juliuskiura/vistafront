@@ -1,6 +1,6 @@
 "use client";
 
-import { Minus, MessageSquarePlus } from "lucide-react";
+import { Minus, MessageSquarePlus, X } from "lucide-react";
 import { ChatIcon } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { MessageList } from "./message-list";
@@ -15,6 +15,7 @@ interface ChatPanelProps {
   starting?: boolean;
   onStart: () => void;
   onMinimize: () => void;
+  onClose: () => void;
   onSend: (content: string, sentAt: Date) => void;
 }
 
@@ -26,6 +27,7 @@ export function ChatPanel({
   starting = false,
   onStart,
   onMinimize,
+  onClose,
   onSend,
 }: ChatPanelProps) {
   const status = starting
@@ -50,15 +52,26 @@ export function ChatPanel({
             <p className="text-[11px] text-primary-foreground/70">{status}</p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={onMinimize}
-          aria-label="Minimize chat"
-          title="Minimize"
-          className="flex h-8 w-8 items-center justify-center rounded-full text-primary-foreground/90 transition-colors hover:bg-primary-foreground/15"
-        >
-          <Minus className="size-4" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close chat"
+            title="Close chat"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-primary-foreground/90 transition-colors hover:bg-destructive/80 hover:text-destructive-foreground"
+          >
+            <X className="size-4" />
+          </button>
+          <button
+            type="button"
+            onClick={onMinimize}
+            aria-label="Minimize chat"
+            title="Minimize"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-primary-foreground/90 transition-colors hover:bg-primary-foreground/15"
+          >
+            <Minus className="size-4" />
+          </button>
+        </div>
       </div>
 
       <MessageList messages={messages} userName={userName} hasRoom={hasRoom} />
