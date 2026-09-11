@@ -3,6 +3,7 @@
 import { Minus, MessageSquarePlus } from "lucide-react";
 import { ChatIcon } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
+import { VSButton } from "@/components/shared/components/customUi/VSButton";
 import { MessageList } from "./message-list";
 import { ChatInput } from "./chat-input";
 import type { ChatMessage } from "../types";
@@ -53,15 +54,14 @@ export function ChatPanel({
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <button
-            type="button"
+          <VSButton
+            variant="destructive"
+            appearance="threeD"
+            size="sm"
             onClick={onClose}
-            aria-label="Close chat"
-            title="Close chat"
-            className="rounded-full px-3 py-1 text-xs font-medium text-destructive-foreground transition-colors hover:bg-destructive/80"
           >
             Close Chat
-          </button>
+          </VSButton>
           <button
             type="button"
             onClick={onMinimize}
