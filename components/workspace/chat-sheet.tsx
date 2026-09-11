@@ -8,7 +8,7 @@ import { useToast } from "@/lib/context";
 
 import { Button } from "@/components/ui/button";
 import { Fab } from "@/components/ui/fab";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Sheet,
   SheetClose,
@@ -281,12 +281,13 @@ export function ChatSheet({ workspaceDomain }: { workspaceDomain: string }) {
               <Paperclip className="size-4" />
             </button>
             <div className="h-5 w-px bg-secondary" />
-            <Input
+            <Textarea
               placeholder="Type a message..."
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="flex-1 border-none bg-transparent p-0 text-sm shadow-none focus-visible:ring-0 focus-visible:border-none"
+              className="flex-1 min-h-[24px] border-none bg-transparent p-0 text-sm shadow-none focus-visible:ring-0 focus-visible:border-none resize-none overflow-hidden"
+              rows={1}
             />
             <button
               type="button"
