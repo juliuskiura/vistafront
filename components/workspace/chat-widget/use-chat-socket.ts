@@ -53,6 +53,7 @@ export function useChatSocket({
       wsRef.current.close();
       wsRef.current = null;
     }
+    setMessages([]);
 
     if (!roomNanoid) return;
 

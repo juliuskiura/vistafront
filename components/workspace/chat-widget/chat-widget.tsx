@@ -16,6 +16,9 @@ interface ChatWidgetProps {
 export function ChatWidget({ userName = null }: ChatWidgetProps) {
   const [minimized, setMinimized] = useState(true);
   const minimizedRef = useRef(true);
+  const [closedAt, setClosedAt] = useState<string | null>(null);
+  const roomNanoidRef = useRef<string | null>(null);
+  const leftRef = useRef(false);
 
   useEffect(() => {
     minimizedRef.current = minimized;
@@ -27,6 +30,12 @@ export function ChatWidget({ userName = null }: ChatWidgetProps) {
 
   const [starting, setStarting] = useState(false);
   const startingRef = useRef(false);
+
+  useEffect(() => {
+    if (currentRoom?.nanoid) {
+      roomNanoidRef.current = currentRoom.nanoid;
+    }
+  }, [currentRoom]);
 
   const handleStart = async () => {
     if (startingRef.current) return;
@@ -45,19 +54,52 @@ export function ChatWidget({ userName = null }: ChatWidgetProps) {
     }
   };
 
+  const handleClose = async () => {
+    const nanoid = roomNanoidRef.current;
+    if (!nanoid) return;
+    try {
+      await fetch(
+        `/api/livechat/rooms/${nanoid}/close`,
+        { method: "POST", credentials: "include" }
+      );
+    } catch {
+      toast({ variant: "error", message: "Failed to close chat" });
+      return;
+    }
+    leftRef.current = true;
+    roomNanoidRef.current = null;
+    setClosedAt(null);
+    queryClient.removeQueries({ queryKey: ["chatRooms"] });
+    if (nanoid) {
+      queryClient.removeQueries({ queryKey: ["chatMessages", nanoid] });
+    }
+    setMinimized(true);
+  };
+
+  const handleOpen = async () => {
+    if (leftRef.current) {
+      await handleStart();
+      leftRef.current = false;
+    }
+    setMinimized(false);
+  };
+
   const room = isPending ? null : currentRoom;
 
   return (
     <ChatWidgetInner
-      key={room?.nanoid ?? "no-room"}
+      key={roomNanoidRef.current ?? "no-room"}
       room={room}
       minimized={minimized}
       minimizedRef={minimizedRef}
       userName={userName}
       starting={starting}
+      closedAt={closedAt}
+      currentRoom={currentRoom}
       onStart={handleStart}
       onMinimize={() => setMinimized(true)}
-      onOpen={() => setMinimized(false)}
+      onOpen={handleOpen}
+      onClose={handleClose}
     />
   );
 }
@@ -68,9 +110,12 @@ interface ChatWidgetInnerProps {
   minimizedRef: React.MutableRefObject<boolean>;
   userName?: string | null;
   starting: boolean;
+  closedAt: string | null;
+  currentRoom: ChatRoom | null;
   onStart: () => void;
   onMinimize: () => void;
   onOpen: () => void;
+  onClose: () => void;
 }
 
 function ChatWidgetInner({
@@ -79,49 +124,36 @@ function ChatWidgetInner({
   minimizedRef,
   userName,
   starting,
+  closedAt,
+  currentRoom,
   onStart,
   onMinimize,
   onOpen,
+  onClose,
 }: ChatWidgetInnerProps) {
   const [unread, setUnread] = useState(0);
   const tempIdRef = useRef(0);
-  const queryClient = useQueryClient();
   const { push: toast } = useToast();
-
-  const handleClose = async () => {
-    if (!room?.nanoid) return;
-    try {
-      await fetch(`/api/livechat/rooms/${room.nanoid}/close`, { method: "POST" });
-    } catch {
-      toast({ variant: "error", message: "Failed to close chat" });
-    }
-    queryClient.invalidateQueries({ queryKey: ["chatRooms"] });
-    onMinimize();
-    setUnread(0);
-  };
 
   const { data: history } = useQuery<ChatMessage[]>({
     queryKey: ["chatMessages", room?.nanoid],
     queryFn: () =>
       fetch(`/api/livechat/messages?room=${room?.nanoid}`).then((r) => r.json()),
-    enabled: !!room?.nanoid,
+    enabled: !!room?.nanoid && !closedAt,
   });
 
   const { messages, replaceHistory, wsReady, sendMessage } = useChatSocket({
-    roomNanoid: room?.nanoid,
+    roomNanoid: room?.nanoid && !closedAt ? room.nanoid : undefined,
     minimizedRef,
     userName,
     onUnread: () => setUnread((u) => u + 1),
   });
 
   useEffect(() => {
-    if (history && room?.nanoid) replaceHistory(history);
-  }, [history, room?.nanoid, replaceHistory]);
-
-  const openPanel = () => {
-    onOpen();
-    setUnread(0);
-  };
+    if (history) {
+      replaceHistory(history);
+    }
+  }, [history, replaceHistory]);
 
   const handleSend = (content: string, sentAt: Date) => {
     const trimmed = content.trim();
@@ -141,16 +173,17 @@ function ChatWidgetInner({
   const online = wsReady;
 
   return minimized ? (
-    <ChatLauncher unread={unread} online={online} onClick={openPanel} />
+    <ChatLauncher unread={unread} online={online} onClick={onOpen} />
   ) : (
     <ChatPanel
       messages={messages}
       online={online}
-      hasRoom={!!room}
+      hasRoom={!!room || !!closedAt}
       userName={userName}
       starting={starting}
+      closedAt={closedAt}
       onStart={onStart}
-      onClose={handleClose}
+      onClose={onClose}
       onMinimize={onMinimize}
       onSend={handleSend}
     />
