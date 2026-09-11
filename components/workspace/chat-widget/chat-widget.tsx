@@ -96,7 +96,7 @@ function ChatWidgetInner({
       toast({ variant: "error", message: "Failed to close chat" });
     }
     queryClient.invalidateQueries({ queryKey: ["chatRooms"] });
-    setMinimized(true);
+    onMinimize();
     setUnread(0);
   };
 
