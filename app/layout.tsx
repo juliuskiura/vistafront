@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import Script from "next/script";
 
 import { SidebarProvider, ToastProvider } from "@/lib/context";
 import { QueryProvider } from "@/lib/tanstack/query-provider";
@@ -51,8 +52,9 @@ export default function RootLayout({
       className={`${inter.variable} ${outfit.variable} ${jakarta.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <head>
-        <script
+<body className="min-h-full flex flex-col">
+        <Script
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
@@ -66,8 +68,6 @@ export default function RootLayout({
             `,
           }}
         />
-      </head>
-      <body className="min-h-full flex flex-col">
         <ToastProvider>
           <QueryProvider>
             <SidebarProvider>{children}</SidebarProvider>

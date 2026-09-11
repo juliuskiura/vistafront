@@ -130,3 +130,25 @@ export async function listAgents(workspace: string) {
 export async function getAgent(nanoid: string, workspace: string) {
   return serverFetch<ChatAgent>(`${BASE}/agents/${nanoid}/`, { workspace });
 }
+
+export async function createChatAgent(
+  userNanoid: string,
+  workspace: string,
+) {
+  return serverMutate<ChatAgent>(`${BASE}/agents/`, {
+    method: "POST",
+    body: { user: userNanoid },
+    workspace,
+  });
+}
+
+export async function deleteChatAgent(
+  nanoid: string,
+  workspace: string,
+) {
+  return serverMutate<ChatAgent>(`${BASE}/agents/${nanoid}/`, {
+    method: "DELETE",
+    body: {},
+    workspace,
+  });
+}

@@ -244,6 +244,8 @@ export {
   getUnreadCount,
   listAgents,
   getAgent,
+  createChatAgent,
+  deleteChatAgent,
   type ChatRoom,
   type ChatMessage,
   type ChatAgent,

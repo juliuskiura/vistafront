@@ -1,6 +1,6 @@
 import { requireWorkspace } from "@/lib/auth/server";
-import { listRooms } from "@/lib/api";
-import { ChatPageClient } from "./chat-page-client";
+import { listRooms, listAgents, listWorkspaceMembers } from "@/lib/api";
+import { LivechatClient } from "./livechat-client";
 
 export default async function LivechatPage({
   params,
@@ -11,7 +11,23 @@ export default async function LivechatPage({
   const active = await requireWorkspace(slug);
   const ws = active.domain;
 
-  const rooms = await listRooms(ws).catch(() => []);
+  const [rooms, agents, members] = await Promise.all([
+    listRooms(ws).catch(() => []),
+    listAgents(ws).catch(() => []),
+    listWorkspaceMembers(active.nanoid, ws).catch(() => []),
+  ]);
 
-  return <ChatPageClient rooms={rooms} workspaceDomain={ws} />;
+  const safeRooms = Array.isArray(rooms) ? rooms : [];
+  const safeAgents = Array.isArray(agents) ? agents : [];
+  const safeMembers = Array.isArray(members) ? members : [];
+
+  return (
+    <LivechatClient
+      workspaceDomain={ws}
+      workspaceNanoid={active.nanoid}
+      initialRooms={safeRooms}
+      initialAgents={safeAgents}
+      initialMembers={safeMembers}
+    />
+  );
 }

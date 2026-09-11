@@ -24,3 +24,8 @@ export class ServerFetchError extends Error {
     this.name = "ServerFetchError";
   }
 }
+
+export interface ActionResultLike {
+  status?: string;
+  message?: string;
+}
