@@ -4,11 +4,10 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ChatRoom } from "./types";
 
-export function useChatRoom(enabled: boolean) {
+export function useChatRoom() {
   const { data: rooms, isPending } = useQuery<ChatRoom[]>({
     queryKey: ["chatRooms"],
     queryFn: () => fetch("/api/livechat/rooms").then((r) => r.json()),
-    enabled,
     refetchInterval: 30_000,
   });
 

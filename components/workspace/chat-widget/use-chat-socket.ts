@@ -21,7 +21,6 @@ interface UseChatSocketArgs {
   roomNanoid?: string;
   minimizedRef: MutableRefObject<boolean>;
   userName?: string | null;
-  useWebSocket?: boolean;
   onUnread?: () => void;
 }
 
@@ -29,7 +28,6 @@ export function useChatSocket({
   roomNanoid,
   minimizedRef,
   userName,
-  useWebSocket = true,
   onUnread,
 }: UseChatSocketArgs) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -56,7 +54,7 @@ export function useChatSocket({
       wsRef.current = null;
     }
 
-    if (!roomNanoid || !useWebSocket) return;
+    if (!roomNanoid) return;
 
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const wsUrl = `${protocol}//${window.location.host}/ws/chat/${roomNanoid}/`;

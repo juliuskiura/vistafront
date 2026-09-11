@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useChatRoom } from "./use-chat-room";
 import { useChatSocket } from "./use-chat-socket";
@@ -9,49 +9,11 @@ import { ChatLauncher } from "./_components/chat-launcher";
 import { ChatPanel } from "./_components/chat-panel";
 import type { ChatMessage, ChatRoom } from "./types";
 
-const ROOM_STORAGE_KEY = "vistasolve.chat.room.nanoid";
-
-const roomListeners = new Set<() => void>();
-
-function handleStorageEvent(event: StorageEvent) {
-  if (event.key === ROOM_STORAGE_KEY) {
-    roomListeners.forEach((listener) => listener());
-  }
-}
-
-function getStoredRoomNanoid(): string | null {
-  if (typeof window === "undefined") return null;
-  return window.localStorage.getItem(ROOM_STORAGE_KEY);
-}
-
-function subscribeToStoredRoom(onChange: () => void): () => void {
-  roomListeners.add(onChange);
-  if (typeof window !== "undefined") {
-    window.addEventListener("storage", handleStorageEvent);
-  }
-  return () => {
-    roomListeners.delete(onChange);
-    if (typeof window !== "undefined") {
-      window.removeEventListener("storage", handleStorageEvent);
-    }
-  };
-}
-
-function setStoredRoomNanoid(nanoid: string) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(ROOM_STORAGE_KEY, nanoid);
-  roomListeners.forEach((listener) => listener());
-}
-
 interface ChatWidgetProps {
   userName?: string | null;
-  isAuthenticated?: boolean;
 }
 
-export function ChatWidget({
-  userName = null,
-  isAuthenticated = false,
-}: ChatWidgetProps) {
+export function ChatWidget({ userName = null }: ChatWidgetProps) {
   const [minimized, setMinimized] = useState(true);
   const minimizedRef = useRef(true);
 
@@ -59,46 +21,22 @@ export function ChatWidget({
     minimizedRef.current = minimized;
   }, [minimized]);
 
-  const { currentRoom: authedRoom } = useChatRoom(isAuthenticated);
-
-  const storedRoomNanoid = useSyncExternalStore(
-    subscribeToStoredRoom,
-    getStoredRoomNanoid,
-    () => null,
-  );
-
-  const anonRoom: ChatRoom | null = isAuthenticated
-    ? null
-    : storedRoomNanoid
-      ? {
-          nanoid: storedRoomNanoid,
-          is_active: true,
-          agent_name: null,
-          customer_name: null,
-          created_at: "",
-        }
-      : null;
-
-  const room = isAuthenticated ? authedRoom : anonRoom;
-
-  const [starting, setStarting] = useState(false);
-  const startingRef = useRef(false);
+  const { currentRoom, isPending } = useChatRoom();
   const queryClient = useQueryClient();
   const { push: toast } = useToast();
 
+  const [starting, setStarting] = useState(false);
+  const startingRef = useRef(false);
+
   const handleStart = async () => {
-    if (startingRef.current || room) return;
+    if (startingRef.current) return;
     startingRef.current = true;
     setStarting(true);
     try {
       const res = await fetch("/api/livechat/rooms", { method: "POST" });
       if (!res.ok) throw new Error("create failed");
       const newRoom = (await res.json()) as ChatRoom;
-      if (!isAuthenticated) {
-        setStoredRoomNanoid(newRoom.nanoid);
-      } else {
-        await queryClient.invalidateQueries({ queryKey: ["chatRooms"] });
-      }
+      await queryClient.invalidateQueries({ queryKey: ["chatRooms"] });
     } catch {
       toast({ variant: "error", message: "Failed to open a chat" });
     } finally {
@@ -107,6 +45,8 @@ export function ChatWidget({
     }
   };
 
+  const room = isPending ? null : currentRoom;
+
   return (
     <ChatWidgetInner
       key={room?.nanoid ?? "no-room"}
@@ -114,7 +54,6 @@ export function ChatWidget({
       minimized={minimized}
       minimizedRef={minimizedRef}
       userName={userName}
-      isAuthenticated={isAuthenticated}
       starting={starting}
       onStart={handleStart}
       onMinimize={() => setMinimized(true)}
@@ -128,7 +67,6 @@ interface ChatWidgetInnerProps {
   minimized: boolean;
   minimizedRef: React.MutableRefObject<boolean>;
   userName?: string | null;
-  isAuthenticated: boolean;
   starting: boolean;
   onStart: () => void;
   onMinimize: () => void;
@@ -140,7 +78,6 @@ function ChatWidgetInner({
   minimized,
   minimizedRef,
   userName,
-  isAuthenticated,
   starting,
   onStart,
   onMinimize,
@@ -161,7 +98,6 @@ function ChatWidgetInner({
     roomNanoid: room?.nanoid,
     minimizedRef,
     userName,
-    useWebSocket: isAuthenticated,
     onUnread: () => setUnread((u) => u + 1),
   });
 
@@ -189,7 +125,7 @@ function ChatWidgetInner({
     sendMessage(trimmed);
   };
 
-  const online = wsReady || !isAuthenticated;
+  const online = wsReady;
 
   return minimized ? (
     <ChatLauncher unread={unread} online={online} onClick={openPanel} />

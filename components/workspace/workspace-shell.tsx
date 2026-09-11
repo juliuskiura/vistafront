@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ComponentType, type SVGProps } from "react";
 import { ChevronsLeft, ChevronsRight, Menu, X } from "lucide-react";
 import { ChatIcon } from "@/lib/icons";
+import { ChatWidget } from "@/components/workspace/chat-widget";
 
 import { Button } from "@/components/ui/button";
 import { Fab } from "@/components/ui/fab";
@@ -340,7 +341,7 @@ export function WorkspaceShell({
         </main>
       </div>
 
-      {/* Chat widget mounted globally in root layout */}
+      {!user.isAdmin && <ChatWidget userName={user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : null} />}
     </div>
   );
 }
