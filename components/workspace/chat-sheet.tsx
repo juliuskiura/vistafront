@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Send, X, CheckCheck } from "lucide-react";
+import { Send, X, CheckCheck, Paperclip, Smile } from "lucide-react";
 import { ChatIcon } from "@/lib/icons";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/lib/context";
@@ -18,6 +18,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import EmojiPicker from "@/components/socialmanager/emoji-picker";
 
 interface ChatMessage {
   nanoid: string;
@@ -259,7 +260,27 @@ export function ChatSheet({ workspaceDomain }: { workspaceDomain: string }) {
 
         {/* Premium input area */}
         <div className="border-t border-sidebar-divider bg-background/95 backdrop-blur-sm p-4">
-          <div className="flex items-end gap-2 rounded-xl border border-sidebar-divider bg-card px-4 py-2 shadow-sm focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20 transition-all">
+          <div className="relative flex items-center gap-1 rounded-xl border border-secondary bg-card px-3 py-2 shadow-sm transition-all focus-within:border-secondary/80 focus-within:ring-1 focus-within:ring-secondary/30">
+            <EmojiPicker onEmojiSelect={(emoji) => {
+                  setMessage((prev) => prev + emoji);
+                }}>
+                  <button
+                    type="button"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary/80 hover:text-foreground transition-colors"
+                    aria-label="Emoji picker"
+                  >
+                    <Smile className="size-4" />
+                  </button>
+                </EmojiPicker>
+            <div className="h-5 w-px bg-secondary" />
+            <button
+              type="button"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary/80 hover:text-foreground transition-colors"
+              aria-label="Attach file"
+            >
+              <Paperclip className="size-4" />
+            </button>
+            <div className="h-5 w-px bg-secondary" />
             <Input
               placeholder="Type a message..."
               value={message}
@@ -267,16 +288,14 @@ export function ChatSheet({ workspaceDomain }: { workspaceDomain: string }) {
               onKeyDown={handleKeyDown}
               className="flex-1 border-none bg-transparent p-0 text-sm shadow-none focus-visible:ring-0 focus-visible:border-none"
             />
-            <Button
+            <button
               type="button"
-              size="icon"
-              variant="default"
-              className="size-8 shrink-0 rounded-lg"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
               onClick={handleSendMessage}
               disabled={!message.trim() || !wsReady}
             >
               <Send className="size-4" />
-            </Button>
+            </button>
           </div>
           {!wsReady && room && (
             <p className="text-[10px] text-muted-foreground mt-2 text-center">
