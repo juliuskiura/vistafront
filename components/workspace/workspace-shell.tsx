@@ -20,7 +20,6 @@ import { resolveIcon } from "@/lib/nav-icons";
 import type { NavItem, Workspace } from "@/lib/api";
 import { WorkspaceSwitcher } from "@/components/workspace/workspace-switcher";
 import { UserAccountMenu } from "@/components/workspace/user-account-menu";
-import { ChatSheet } from "@/components/workspace/chat-sheet";
 
 interface Props {
   workspace: Pick<Workspace, "nanoid" | "name" | "domain">;
@@ -329,7 +328,7 @@ export function WorkspaceShell({
                 <span className="hidden sm:inline">Chat</span>
               </Link>
             ) : (
-              <ChatSheet workspaceDomain={workspace.domain} />
+              null
             )}
             <WorkspaceSwitcher active={workspace} workspaces={workspaces} />
             <UserAccountMenu user={user} />
@@ -340,6 +339,8 @@ export function WorkspaceShell({
           {children}
         </main>
       </div>
+
+      {/* Chat widget mounted globally in root layout */}
     </div>
   );
 }

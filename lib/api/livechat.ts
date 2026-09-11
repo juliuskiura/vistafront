@@ -1,9 +1,17 @@
 "use server";
 
 import { serverFetch, serverMutate } from "./server-fetch";
-import type { RequestOptions, MutateOptions } from "./server-fetch-types";
+import type { Paginated } from "./types";
 
 const BASE = "/apis/livechat";
+
+function unwrap<T>(payload: T[] | Paginated<T>): T[] {
+  if (Array.isArray(payload)) return payload;
+  if (payload && Array.isArray((payload as Paginated<T>).results)) {
+    return (payload as Paginated<T>).results;
+  }
+  return [];
+}
 
 export interface ChatRoom {
   nanoid: string;
@@ -33,8 +41,15 @@ export interface ChatAgent {
   user_name: string;
 }
 
-export async function listRooms(workspace: string) {
-  return serverFetch<ChatRoom[]>(`${BASE}/rooms/`, { workspace });
+function withScope(path: string, scope?: "all") {
+  return scope === "all" ? `${path}?scope=all` : path;
+}
+
+export async function listRooms(workspace: string, scope?: "all") {
+  return serverFetch<ChatRoom[] | Paginated<ChatRoom>>(
+    withScope(`${BASE}/rooms/`, scope),
+    { workspace },
+  ).then(unwrap);
 }
 
 export async function getRoom(nanoid: string, workspace: string) {
@@ -49,16 +64,36 @@ export async function createRoom(workspace: string) {
   });
 }
 
-export async function assignAgent(nanoid: string, workspace: string) {
-  return serverMutate<ChatRoom>(`${BASE}/rooms/${nanoid}/assign_agent/`, {
+export async function assignAgent(
+  nanoid: string,
+  workspace: string,
+  scope?: "all",
+) {
+  return serverMutate<ChatRoom>(withScope(`${BASE}/rooms/${nanoid}/assign_agent/`, scope), {
     method: "POST",
     body: {},
     workspace,
   });
 }
 
-export async function closeRoom(nanoid: string, workspace: string) {
-  return serverMutate<ChatRoom>(`${BASE}/rooms/${nanoid}/close/`, {
+export async function closeRoom(
+  nanoid: string,
+  workspace: string,
+  scope?: "all",
+) {
+  return serverMutate<ChatRoom>(withScope(`${BASE}/rooms/${nanoid}/close/`, scope), {
+    method: "POST",
+    body: {},
+    workspace,
+  });
+}
+
+export async function reopenRoom(
+  nanoid: string,
+  workspace: string,
+  scope?: "all",
+) {
+  return serverMutate<ChatRoom>(withScope(`${BASE}/rooms/${nanoid}/reopen/`, scope), {
     method: "POST",
     body: {},
     workspace,
@@ -69,9 +104,10 @@ export async function transferRoom(
   nanoid: string,
   agentNanoid: string,
   workspace: string,
+  scope?: "all",
 ) {
   return serverMutate<{ room: ChatRoom; notifications: Record<string, string> }>(
-    `${BASE}/rooms/${nanoid}/transfer/`,
+    withScope(`${BASE}/rooms/${nanoid}/transfer/`, scope),
     {
       method: "POST",
       body: { agent_nanoid: agentNanoid },
@@ -80,10 +116,15 @@ export async function transferRoom(
   );
 }
 
-export async function getMessages(nanoid: string, workspace: string) {
-  return serverFetch<ChatMessage[]>(`${BASE}/rooms/${nanoid}/messages/`, {
-    workspace,
-  });
+export async function getMessages(
+  nanoid: string,
+  workspace: string,
+  scope?: "all",
+) {
+  return serverFetch<ChatMessage[] | Paginated<ChatMessage>>(
+    withScope(`${BASE}/rooms/${nanoid}/messages/`, scope),
+    { workspace },
+  ).then(unwrap);
 }
 
 export async function sendMessage(
@@ -124,7 +165,9 @@ export async function getUnreadCount(nanoid: string, workspace: string) {
 }
 
 export async function listAgents(workspace: string) {
-  return serverFetch<ChatAgent[]>(`${BASE}/agents/`, { workspace });
+  return serverFetch<ChatAgent[] | Paginated<ChatAgent>>(`${BASE}/agents/`, {
+    workspace,
+  }).then(unwrap);
 }
 
 export async function getAgent(nanoid: string, workspace: string) {

@@ -237,6 +237,7 @@ export {
   createRoom,
   assignAgent,
   closeRoom,
+  reopenRoom,
   transferRoom,
   getMessages,
   sendMessage,

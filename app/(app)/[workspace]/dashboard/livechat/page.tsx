@@ -12,7 +12,7 @@ export default async function LivechatPage({
   const ws = active.domain;
 
   const [rooms, agents, members] = await Promise.all([
-    listRooms(ws).catch(() => []),
+    listRooms(ws, "all").catch(() => []),
     listAgents(ws).catch(() => []),
     listWorkspaceMembers(active.nanoid, ws).catch(() => []),
   ]);

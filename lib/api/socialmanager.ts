@@ -13,6 +13,7 @@ import type {
   MetricSnapshot,
   OauthInitResult,
   OauthRedirectUriResult,
+  Paginated,
   PlatformContentFormat,
   PostComment,
   PostCommentType,
@@ -38,6 +39,21 @@ function wsOpts(workspace: string) {
   return { workspace };
 }
 
+/**
+ * Every list endpoint in this Django app is globally paginated
+ * (``LivechatPagination``, page size 25), so responses come back as
+ * ``{ count, next, previous, results }`` instead of a plain array. Unwrap the
+ * ``results`` page defensively: raw arrays pass through, non-array error
+ * payloads degrade to an empty list instead of crashing callers.
+ */
+function unwrap<T>(payload: T[] | Paginated<T>): T[] {
+  if (Array.isArray(payload)) return payload;
+  if (payload && Array.isArray((payload as Paginated<T>).results)) {
+    return (payload as Paginated<T>).results;
+  }
+  return [];
+}
+
 /* ──────────────────────────────────────────────────────────────────────
  * Platform Config
  * ────────────────────────────────────────────────────────────────────── */
@@ -46,10 +62,10 @@ export function listPlatforms(
   opts: { all?: boolean; workspace: string },
 ): Promise<SocialMediaPlatform[]> {
   const { workspace, ...rest } = opts;
-  return serverFetch<SocialMediaPlatform[]>(
+  return serverFetch<SocialMediaPlatform[] | Paginated<SocialMediaPlatform>>(
     `/apis/socialmanager/platforms/${toQueryString(rest)}`,
     wsOpts(workspace),
-  );
+  ).then(unwrap);
 }
 
 export function createPlatform(
@@ -87,10 +103,10 @@ export function listContentFormats(
   opts: { platform?: string; all?: boolean; workspace: string },
 ): Promise<PlatformContentFormat[]> {
   const { workspace, ...rest } = opts;
-  return serverFetch<PlatformContentFormat[]>(
+  return serverFetch<PlatformContentFormat[] | Paginated<PlatformContentFormat>>(
     `/apis/socialmanager/content-formats/${toQueryString(rest)}`,
     wsOpts(workspace),
-  );
+  ).then(unwrap);
 }
 
 export function createContentFormat(
@@ -128,20 +144,20 @@ export function listConstraints(
   opts: { platform?: string; all?: boolean; workspace: string },
 ): Promise<ContentConstraint[]> {
   const { workspace, ...rest } = opts;
-  return serverFetch<ContentConstraint[]>(
+  return serverFetch<ContentConstraint[] | Paginated<ContentConstraint>>(
     `/apis/socialmanager/constraints/${toQueryString(rest)}`,
     wsOpts(workspace),
-  );
+  ).then(unwrap);
 }
 
 export function getProviderConstraints(
   platform: string,
   workspace: string,
 ): Promise<ContentConstraint[]> {
-  return serverFetch<ContentConstraint[]>(
+  return serverFetch<ContentConstraint[] | Paginated<ContentConstraint>>(
     `/apis/socialmanager/constraints/?platform=${encodeURIComponent(platform)}`,
     wsOpts(workspace),
-  );
+  ).then(unwrap);
 }
 
 export function createConstraint(
@@ -179,10 +195,10 @@ export function listMediaSpecs(
   opts: { constraint?: string; workspace: string },
 ): Promise<MediaConstraint[]> {
   const { workspace, ...rest } = opts;
-  return serverFetch<MediaConstraint[]>(
+  return serverFetch<MediaConstraint[] | Paginated<MediaConstraint>>(
     `/apis/socialmanager/media-specs/${toQueryString(rest)}`,
     wsOpts(workspace),
-  );
+  ).then(unwrap);
 }
 
 export function createMediaSpec(
@@ -219,7 +235,10 @@ export function deleteMediaSpec(nanoid: string, workspace: string): Promise<void
  * ────────────────────────────────────────────────────────────────────── */
 
 export function listAccounts(workspace: string): Promise<SocialAccount[]> {
-  return serverFetch<SocialAccount[]>("/apis/socialmanager/accounts/", wsOpts(workspace));
+  return serverFetch<SocialAccount[] | Paginated<SocialAccount>>(
+    "/apis/socialmanager/accounts/",
+    wsOpts(workspace),
+  ).then(unwrap);
 }
 
 export function createAccount(
@@ -317,10 +336,10 @@ export function listPages(
   opts: { social_account?: string; platform?: string; workspace: string },
 ): Promise<ManagedChannel[]> {
   const { workspace, ...rest } = opts;
-  return serverFetch<ManagedChannel[]>(
+  return serverFetch<ManagedChannel[] | Paginated<ManagedChannel>>(
     `/apis/socialmanager/pages/${toQueryString(rest)}`,
     wsOpts(workspace),
-  );
+  ).then(unwrap);
 }
 
 export function verifyPage(
@@ -360,7 +379,10 @@ export function getConnectedInstagram(
  * ────────────────────────────────────────────────────────────────────── */
 
 export function listCampaigns(workspace: string): Promise<Campaign[]> {
-  return serverFetch<Campaign[]>("/apis/socialmanager/campaigns/", wsOpts(workspace));
+  return serverFetch<Campaign[] | Paginated<Campaign>>(
+    "/apis/socialmanager/campaigns/",
+    wsOpts(workspace),
+  ).then(unwrap);
 }
 
 export function createCampaign(
@@ -398,10 +420,10 @@ export function listPosts(
   opts: { managed_page?: string; status?: string; workspace: string },
 ): Promise<ScheduledPost[]> {
   const { workspace, ...rest } = opts;
-  return serverFetch<ScheduledPost[]>(
+  return serverFetch<ScheduledPost[] | Paginated<ScheduledPost>>(
     `/apis/socialmanager/posts/${toQueryString(rest)}`,
     wsOpts(workspace),
-  );
+  ).then(unwrap);
 }
 
 export function getPost(nanoid: string, workspace: string): Promise<ScheduledPost> {
@@ -530,10 +552,10 @@ export function listPostComments(
   const { postNanoid, commentType, workspace } = opts;
   const params = new URLSearchParams({ scheduled_post: postNanoid });
   if (commentType) params.set("comment_type", commentType);
-  return serverFetch<PostComment[]>(
+  return serverFetch<PostComment[] | Paginated<PostComment>>(
     `/apis/socialmanager/comments/?${params.toString()}`,
     wsOpts(workspace),
-  );
+  ).then(unwrap);
 }
 
 /* ──────────────────────────────────────────────────────────────────────
@@ -541,7 +563,10 @@ export function listPostComments(
  * ────────────────────────────────────────────────────────────────────── */
 
 export function listHashtags(workspace: string): Promise<Hashtag[]> {
-  return serverFetch<Hashtag[]>("/apis/socialmanager/hashtags/", wsOpts(workspace));
+  return serverFetch<Hashtag[] | Paginated<Hashtag>>(
+    "/apis/socialmanager/hashtags/",
+    wsOpts(workspace),
+  ).then(unwrap);
 }
 
 export function createHashtag(
@@ -556,7 +581,10 @@ export function createHashtag(
  * ────────────────────────────────────────────────────────────────────── */
 
 export function listQueues(workspace: string): Promise<PostQueue[]> {
-  return serverFetch<PostQueue[]>("/apis/socialmanager/queues/", wsOpts(workspace));
+  return serverFetch<PostQueue[] | Paginated<PostQueue>>(
+    "/apis/socialmanager/queues/",
+    wsOpts(workspace),
+  ).then(unwrap);
 }
 
 export function createQueue(
@@ -599,10 +627,10 @@ export function listQueueItems(
   opts: { queue?: string; workspace: string },
 ): Promise<PostQueueItem[]> {
   const { workspace, ...rest } = opts;
-  return serverFetch<PostQueueItem[]>(
+  return serverFetch<PostQueueItem[] | Paginated<PostQueueItem>>(
     `/apis/socialmanager/queue-items/${toQueryString(rest)}`,
     wsOpts(workspace),
-  );
+  ).then(unwrap);
 }
 
 export function createQueueItem(
@@ -649,10 +677,10 @@ export function listMetrics(
   },
 ): Promise<MetricSnapshot[]> {
   const { workspace, ...rest } = opts;
-  return serverFetch<MetricSnapshot[]>(
+  return serverFetch<MetricSnapshot[] | Paginated<MetricSnapshot>>(
     `/apis/socialmanager/metrics/${toQueryString(rest)}`,
     wsOpts(workspace),
-  );
+  ).then(unwrap);
 }
 
 export function syncAnalytics(

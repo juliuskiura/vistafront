@@ -1,5 +1,6 @@
 "use server";
 
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { listWorkspaces, type Workspace } from "@/lib/api";
@@ -38,7 +39,7 @@ const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:8000";
  * refreshing the access token once via `refreshAccessToken()` on a 401.
  * Returns null if not authenticated or the token cannot be refreshed.
  */
-export async function getAuthUser(): Promise<User | null> {
+export const getAuthUser = cache(async (): Promise<User | null> => {
   const accessToken = await getAccessToken();
 
   if (!accessToken) {
@@ -90,7 +91,7 @@ export async function getAuthUser(): Promise<User | null> {
     console.error("Failed to fetch auth user:", error);
     return null;
   }
-}
+});
 
 /**
  * Require authentication. Redirects to /login if not authenticated.
@@ -117,7 +118,10 @@ export async function requireAuth(): Promise<User> {
  * Use this in the `[workspace]` segment's `layout.tsx` to enforce
  * tenant membership on the server before any child route renders.
  */
-export async function requireWorkspace(slug: string): Promise<WorkspaceItem> {
+export async function requireWorkspace(
+  slug: string,
+  preloadedWorkspaces?: Workspace[],
+): Promise<WorkspaceItem> {
   const user = await requireAuth();
   const normalized = (slug || "").toLowerCase();
 
@@ -127,7 +131,7 @@ export async function requireWorkspace(slug: string): Promise<WorkspaceItem> {
 
   let workspaces: Workspace[];
   try {
-    workspaces = await listWorkspaces();
+    workspaces = preloadedWorkspaces ?? await listWorkspaces();
   } catch (error) {
     console.error("Failed to load workspaces for requireWorkspace:", error);
     redirect("/restricted");

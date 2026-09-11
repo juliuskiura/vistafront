@@ -4,6 +4,8 @@ import Script from "next/script";
 
 import { SidebarProvider, ToastProvider } from "@/lib/context";
 import { QueryProvider } from "@/lib/tanstack/query-provider";
+import { getAuthUser } from "@/lib/auth/server";
+import { ChatWidget } from "@/components/workspace/chat-widget";
 import "./globals.css";
 
 const inter = localFont({
@@ -41,19 +43,26 @@ export const metadata: Metadata = {
     "Vistafront is the calm, organized CRM built for teams who run projects and social media side by side. Plan launches, track every task, schedule and respond across every channel, and trust that nothing slips — all in one reassuring place.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const user = await getAuthUser();
+  const userName =
+    user && user.first_name && user.last_name
+      ? `${user.first_name} ${user.last_name}`
+      : null;
+
   return (
     <html
       lang="en"
       className={`${inter.variable} ${outfit.variable} ${jakarta.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-<body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col">
         <Script
+          id="theme-theme"
           strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `
@@ -71,6 +80,12 @@ export default function RootLayout({
         <ToastProvider>
           <QueryProvider>
             <SidebarProvider>{children}</SidebarProvider>
+            {!user?.is_admin && (
+              <ChatWidget
+                userName={userName}
+                isAuthenticated={!!user}
+              />
+            )}
           </QueryProvider>
         </ToastProvider>
       </body>

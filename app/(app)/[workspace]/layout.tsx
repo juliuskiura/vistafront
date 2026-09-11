@@ -19,10 +19,10 @@ export default async function WorkspaceLayout({
   params: Promise<{ workspace: string }>;
 }) {
   const { workspace: slug } = await params;
-  const active = await requireWorkspace(slug);
   const user = await requireAuth();
-  const [allWorkspaces, nav] = await Promise.all([
-    listWorkspaces().catch(() => []),
+  const allWorkspaces = await listWorkspaces().catch(() => []);
+  const active = await requireWorkspace(slug, allWorkspaces);
+  const [nav] = await Promise.all([
     getNavigationSidebar().catch(() => []),
   ]);
 
