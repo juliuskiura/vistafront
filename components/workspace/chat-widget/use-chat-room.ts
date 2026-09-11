@@ -8,7 +8,6 @@ export function useChatRoom() {
   const { data: rooms, isPending } = useQuery<ChatRoom[]>({
     queryKey: ["chatRooms"],
     queryFn: () => fetch("/api/livechat/rooms").then((r) => r.json()),
-    refetchInterval: 30_000,
   });
 
   const currentRoom = useMemo(() => {

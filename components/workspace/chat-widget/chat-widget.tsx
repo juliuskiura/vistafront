@@ -105,7 +105,6 @@ function ChatWidgetInner({
     queryFn: () =>
       fetch(`/api/livechat/messages?room=${room?.nanoid}`).then((r) => r.json()),
     enabled: !!room?.nanoid,
-    refetchInterval: 15_000,
   });
 
   const { messages, replaceHistory, wsReady, sendMessage } = useChatSocket({
