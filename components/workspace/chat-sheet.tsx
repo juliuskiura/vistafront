@@ -260,7 +260,7 @@ export function ChatSheet({ workspaceDomain }: { workspaceDomain: string }) {
 
         {/* Premium input area */}
         <div className="border-t border-sidebar-divider bg-background/95 backdrop-blur-sm p-4">
-          <div className="relative flex items-center gap-1 rounded-xl border border-secondary bg-card px-3 py-2 shadow-sm transition-all focus-within:border-secondary/80 focus-within:ring-1 focus-within:ring-secondary/30">
+          <div className="relative flex items-end gap-1 rounded-xl border border-secondary bg-card px-3 py-2 shadow-sm transition-all focus-within:border-secondary/80 focus-within:ring-1 focus-within:ring-secondary/30">
             <EmojiPicker onEmojiSelect={(emoji) => {
                   setMessage((prev) => prev + emoji);
                 }}>
