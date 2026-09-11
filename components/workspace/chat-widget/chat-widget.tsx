@@ -51,6 +51,7 @@ export function ChatWidget({ userName = null }: ChatWidgetProps) {
     } finally {
       startingRef.current = false;
       setStarting(false);
+      setMinimized(false);
     }
   };
 
@@ -87,7 +88,7 @@ export function ChatWidget({ userName = null }: ChatWidgetProps) {
   const room = isPending ? null : currentRoom;
 
   return (
-      <ChatWidgetInner
+    <ChatWidgetInner
       room={room}
       minimized={minimized}
       minimizedRef={minimizedRef}
