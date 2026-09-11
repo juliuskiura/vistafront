@@ -4,8 +4,6 @@ import Script from "next/script";
 
 import { SidebarProvider, ToastProvider } from "@/lib/context";
 import { QueryProvider } from "@/lib/tanstack/query-provider";
-import { getAuthUser } from "@/lib/auth/server";
-import { ChatWidget } from "@/components/workspace/chat-widget";
 import "./globals.css";
 
 const inter = localFont({
@@ -48,12 +46,6 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getAuthUser();
-  const userName =
-    user && user.first_name && user.last_name
-      ? `${user.first_name} ${user.last_name}`
-      : null;
-
   return (
     <html
       lang="en"
@@ -80,12 +72,6 @@ export default async function RootLayout({
         <ToastProvider>
           <QueryProvider>
             <SidebarProvider>{children}</SidebarProvider>
-            {!user?.is_admin && (
-              <ChatWidget
-                userName={userName}
-                isAuthenticated={!!user}
-              />
-            )}
           </QueryProvider>
         </ToastProvider>
       </body>
