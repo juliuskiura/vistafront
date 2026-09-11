@@ -16,9 +16,7 @@ interface ChatWidgetProps {
 export function ChatWidget({ userName = null }: ChatWidgetProps) {
   const [minimized, setMinimized] = useState(true);
   const minimizedRef = useRef(true);
-  const [closedAt, setClosedAt] = useState<string | null>(null);
   const roomNanoidRef = useRef<string | null>(null);
-  const leftRef = useRef(false);
 
   useEffect(() => {
     minimizedRef.current = minimized;
@@ -67,21 +65,13 @@ export function ChatWidget({ userName = null }: ChatWidgetProps) {
       toast({ variant: "error", message: "Failed to close chat" });
       return;
     }
-    leftRef.current = true;
     roomNanoidRef.current = null;
-    setClosedAt(null);
     queryClient.removeQueries({ queryKey: ["chatRooms"] });
-    if (nanoid) {
-      queryClient.removeQueries({ queryKey: ["chatMessages", nanoid] });
-    }
+    queryClient.removeQueries({ queryKey: ["chatMessages", nanoid] });
     setMinimized(true);
   };
 
-  const handleOpen = async () => {
-    if (leftRef.current) {
-      await handleStart();
-      leftRef.current = false;
-    }
+  const handleOpen = () => {
     setMinimized(false);
   };
 
@@ -94,8 +84,6 @@ export function ChatWidget({ userName = null }: ChatWidgetProps) {
       minimizedRef={minimizedRef}
       userName={userName}
       starting={starting}
-      closedAt={closedAt}
-      currentRoom={currentRoom}
       onStart={handleStart}
       onMinimize={() => setMinimized(true)}
       onOpen={handleOpen}
@@ -110,8 +98,6 @@ interface ChatWidgetInnerProps {
   minimizedRef: React.MutableRefObject<boolean>;
   userName?: string | null;
   starting: boolean;
-  closedAt: string | null;
-  currentRoom: ChatRoom | null;
   onStart: () => void;
   onMinimize: () => void;
   onOpen: () => void;
@@ -124,8 +110,6 @@ function ChatWidgetInner({
   minimizedRef,
   userName,
   starting,
-  closedAt,
-  currentRoom,
   onStart,
   onMinimize,
   onOpen,
@@ -139,11 +123,11 @@ function ChatWidgetInner({
     queryKey: ["chatMessages", room?.nanoid],
     queryFn: () =>
       fetch(`/api/livechat/messages?room=${room?.nanoid}`).then((r) => r.json()),
-    enabled: !!room?.nanoid && !closedAt,
+    enabled: !!room?.nanoid,
   });
 
   const { messages, replaceHistory, wsReady, sendMessage } = useChatSocket({
-    roomNanoid: room?.nanoid && !closedAt ? room.nanoid : undefined,
+    roomNanoid: room?.nanoid,
     minimizedRef,
     userName,
     onUnread: () => setUnread((u) => u + 1),
@@ -178,10 +162,9 @@ function ChatWidgetInner({
     <ChatPanel
       messages={messages}
       online={online}
-      hasRoom={!!room || !!closedAt}
+      hasRoom={!!room}
       userName={userName}
       starting={starting}
-      closedAt={closedAt}
       onStart={onStart}
       onClose={onClose}
       onMinimize={onMinimize}

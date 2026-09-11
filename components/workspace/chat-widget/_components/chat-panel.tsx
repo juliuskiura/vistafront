@@ -14,7 +14,6 @@ interface ChatPanelProps {
   hasRoom: boolean;
   userName?: string | null;
   starting?: boolean;
-  closedAt?: string | null;
   onStart: () => void;
   onMinimize: () => void;
   onClose: () => void;
@@ -27,21 +26,18 @@ export function ChatPanel({
   hasRoom,
   userName,
   starting = false,
-  closedAt,
   onStart,
   onMinimize,
   onClose,
   onSend,
 }: ChatPanelProps) {
-  const status = closedAt
-    ? "Chat Closed"
-    : starting
-      ? "Connecting..."
-      : online
-        ? "Online"
-        : hasRoom
-          ? "Connecting..."
-          : "Start a new chat";
+  const status = starting
+    ? "Connecting..."
+    : online
+      ? "Online"
+      : hasRoom
+        ? "Connecting..."
+        : "Start a new chat";
 
   return (
     <div className="fixed bottom-5 right-5 z-50 flex h-[min(600px,calc(100vh-2.5rem))] w-[min(380px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl animate-in fade-in zoom-in-95 duration-200">
@@ -58,7 +54,7 @@ export function ChatPanel({
           </div>
         </div>
         <div className="flex items-center gap-1">
-          {hasRoom && !closedAt && (
+          {hasRoom && (
             <VSButton
               variant="destructive"
               appearance="threeD"
@@ -82,23 +78,7 @@ export function ChatPanel({
 
       <MessageList messages={messages} userName={userName} hasRoom={hasRoom} />
 
-      {closedAt ? (
-        <>
-          <hr className="border-sidebar-divider" />
-          <div className="flex flex-1 flex-col items-center justify-center py-8">
-            <p className="text-sm text-muted-foreground">
-              Chat closed at{" "}
-              {new Date(closedAt).toLocaleString([], {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </p>
-          </div>
-        </>
-      ) : hasRoom ? (
+      {hasRoom ? (
         <ChatInput onSend={onSend} />
       ) : (
         <div className="border-t border-sidebar-divider bg-background/95 p-4 backdrop-blur-sm">
