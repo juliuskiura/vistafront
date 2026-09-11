@@ -54,14 +54,16 @@ export function ChatPanel({
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <VSButton
-            variant="destructive"
-            appearance="threeD"
-            size="sm"
-            onClick={onClose}
-          >
-            Close Chat
-          </VSButton>
+          {hasRoom && (
+            <VSButton
+              variant="destructive"
+              appearance="threeD"
+              size="sm"
+              onClick={onClose}
+            >
+              Close Chat
+            </VSButton>
+          )}
           <button
             type="button"
             onClick={onMinimize}
