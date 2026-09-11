@@ -44,7 +44,19 @@ export function ChatSheet({ workspaceDomain }: { workspaceDomain: string }) {
   const [wsReady, setWsReady] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { push: toast } = useToast();
+
+  const resizeTextarea = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+  }, []);
+
+  useEffect(() => {
+    resizeTextarea();
+  }, [message, resizeTextarea]);
 
   const { data: rooms } = useQuery<ChatRoom[]>({
     queryKey: ["chatRooms", workspaceDomain],
@@ -260,43 +272,49 @@ export function ChatSheet({ workspaceDomain }: { workspaceDomain: string }) {
 
         {/* Premium input area */}
         <div className="border-t border-sidebar-divider bg-background/95 backdrop-blur-sm p-4">
-          <div className="relative flex items-end gap-1 rounded-xl border border-secondary bg-card px-3 py-2 shadow-sm transition-all focus-within:border-secondary/80 focus-within:ring-1 focus-within:ring-secondary/30">
-            <EmojiPicker onEmojiSelect={(emoji) => {
+          <div className="rounded-2xl border border-secondary/70 bg-card shadow-sm transition-all focus-within:border-secondary focus-within:ring-1 focus-within:ring-secondary/30">
+            <div className="px-3 pt-2.5">
+              <Textarea
+                ref={textareaRef}
+                placeholder="Type a message..."
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="flex min-h-[40px] w-full resize-none overflow-hidden border-none bg-transparent p-0 text-sm leading-relaxed shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                rows={1}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-2 border-t border-sidebar-divider/70 px-2.5 py-1.5">
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary/60 hover:text-foreground transition-colors"
+                  aria-label="Attach file"
+                >
+                  <Paperclip className="size-4" />
+                </button>
+                <EmojiPicker onEmojiSelect={(emoji) => {
                   setMessage((prev) => prev + emoji);
                 }}>
                   <button
                     type="button"
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary/80 hover:text-foreground transition-colors"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary/60 hover:text-foreground transition-colors"
                     aria-label="Emoji picker"
                   >
                     <Smile className="size-4" />
                   </button>
                 </EmojiPicker>
-            <div className="h-5 w-px bg-secondary" />
-            <button
-              type="button"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary/80 hover:text-foreground transition-colors"
-              aria-label="Attach file"
-            >
-              <Paperclip className="size-4" />
-            </button>
-            <div className="h-5 w-px bg-secondary" />
-            <Textarea
-              placeholder="Type a message..."
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              onKeyDown={handleKeyDown}
-              className="flex-1 min-h-[24px] border-none bg-transparent p-0 text-sm shadow-none focus-visible:ring-0 focus-visible:border-none resize-none overflow-hidden"
-              rows={1}
-            />
-            <button
-              type="button"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
-              onClick={handleSendMessage}
-              disabled={!message.trim() || !wsReady}
-            >
-              <Send className="size-4" />
-            </button>
+              </div>
+              <button
+                type="button"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors disabled:opacity-45 disabled:pointer-events-none"
+                onClick={handleSendMessage}
+                disabled={!message.trim() || !wsReady}
+                aria-label="Send message"
+              >
+                <Send size={12} />
+              </button>
+            </div>
           </div>
           {!wsReady && room && (
             <p className="text-[10px] text-muted-foreground mt-2 text-center">
