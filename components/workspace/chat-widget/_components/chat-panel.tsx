@@ -1,6 +1,6 @@
 "use client";
 
-import { Minus, MessageSquarePlus, X } from "lucide-react";
+import { Minus, MessageSquarePlus } from "lucide-react";
 import { ChatIcon } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { MessageList } from "./message-list";
@@ -58,9 +58,9 @@ export function ChatPanel({
             onClick={onClose}
             aria-label="Close chat"
             title="Close chat"
-            className="flex h-8 w-8 items-center justify-center rounded-full text-primary-foreground/90 transition-colors hover:bg-destructive/80 hover:text-destructive-foreground"
+            className="rounded-full px-3 py-1 text-xs font-medium text-destructive-foreground transition-colors hover:bg-destructive/80"
           >
-            <X className="size-4" />
+            Close Chat
           </button>
           <button
             type="button"
