@@ -16,12 +16,14 @@ function unwrap<T>(payload: T[] | Paginated<T>): T[] {
 export interface ChatRoom {
   nanoid: string;
   is_active: boolean;
-  customer_id: number | null;
-  agent_id: number | null;
-  agent_name: string | null;
-  customer_name: string | null;
+  customer?: number | null;
+  customer_id?: number | null;
+  customer_name?: string | null;
+  agent?: { user?: string | null; user_name?: string | null } | null;
+  agent_id?: number | null;
+  agent_name?: string | null;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 export interface ChatMessage {

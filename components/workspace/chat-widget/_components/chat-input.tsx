@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import EmojiPicker from "@/components/socialmanager/emoji-picker";
 
 interface ChatInputProps {
-  onSend: (content: string, sentAt: Date) => void;
+  onSend: (content: string) => void;
   disabled?: boolean;
 }
 
@@ -28,7 +28,7 @@ export function ChatInput({ onSend, disabled = false }: ChatInputProps) {
   const submit = () => {
     const content = value.trim();
     if (!content || disabled) return;
-    onSend(content, new Date());
+    onSend(content);
     setValue("");
     requestAnimationFrame(resize);
   };

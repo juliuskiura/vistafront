@@ -2,13 +2,28 @@
 
 import { useEffect, useRef } from "react";
 
+export interface RoomFeedRoom {
+  nanoid: string;
+  is_active: boolean;
+  customer_name: string | null;
+  agent_name: string | null;
+  created_at: string | null;
+}
+
+type RoomFeedEvent = "room_opened" | "room_closed";
+
+interface RoomFeedMessage {
+  type: RoomFeedEvent;
+  room: RoomFeedRoom;
+}
+
 /**
- * Admin live feed. Subscribes to the `ws/chat/rooms/` channel and fires
- * `onRoomChange` whenever a room is opened or closed anywhere, so the admin
- * console can refresh its room list the instant a customer starts a chat.
+ * Admin live feed. Subscribes to the `ws/chat/rooms/` channel and passes each
+ * `room_opened` / `room_closed` event payload to `onRoomChange`, so the admin
+ * list can merge the event directly into local state — no HTTP refetch needed.
  * Reconnects automatically (3s) if the socket drops.
  */
-export function useRoomsFeed(onRoomChange: () => void) {
+export function useRoomsFeed(onRoomChange: (room: RoomFeedRoom) => void) {
   const callbacksRef = useRef(onRoomChange);
   useEffect(() => {
     callbacksRef.current = onRoomChange;
@@ -27,9 +42,12 @@ export function useRoomsFeed(onRoomChange: () => void) {
         socket = new WebSocket(wsUrl);
         socket.onmessage = (event) => {
           try {
-            const data = JSON.parse(event.data);
-            if (data.type === "room_opened" || data.type === "room_closed") {
-              callbacksRef.current();
+            const data = JSON.parse(event.data) as RoomFeedMessage;
+            if (
+              data.type === "room_opened" ||
+              data.type === "room_closed"
+            ) {
+              callbacksRef.current(data.room);
             }
           } catch {
             /* ignore malformed frames */

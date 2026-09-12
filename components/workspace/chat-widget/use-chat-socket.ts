@@ -122,17 +122,13 @@ export function useChatSocket({
   }, [roomNanoid]);
 
   const sendMessage = useCallback(
-    (content: string, overrideRoomNanoid?: string) => {
-      const targetNanoid = overrideRoomNanoid ?? roomNanoid;
-      if (!targetNanoid) return;
+    (content: string) => {
+      if (!roomNanoid) return;
 
       const text = content.trim();
       if (!text) return;
 
-      if (
-        !overrideRoomNanoid &&
-        wsRef.current?.readyState === WebSocket.OPEN
-      ) {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(
           JSON.stringify({ action: "send_message", content: text }),
         );
@@ -140,7 +136,7 @@ export function useChatSocket({
       }
 
       fetch(
-        `/api/livechat/messages?room=${targetNanoid}`,
+        `/api/livechat/messages?room=${roomNanoid}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

@@ -116,7 +116,6 @@ function ChatWidgetInner({
   onClose,
 }: ChatWidgetInnerProps) {
   const [unread, setUnread] = useState(0);
-  const tempIdRef = useRef(0);
   const { push: toast } = useToast();
 
   const { data: history } = useQuery<ChatMessage[]>({
@@ -139,18 +138,10 @@ function ChatWidgetInner({
     }
   }, [history, replaceHistory]);
 
-  const handleSend = (content: string, sentAt: Date) => {
+  const handleSend = (content: string) => {
     const trimmed = content.trim();
     if (!trimmed || !room?.nanoid) return;
 
-    const optimistic: ChatMessage = {
-      nanoid: `temp-${++tempIdRef.current}`,
-      content: trimmed,
-      sender_name: "You",
-      is_deleted: false,
-      created_at: sentAt.toISOString(),
-    };
-    replaceHistory([...messages, optimistic]);
     sendMessage(trimmed);
   };
 

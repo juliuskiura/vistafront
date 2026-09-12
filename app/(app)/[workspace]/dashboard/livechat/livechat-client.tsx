@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/lib/context";
-import { useRoomsFeed } from "./rooms-feed";
-import { RoomDetail } from "./room-detail";
+import { useRoomsFeed, type RoomFeedRoom } from "./rooms-feed";
 import {
   Users,
   MessageSquare,
@@ -20,21 +19,13 @@ import {
   listAgents,
   createChatAgent,
   deleteChatAgent,
-  closeRoom,
-  reopenRoom,
-  assignAgent,
-  transferRoom,
-  getMessages,
-  type ChatRoom,
   type ChatAgent,
-  type ChatMessage,
   type WorkspaceMember,
 } from "@/lib/api";
 import type { ActionResultLike } from "@/lib/api/server-fetch-types";
 
 function useMutator() {
   const toast = useToast();
-  const router = useRouter();
 
   return useCallback(
     async <T,>(action: Promise<T>, successMsg: string): Promise<boolean> => {
@@ -48,30 +39,31 @@ function useMutator() {
         });
         return false;
       }
-      if (res && typeof res === "object" && "status" in res && (res as ActionResultLike).status !== "success") {
+      if (
+        res &&
+        typeof res === "object" &&
+        "status" in res &&
+        (res as ActionResultLike).status !== "success"
+      ) {
         toast.push({
           variant: "error",
-          message: (res as ActionResultLike).message || "Something went wrong. Please try again.",
+          message:
+            (res as ActionResultLike).message ||
+            "Something went wrong. Please try again.",
         });
         return false;
       }
       toast.push({ variant: "success", message: successMsg });
-      try {
-        router.refresh();
-      } catch {
-        // The mutation already committed server-side; a failed revalidation
-        // only delays the refreshed props until the next navigation.
-      }
       return true;
     },
-    [toast, router],
+    [toast],
   );
 }
 
 interface Props {
   workspaceDomain: string;
   workspaceNanoid: string;
-  initialRooms: ChatRoom[];
+  initialRooms: RoomFeedRoom[];
   initialAgents: ChatAgent[];
   initialMembers: WorkspaceMember[];
 }
@@ -85,18 +77,12 @@ export function LivechatClient({
 }: Props) {
   const router = useRouter();
   const mutate = useMutator();
-  const [rooms, setRooms] = useState<ChatRoom[]>(initialRooms);
+  const [rooms, setRooms] = useState<RoomFeedRoom[]>(initialRooms);
   const [agents, setAgents] = useState<ChatAgent[]>(initialAgents);
   const [members, setMembers] = useState<WorkspaceMember[]>(initialMembers);
   const [activeTab, setActiveTab] = useState<"rooms" | "agents">("rooms");
-  const [selectedRoomNanoid, setSelectedRoomNanoid] = useState<string | null>(
-    null,
-  );
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [messagesLoading, setMessagesLoading] = useState(false);
 
-  const selectedRoom =
-    rooms.find((r) => r.nanoid === selectedRoomNanoid) ?? null;
+  const basePath = `/${workspaceDomain}/dashboard/livechat`;
 
   const refreshData = useCallback(async () => {
     const [roomData, agentData, memberData] = await Promise.all([
@@ -104,25 +90,30 @@ export function LivechatClient({
       listAgents(workspaceDomain).catch(() => []),
       listWorkspaceMembers(workspaceNanoid, workspaceDomain).catch(() => []),
     ]);
-    setRooms(roomData);
-    setAgents(agentData);
-    setMembers(memberData);
+    setRooms(
+      (Array.isArray(roomData) ? roomData : []).map((r) => ({
+        nanoid: r.nanoid,
+        is_active: r.is_active,
+        customer_name: r.customer_name ?? null,
+        agent_name: r.agent?.user_name ?? r.agent_name ?? null,
+        created_at: r.created_at ?? null,
+      })),
+    );
+    setAgents(Array.isArray(agentData) ? agentData : []);
+    setMembers(Array.isArray(memberData) ? memberData : []);
   }, [workspaceDomain, workspaceNanoid]);
 
-  const refreshRooms = useCallback(async () => {
-    const roomData = await listRooms(workspaceDomain, "all").catch(() => []);
-    if (Array.isArray(roomData)) {
-      setRooms(roomData);
-    }
-  }, [workspaceDomain]);
+  const handleRoomFeed = useCallback((room: RoomFeedRoom) => {
+    setRooms((prev) => {
+      const idx = prev.findIndex((r) => r.nanoid === room.nanoid);
+      if (idx === -1) return [room, ...prev];
+      const next = [...prev];
+      next[idx] = { ...next[idx], ...room };
+      return next;
+    });
+  }, []);
 
-  useRoomsFeed(() => void refreshRooms());
-
-  useEffect(() => {
-    const onFocus = () => void refreshRooms();
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-  }, [refreshRooms]);
+  useRoomsFeed(handleRoomFeed);
 
   const handleCreateAgent = async (memberNanoid: string) => {
     const ok = await mutate(
@@ -131,69 +122,13 @@ export function LivechatClient({
     );
     if (ok) {
       await refreshData();
-      router.refresh();
     }
-  };
-
-  const handleCloseRoom = async (nanoid: string) => {
-    const ok = await mutate(closeRoom(nanoid, workspaceDomain, "all"), "Room closed.");
-    if (ok) {
-      await refreshRooms();
-      await loadMessages(nanoid);
-    }
-  };
-
-  const handleReopenRoom = async (nanoid: string) => {
-    const ok = await mutate(reopenRoom(nanoid, workspaceDomain, "all"), "Room reopened.");
-    if (ok) {
-      await refreshRooms();
-      await loadMessages(nanoid);
-    }
-  };
-
-  const loadMessages = useCallback(async (nanoid: string) => {
-    setMessagesLoading(true);
-    const data = await getMessages(nanoid, workspaceDomain, "all").catch(() => []);
-    setMessages(Array.isArray(data) ? data : []);
-    setMessagesLoading(false);
-  }, [workspaceDomain]);
-
-  const handleOpenRoom = async (room: ChatRoom) => {
-    setSelectedRoomNanoid(room.nanoid);
-    await loadMessages(room.nanoid);
-  };
-
-  const handleBack = () => {
-    setSelectedRoomNanoid(null);
-    setMessages([]);
-  };
-
-  const handleAssignAgent = async (nanoid: string) => {
-    const ok = await mutate(
-      assignAgent(nanoid, workspaceDomain, "all"),
-      "Agent assigned.",
-    );
-    if (ok) {
-      await refreshRooms();
-      await loadMessages(nanoid);
-    }
-    return ok;
-  };
-
-  const handleTransferRoom = async (nanoid: string, agentNanoid: string) => {
-    const ok = await mutate(
-      transferRoom(nanoid, agentNanoid, workspaceDomain, "all"),
-      "Room transferred.",
-    );
-    if (ok) {
-      await refreshRooms();
-      await loadMessages(nanoid);
-    }
-    return ok;
   };
 
   const isAgent = (member: WorkspaceMember) =>
-  agents.some((a) => a.user_name === `${member.first_name} ${member.last_name}`.trim());
+    agents.some(
+      (a) => a.user_name === `${member.first_name} ${member.last_name}`.trim(),
+    );
 
   const handleRemoveAgent = async (member: WorkspaceMember) => {
     const agent = agents.find(
@@ -206,7 +141,6 @@ export function LivechatClient({
     );
     if (ok) {
       await refreshData();
-      router.refresh();
     }
   };
 
@@ -240,35 +174,19 @@ export function LivechatClient({
         </Button>
       </div>
 
-      {selectedRoom ? (
-        <RoomDetail
-          room={selectedRoom}
-          agents={agents}
-          messages={messages}
-          loading={messagesLoading}
-          onBack={handleBack}
-          onRefresh={() => void loadMessages(selectedRoom.nanoid)}
-          onAssign={() => handleAssignAgent(selectedRoom.nanoid)}
-          onTransfer={(agentNanoid) =>
-            handleTransferRoom(selectedRoom.nanoid, agentNanoid)
-          }
-          onClose={() => handleCloseRoom(selectedRoom.nanoid)}
-          onReopen={() => handleReopenRoom(selectedRoom.nanoid)}
-        />
-      ) : (
-        <>
       {activeTab === "rooms" && (
         <div className="rounded-xl border bg-card divide-y divide-slate-100">
           {rooms.length === 0 && (
             <div className="p-8 text-center text-sm text-muted-foreground">
-              No rooms yet. Rooms appear here the moment a customer starts a chat.
+              No rooms yet. Rooms appear here the moment a customer starts a
+              chat.
             </div>
           )}
           {rooms.map((room) => (
             <div
               key={room.nanoid}
               className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors cursor-pointer"
-              onClick={() => void handleOpenRoom(room)}
+              onClick={() => router.push(`${basePath}/rooms/${room.nanoid}`)}
             >
               <div className="flex items-center gap-4">
                 <div
@@ -408,8 +326,6 @@ export function LivechatClient({
             )}
           </div>
         </div>
-      )}
-        </>
       )}
     </div>
   );

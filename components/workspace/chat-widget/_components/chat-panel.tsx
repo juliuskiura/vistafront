@@ -17,7 +17,7 @@ interface ChatPanelProps {
   onStart: () => void;
   onMinimize: () => void;
   onClose: () => void;
-  onSend: (content: string, sentAt: Date) => void;
+  onSend: (content: string) => void;
 }
 
 export function ChatPanel({
