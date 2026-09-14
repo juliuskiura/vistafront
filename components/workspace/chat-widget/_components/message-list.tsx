@@ -6,6 +6,9 @@ import { ChatIcon } from "@/lib/icons";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { ChatMessage } from "../types";
 
+const SUPPORT_LOGO_URL =
+  "https://vsregmedia.s3.amazonaws.com/branding/icon_tn0FNHi.svg";
+
 interface MessageListProps {
   messages: ChatMessage[];
   hasRoom: boolean;
@@ -41,10 +44,18 @@ export function MessageList({ messages, hasRoom }: MessageListProps) {
             return (
               <div
                 key={msg.nanoid}
-                className={`flex ${isCustomer ? "justify-end" : "justify-start"}`}
+                className={`flex items-end gap-2 ${isCustomer ? "justify-end" : "justify-start"}`}
               >
+                {!isCustomer && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={SUPPORT_LOGO_URL}
+                    alt="Vistasolve"
+                    className="size-7 shrink-0 rounded-full border border-slate-200 bg-white p-1 shadow-sm"
+                  />
+                )}
                 <div
-                  className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm shadow-sm ${
+                  className={`max-w-[75%] rounded-2xl px-2 py-1 text-sm shadow-sm ${
                     isCustomer
                       ? "rounded-br-sm bg-primary-600 text-white shadow-primary/20"
                       : "rounded-bl-sm border border-amber-200 bg-amber-50 text-slate-900"
