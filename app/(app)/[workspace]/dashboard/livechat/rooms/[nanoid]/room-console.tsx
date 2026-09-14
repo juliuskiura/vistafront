@@ -72,6 +72,7 @@ export function RoomConsole({
   const wsRef = useRef<WebSocket | null>(null);
   const pendingMessagesRef = useRef<string[]>([]);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const remoteTypingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { notify: notifyTab, clear: clearTabNotification } = useTabNotification();
 
   const resize = useCallback(() => {
@@ -134,6 +135,11 @@ export function RoomConsole({
             if (data.type === "message") {
               appendMessage(data.message);
               if (data.message.source === "customer") {
+                setTypingSource(null);
+                if (remoteTypingTimerRef.current) {
+                  clearTimeout(remoteTypingTimerRef.current);
+                  remoteTypingTimerRef.current = null;
+                }
                 if (document.visibilityState === "visible") {
                   socket?.send(
                     JSON.stringify({
@@ -162,7 +168,18 @@ export function RoomConsole({
                 return next;
               });
             } else if (data.type === "typing") {
-              setTypingSource(data.is_typing ? data.source : null);
+              if (remoteTypingTimerRef.current) {
+                clearTimeout(remoteTypingTimerRef.current);
+                remoteTypingTimerRef.current = null;
+              }
+              const remoteTyping = data.source === "customer" && data.is_typing;
+              setTypingSource(remoteTyping ? "customer" : null);
+              if (remoteTyping) {
+                remoteTypingTimerRef.current = setTimeout(() => {
+                  setTypingSource(null);
+                  remoteTypingTimerRef.current = null;
+                }, 3000);
+              }
             }
           } catch {
             /* ignore malformed frames */
@@ -196,6 +213,9 @@ export function RoomConsole({
       socket?.close();
       socket = null;
       wsRef.current = null;
+      if (remoteTypingTimerRef.current) clearTimeout(remoteTypingTimerRef.current);
+      remoteTypingTimerRef.current = null;
+      setTypingSource(null);
       pendingMessagesRef.current = [];
       setHasPending(false);
     };

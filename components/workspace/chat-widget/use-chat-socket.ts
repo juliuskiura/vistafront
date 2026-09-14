@@ -38,6 +38,7 @@ export function useChatSocket({
   const wsRef = useRef<WebSocket | null>(null);
   const pendingMessagesRef = useRef<string[]>([]);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onUnreadRef = useRef(onUnread);
   const {
     notify: notifyTab,
@@ -107,6 +108,11 @@ export function useChatSocket({
               setMessages((prev) => [...prev, data.message]);
               const isIncoming = !isOwnMessage(data.message, userName);
               if (isIncoming) {
+                setTypingSource(null);
+                if (typingTimeoutRef.current) {
+                  clearTimeout(typingTimeoutRef.current);
+                  typingTimeoutRef.current = null;
+                }
                 if (minimizedRef.current || document.visibilityState !== "visible") {
                   onUnreadRef.current?.();
                   notifyTab();
@@ -131,9 +137,18 @@ export function useChatSocket({
                 return next;
               });
             } else if (data.type === "typing") {
-              setTypingSource(
-                data.source === "admin" ? "admin" : null,
-              );
+              if (typingTimeoutRef.current) {
+                clearTimeout(typingTimeoutRef.current);
+                typingTimeoutRef.current = null;
+              }
+              const remoteTyping = data.source === "admin" && data.is_typing;
+              setTypingSource(remoteTyping ? "admin" : null);
+              if (remoteTyping) {
+                typingTimeoutRef.current = setTimeout(() => {
+                  setTypingSource(null);
+                  typingTimeoutRef.current = null;
+                }, 3000);
+              }
             }
           } catch {
             /* ignore malformed frames */
@@ -168,6 +183,9 @@ export function useChatSocket({
         wsRef.current = null;
       }
       setWsReady(false);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+      setTypingSource(null);
       pendingMessagesRef.current = [];
       setHasPending(false);
     };
