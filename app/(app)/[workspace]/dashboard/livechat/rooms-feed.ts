@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { PUBLIC_BACKEND_URL } from "@/lib/env";
+import { getWebSocketUrl } from "@/lib/env";
 import type { RoomFeedRoom } from "./room-mappers";
 
 export type { RoomFeedRoom, RoomLastMessage } from "./room-mappers";
@@ -10,8 +10,10 @@ export { mapChatRoomToFeed, mapChatRoomsToFeed } from "./room-mappers";
 type RoomFeedEvent = "room_opened" | "room_closed";
 
 interface RoomFeedMessage {
-  type: RoomFeedEvent;
-  room: RoomFeedRoom;
+  type: RoomFeedEvent | "room_message" | "room_read";
+  room?: RoomFeedRoom;
+  room_nanoid?: string;
+  unread_count?: number;
 }
 
 /**
@@ -20,16 +22,21 @@ interface RoomFeedMessage {
  * list can merge the event directly into local state — no HTTP refetch needed.
  * Reconnects automatically (3s) if the socket drops.
  */
-export function useRoomsFeed(onRoomChange: (room: RoomFeedRoom) => void) {
+export function useRoomsFeed(
+  onRoomChange: (room: RoomFeedRoom) => void,
+  onUnreadChange?: (roomNanoid: string, unreadCount: number) => void,
+) {
   const callbacksRef = useRef(onRoomChange);
+  const unreadCallbackRef = useRef(onUnreadChange);
   useEffect(() => {
     callbacksRef.current = onRoomChange;
   }, [onRoomChange]);
+  useEffect(() => {
+    unreadCallbackRef.current = onUnreadChange;
+  }, [onUnreadChange]);
 
   useEffect(() => {
-    const backendUrl = new URL(PUBLIC_BACKEND_URL);
-    const protocol = backendUrl.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${backendUrl.host}/ws/chat/rooms/`;
+    const wsUrl = getWebSocketUrl("/ws/chat/rooms/");
     let cancelled = false;
     let socket: WebSocket | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -41,11 +48,14 @@ export function useRoomsFeed(onRoomChange: (room: RoomFeedRoom) => void) {
         socket.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data) as RoomFeedMessage;
-            if (
-              data.type === "room_opened" ||
-              data.type === "room_closed"
+            if (data.type === "room_opened" || data.type === "room_closed") {
+              if (data.room) callbacksRef.current(data.room);
+            } else if (
+              (data.type === "room_message" || data.type === "room_read") &&
+              data.room_nanoid &&
+              typeof data.unread_count === "number"
             ) {
-              callbacksRef.current(data.room);
+              unreadCallbackRef.current?.(data.room_nanoid, data.unread_count);
             }
           } catch {
             /* ignore malformed frames */

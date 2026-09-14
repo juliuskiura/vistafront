@@ -8,6 +8,8 @@ import {
   type MutableRefObject,
 } from "react";
 import type { ChatMessage } from "./types";
+import { useTabNotification } from "@/hooks/use-tab-notification";
+import { getWebSocketUrl } from "@/lib/env";
 
 export function isOwnMessage(
   msg: ChatMessage,
@@ -32,10 +34,27 @@ export function useChatSocket({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [wsReady, setWsReady] = useState(false);
   const [hasPending, setHasPending] = useState(false);
+  const [typingSource, setTypingSource] = useState<ChatMessage["source"] | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const pendingMessagesRef = useRef<string[]>([]);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onUnreadRef = useRef(onUnread);
+  const {
+    notify: notifyTab,
+    clear: clearTabNotification,
+  } = useTabNotification();
+  const markRead = useCallback(
+    (messageNanoid: string) => {
+      if (wsRef.current?.readyState !== WebSocket.OPEN) return;
+      wsRef.current.send(
+        JSON.stringify({
+          action: "mark_read",
+          message_nanoid: messageNanoid,
+        }),
+      );
+    },
+    [],
+  );
   useEffect(() => {
     onUnreadRef.current = onUnread;
   }, [onUnread]);
@@ -56,11 +75,7 @@ export function useChatSocket({
 
     if (!roomNanoid) return;
 
-    const backendUrl = new URL(
-      process.env.NEXT_PUBLIC_BACKEND_URL ?? window.location.origin,
-    );
-    const protocol = backendUrl.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${backendUrl.host}/ws/chat/${roomNanoid}/`;
+    const wsUrl = getWebSocketUrl(`/ws/chat/${roomNanoid}/`);
     let cancelled = false;
     let socket: WebSocket | null = null;
 
@@ -90,12 +105,35 @@ export function useChatSocket({
             const data = JSON.parse(event.data);
             if (data.type === "message") {
               setMessages((prev) => [...prev, data.message]);
-              if (
-                minimizedRef.current &&
-                !isOwnMessage(data.message, userName)
-              ) {
-                onUnreadRef.current?.();
+              const isIncoming = !isOwnMessage(data.message, userName);
+              if (isIncoming) {
+                if (minimizedRef.current || document.visibilityState !== "visible") {
+                  onUnreadRef.current?.();
+                  notifyTab();
+                } else {
+                  markRead(data.message.nanoid);
+                }
               }
+            } else if (data.type === "message_read") {
+              setMessages((prev) => {
+                const next = prev.map((message) =>
+                  message.nanoid === data.message_nanoid
+                    ? { ...message, is_read: true }
+                    : message,
+                );
+                if (
+                  next
+                    .filter((message) => !isOwnMessage(message, userName))
+                    .every((message) => message.is_read)
+                ) {
+                  clearTabNotification();
+                }
+                return next;
+              });
+            } else if (data.type === "typing") {
+              setTypingSource(
+                data.source === "admin" ? "admin" : null,
+              );
             }
           } catch {
             /* ignore malformed frames */
@@ -156,5 +194,24 @@ export function useChatSocket({
     [roomNanoid],
   );
 
-  return { messages, replaceHistory, wsReady, hasPending, sendMessage };
+  const sendTyping = useCallback(
+    (isTyping: boolean) => {
+      if (wsRef.current?.readyState !== WebSocket.OPEN) return;
+      wsRef.current.send(
+        JSON.stringify({ action: "typing", is_typing: isTyping }),
+      );
+    },
+    [],
+  );
+
+  return {
+    messages,
+    replaceHistory,
+    wsReady,
+    hasPending,
+    sendMessage,
+    markRead,
+    sendTyping,
+    typingSource,
+  };
 }

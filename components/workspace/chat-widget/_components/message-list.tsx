@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { CheckCheck } from "lucide-react";
+import { Check, CheckCheck } from "lucide-react";
 import { ChatIcon } from "@/lib/icons";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { ChatMessage } from "../types";
@@ -74,7 +74,11 @@ export function MessageList({ messages, hasRoom }: MessageListProps) {
                         minute: "2-digit",
                       })}
                     </p>
-                    {isCustomer && <CheckCheck className="size-3 opacity-50" />}
+                    {isCustomer && (msg.is_read ? (
+                      <CheckCheck className="size-3 opacity-50" />
+                    ) : (
+                      <Check className="size-3 opacity-50" />
+                    ))}
                   </div>
                 </div>
               </div>

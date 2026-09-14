@@ -18,6 +18,8 @@ interface ChatPanelProps {
   onMinimize: () => void;
   onClose: () => void;
   onSend: (content: string) => void;
+  onTyping: (isTyping: boolean) => void;
+  typing: boolean;
 }
 
 export function ChatPanel({
@@ -30,6 +32,8 @@ export function ChatPanel({
   onMinimize,
   onClose,
   onSend,
+  onTyping,
+  typing,
 }: ChatPanelProps) {
   const status = starting
     ? "Connecting..."
@@ -80,7 +84,14 @@ export function ChatPanel({
       <MessageList messages={messages} hasRoom={hasRoom} />
 
       {hasRoom ? (
-        <ChatInput onSend={onSend} />
+        <>
+          {typing && (
+            <p className="px-4 pb-1 text-[11px] text-muted-foreground">
+              Support is typing...
+            </p>
+          )}
+          <ChatInput onSend={onSend} onTyping={onTyping} />
+        </>
       ) : (
         <div className="border-t border-sidebar-divider bg-background/95 p-4 backdrop-blur-sm">
           <Button

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useChatRoom } from "./use-chat-room";
 import { useChatSocket } from "./use-chat-socket";
@@ -112,7 +112,7 @@ function ChatWidgetInner({
   onOpen,
   onClose,
 }: ChatWidgetInnerProps) {
-  const [unread, setUnread] = useState(0);
+  const [unread, setUnread] = useState(room?.unread_count ?? 0);
   const { push: toast } = useToast();
 
   const { data: history } = useQuery<ChatMessage[]>({
@@ -122,18 +122,48 @@ function ChatWidgetInner({
     enabled: !!room?.nanoid,
   });
 
-  const { messages, replaceHistory, wsReady, hasPending, sendMessage } = useChatSocket({
+  const {
+    messages,
+    replaceHistory,
+    wsReady,
+    hasPending,
+    sendMessage,
+    markRead,
+    sendTyping,
+    typingSource,
+  } = useChatSocket({
     roomNanoid: room?.nanoid,
     minimizedRef,
     userName,
     onUnread: () => setUnread((u) => u + 1),
   });
 
+  const markVisibleMessagesRead = useCallback(() => {
+    if (!room || minimized || document.visibilityState !== "visible") return;
+    for (const message of messages) {
+      if (message.source === "admin" && !message.is_read) {
+        markRead(message.nanoid);
+      }
+    }
+    setUnread(0);
+  }, [markRead, messages, minimized, room]);
+
   useEffect(() => {
     if (history) {
       replaceHistory(history);
     }
   }, [history, replaceHistory]);
+
+  useEffect(() => {
+    if (!room || minimized || !wsReady) return;
+    // Read acknowledgements are sent when the conversation becomes visible.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    markVisibleMessagesRead();
+    document.addEventListener("visibilitychange", markVisibleMessagesRead);
+    return () => {
+      document.removeEventListener("visibilitychange", markVisibleMessagesRead);
+    };
+  }, [markVisibleMessagesRead, minimized, room, wsReady]);
 
   const handleSend = (content: string) => {
     const trimmed = content.trim();
@@ -161,6 +191,8 @@ function ChatWidgetInner({
       onClose={onClose}
       onMinimize={onMinimize}
       onSend={handleSend}
+        onTyping={sendTyping}
+        typing={typingSource === "admin"}
     />
   );
 }

@@ -8,7 +8,8 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/lib/context";
-import { PUBLIC_BACKEND_URL } from "@/lib/env";
+import { useTabNotification } from "@/hooks/use-tab-notification";
+import { getWebSocketUrl } from "@/lib/env";
 import {
   ArrowLeft,
   RefreshCw,
@@ -18,6 +19,8 @@ import {
   RotateCcw,
   MessageSquare,
   Send,
+  Check,
+  CheckCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -61,12 +64,15 @@ export function RoomConsole({
   const [busy, setBusy] = useState(false);
   const [wsReady, setWsReady] = useState(false);
   const [hasPending, setHasPending] = useState(false);
+  const [typingSource, setTypingSource] = useState<ChatMessage["source"] | null>(null);
   const [composerValue, setComposerValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const seenRef = useRef(new Set(initialMessages.map((m) => m.nanoid)));
   const messagesRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const pendingMessagesRef = useRef<string[]>([]);
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { notify: notifyTab, clear: clearTabNotification } = useTabNotification();
 
   const resize = useCallback(() => {
     const el = textareaRef.current;
@@ -98,9 +104,7 @@ export function RoomConsole({
       return;
     }
 
-    const backendUrl = new URL(PUBLIC_BACKEND_URL);
-    const protocol = backendUrl.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${backendUrl.host}/ws/chat/${room.nanoid}/`;
+    const wsUrl = getWebSocketUrl(`/ws/chat/${room.nanoid}/`);
     let cancelled = false;
     let socket: WebSocket | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -129,6 +133,36 @@ export function RoomConsole({
             const data = JSON.parse(event.data);
             if (data.type === "message") {
               appendMessage(data.message);
+              if (data.message.source === "customer") {
+                if (document.visibilityState === "visible") {
+                  socket?.send(
+                    JSON.stringify({
+                      action: "mark_read",
+                      message_nanoid: data.message.nanoid,
+                    }),
+                  );
+                } else {
+                  notifyTab();
+                }
+              }
+            } else if (data.type === "message_read") {
+              setMessages((prev) => {
+                const next = prev.map((message) =>
+                  message.nanoid === data.message_nanoid
+                    ? { ...message, is_read: true }
+                    : message,
+                );
+                if (
+                  next
+                    .filter((message) => message.source === "customer")
+                    .every((message) => message.is_read)
+                ) {
+                  clearTabNotification();
+                }
+                return next;
+              });
+            } else if (data.type === "typing") {
+              setTypingSource(data.is_typing ? data.source : null);
             }
           } catch {
             /* ignore malformed frames */
@@ -165,7 +199,29 @@ export function RoomConsole({
       pendingMessagesRef.current = [];
       setHasPending(false);
     };
-  }, [room.nanoid, room.is_active, appendMessage]);
+  }, [room.nanoid, room.is_active, appendMessage, clearTabNotification, notifyTab]);
+
+  useEffect(() => {
+    if (!room.is_active || !wsReady) return;
+    const markVisibleMessagesRead = () => {
+      if (document.visibilityState !== "visible") return;
+      for (const message of messages) {
+        if (message.source === "customer" && !message.is_read) {
+          wsRef.current?.send(
+            JSON.stringify({
+              action: "mark_read",
+              message_nanoid: message.nanoid,
+            }),
+          );
+        }
+      }
+    };
+    markVisibleMessagesRead();
+    document.addEventListener("visibilitychange", markVisibleMessagesRead);
+    return () => {
+      document.removeEventListener("visibilitychange", markVisibleMessagesRead);
+    };
+  }, [messages, room.is_active, wsReady]);
 
   const handleAssign = useCallback(async () => {
     setBusy(true);
@@ -256,6 +312,8 @@ export function RoomConsole({
   const handleSend = useCallback(() => {
     const text = composerValue.trim();
     if (!text) return;
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    wsRef.current?.send(JSON.stringify({ action: "typing", is_typing: false }));
     setComposerValue("");
     requestAnimationFrame(resize);
 
@@ -269,6 +327,18 @@ export function RoomConsole({
     pendingMessagesRef.current.push(text);
     setHasPending(true);
   }, [composerValue, resize]);
+
+  const handleTyping = useCallback((value: string) => {
+    if (wsRef.current?.readyState !== WebSocket.OPEN) return;
+    const isTyping = value.trim().length > 0;
+    wsRef.current.send(JSON.stringify({ action: "typing", is_typing: isTyping }));
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    if (isTyping) {
+      typingTimerRef.current = setTimeout(() => {
+        wsRef.current?.send(JSON.stringify({ action: "typing", is_typing: false }));
+      }, 3000);
+    }
+  }, []);
 
   const sendKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -393,6 +463,15 @@ export function RoomConsole({
               <p className="whitespace-pre-wrap break-words">
                 {message.content}
               </p>
+              {message.source === "admin" && (
+                <div className="mt-1 flex items-center justify-end opacity-60">
+                  {message.is_read ? (
+                    <CheckCheck className="h-3 w-3" />
+                  ) : (
+                    <Check className="h-3 w-3" />
+                  )}
+                </div>
+              )}
             </div>
           ))
         )}
@@ -400,6 +479,11 @@ export function RoomConsole({
 
       <div className="rounded-xl border bg-card p-3">
         <div className="rounded-2xl border border-slate-200 bg-white shadow-sm transition-all focus-within:border-indigo-300 focus-within:ring-1 focus-within:ring-indigo-300/30">
+          {typingSource === "customer" && (
+            <p className="px-3 pt-2 text-[11px] text-slate-500">
+              Customer is typing...
+            </p>
+          )}
           <div className="px-3 pt-2.5">
             <Textarea
               ref={textareaRef}
@@ -407,8 +491,10 @@ export function RoomConsole({
               value={composerValue}
               onChange={(e) => {
                 setComposerValue(e.target.value);
+                handleTyping(e.target.value);
                 requestAnimationFrame(resize);
               }}
+              onBlur={() => handleTyping("")}
               onKeyDown={sendKeyDown}
               rows={1}
               className="flex min-h-[40px] w-full resize-none overflow-hidden border-none bg-transparent p-0 text-sm leading-relaxed shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"

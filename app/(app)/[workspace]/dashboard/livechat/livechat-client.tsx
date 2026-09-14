@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useToast } from "@/lib/context";
+import { useTabNotification } from "@/hooks/use-tab-notification";
 import { useRoomsFeed, type RoomFeedRoom } from "./rooms-feed";
 import { mapChatRoomsToFeed } from "./room-mappers";
 import { RoomsTable } from "./rooms-table";
@@ -75,6 +76,7 @@ export function LivechatClient({
   const [agents, setAgents] = useState<ChatAgent[]>(initialAgents);
   const [members, setMembers] = useState<WorkspaceMember[]>(initialMembers);
   const [activeTab, setActiveTab] = useState<"rooms" | "agents">("rooms");
+  const { notify: notifyTab } = useTabNotification();
 
   const refreshData = useCallback(async () => {
     const [roomData, agentData, memberData] = await Promise.all([
@@ -108,7 +110,19 @@ export function LivechatClient({
     });
   }, []);
 
-  useRoomsFeed(handleRoomFeed);
+  const handleUnreadChange = useCallback(
+    (roomNanoid: string, unreadCount: number) => {
+      setRooms((prev) =>
+        prev.map((room) =>
+          room.nanoid === roomNanoid ? { ...room, unread_count: unreadCount } : room,
+        ),
+      );
+      if (unreadCount > 0) notifyTab();
+    },
+    [notifyTab],
+  );
+
+  useRoomsFeed(handleRoomFeed, handleUnreadChange);
 
   const handleCreateAgent = async (memberNanoid: string) => {
     const ok = await mutate(
@@ -135,6 +149,8 @@ export function LivechatClient({
     if (ok) await refreshData();
   };
 
+  const unreadTotal = rooms.reduce((total, room) => total + room.unread_count, 0);
+
   return (
     <div className="space-y-6">
       <div>
@@ -152,6 +168,11 @@ export function LivechatClient({
         >
           <MessageSquare className="h-4 w-4 mr-1.5" />
           Rooms ({rooms.length})
+          {unreadTotal > 0 && (
+            <span className="ml-1 rounded-full bg-destructive px-1.5 text-[10px] text-destructive-foreground">
+              {unreadTotal > 99 ? "99+" : unreadTotal}
+            </span>
+          )}
         </Button>
         <Button
           variant={activeTab === "agents" ? "default" : "outline"}

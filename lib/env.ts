@@ -25,3 +25,16 @@ export const PUBLIC_BACKEND_URL =
 
 export const API_PROXY_TARGET =
   process.env.API_PROXY_TARGET ?? (isDeployedBuild ? APP_BASE_URL : DEV_BACKEND_URL);
+
+export function getWebSocketUrl(path: string): string {
+  const backendUrl = new URL(PUBLIC_BACKEND_URL);
+  if (
+    typeof window !== "undefined" &&
+    (backendUrl.hostname === "localhost" ||
+      backendUrl.hostname === "127.0.0.1")
+  ) {
+    backendUrl.hostname = window.location.hostname;
+  }
+  const protocol = backendUrl.protocol === "https:" ? "wss:" : "ws:";
+  return `${protocol}//${backendUrl.host}${path}`;
+}

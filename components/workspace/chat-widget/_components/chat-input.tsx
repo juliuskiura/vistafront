@@ -7,12 +7,14 @@ import EmojiPicker from "@/components/socialmanager/emoji-picker";
 
 interface ChatInputProps {
   onSend: (content: string) => void;
+  onTyping?: (isTyping: boolean) => void;
   disabled?: boolean;
 }
 
-export function ChatInput({ onSend, disabled = false }: ChatInputProps) {
+export function ChatInput({ onSend, onTyping, disabled = false }: ChatInputProps) {
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const resize = useCallback(() => {
     const el = textareaRef.current;
@@ -29,8 +31,18 @@ export function ChatInput({ onSend, disabled = false }: ChatInputProps) {
     const content = value.trim();
     if (!content || disabled) return;
     onSend(content);
+    onTyping?.(false);
     setValue("");
     requestAnimationFrame(resize);
+  };
+
+  const handleChange = (content: string) => {
+    setValue(content);
+    onTyping?.(content.trim().length > 0);
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    if (content.trim()) {
+      typingTimerRef.current = setTimeout(() => onTyping?.(false), 3000);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -48,7 +60,8 @@ export function ChatInput({ onSend, disabled = false }: ChatInputProps) {
             ref={textareaRef}
             placeholder="Type a message..."
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e) => handleChange(e.target.value)}
+            onBlur={() => onTyping?.(false)}
             onKeyDown={handleKeyDown}
             rows={1}
             className="flex min-h-[40px] w-full resize-none overflow-hidden border-none bg-transparent p-0 text-sm leading-relaxed shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
