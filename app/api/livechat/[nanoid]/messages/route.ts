@@ -11,23 +11,21 @@ function unwrapMessages(payload: unknown): unknown[] {
   return messages;
 }
 
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const roomNanoid = searchParams.get("room");
-
-  if (!roomNanoid) {
-    return NextResponse.json({ error: "room is required" }, { status: 400 });
-  }
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ nanoid: string }> },
+) {
+  const { nanoid } = await params;
 
   try {
     const payload: unknown = await serverFetch(
-      `/apis/livechat/rooms/${roomNanoid}/messages/`,
+      `/apis/livechat/rooms/${nanoid}/messages/`,
     );
     return NextResponse.json(unwrapMessages(payload));
   } catch {
     try {
       const payload: unknown = await serverFetch(
-        `/apis/livechat/public/rooms/${roomNanoid}/messages/`,
+        `/apis/livechat/public/rooms/${nanoid}/messages/`,
       );
       return NextResponse.json(unwrapMessages(payload));
     } catch {
@@ -39,13 +37,11 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const roomNanoid = searchParams.get("room");
-
-  if (!roomNanoid) {
-    return NextResponse.json({ error: "room is required" }, { status: 400 });
-  }
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ nanoid: string }> },
+) {
+  const { nanoid } = await params;
 
   const body = await request.json();
 
@@ -53,16 +49,16 @@ export async function POST(request: NextRequest) {
     const message = await serverMutate(`/apis/livechat/messages/`, {
       method: "POST",
       body: {
-        chat_room: roomNanoid,
+        chat_room: nanoid,
         content: body.content,
         reply_to: body.reply_to,
       },
     });
     return NextResponse.json(message);
-  } catch  {
-      return NextResponse.json(
-        { error: "Failed to send message" },
-        { status: 500 },
-      );
-    }
+  } catch {
+    return NextResponse.json(
+      { error: "Failed to send message" },
+      { status: 500 },
+    );
   }
+}
