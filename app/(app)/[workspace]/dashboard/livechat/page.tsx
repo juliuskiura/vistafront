@@ -1,5 +1,6 @@
 import { requireWorkspace } from "@/lib/auth/server";
 import { listRooms, listAgents, listWorkspaceMembers } from "@/lib/api";
+import { mapChatRoomsToFeed } from "./room-mappers";
 import { LivechatClient } from "./livechat-client";
 
 export default async function LivechatPage({
@@ -21,13 +22,7 @@ export default async function LivechatPage({
   const safeAgents = Array.isArray(agents) ? agents : [];
   const safeMembers = Array.isArray(members) ? members : [];
 
-  const roomFeedRooms = safeRooms.map((r) => ({
-    nanoid: r.nanoid,
-    is_active: r.is_active,
-    customer_name: r.customer_name ?? null,
-    agent_name: r.agent?.user_name ?? r.agent_name ?? null,
-    created_at: r.created_at ?? null,
-  }));
+  const roomFeedRooms = mapChatRoomsToFeed(safeRooms);
 
   return (
     <LivechatClient

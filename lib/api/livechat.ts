@@ -19,9 +19,17 @@ export interface ChatRoom {
   customer?: number | null;
   customer_id?: number | null;
   customer_name?: string | null;
-  agent?: { user?: string | null; user_name?: string | null } | null;
+  agent?: { nanoid?: string; user?: string | null; user_name?: string | null; is_available?: boolean } | null;
   agent_id?: number | null;
   agent_name?: string | null;
+  last_message?: {
+    nanoid: string;
+    content: string;
+    sender_name: string | null;
+    is_deleted: boolean;
+    created_at: string;
+  } | null;
+  unread_count?: number;
   created_at: string;
   updated_at?: string;
 }

@@ -1,14 +1,11 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { PUBLIC_BACKEND_URL } from "@/lib/env";
+import type { RoomFeedRoom } from "./room-mappers";
 
-export interface RoomFeedRoom {
-  nanoid: string;
-  is_active: boolean;
-  customer_name: string | null;
-  agent_name: string | null;
-  created_at: string | null;
-}
+export type { RoomFeedRoom, RoomLastMessage } from "./room-mappers";
+export { mapChatRoomToFeed, mapChatRoomsToFeed } from "./room-mappers";
 
 type RoomFeedEvent = "room_opened" | "room_closed";
 
@@ -30,8 +27,9 @@ export function useRoomsFeed(onRoomChange: (room: RoomFeedRoom) => void) {
   }, [onRoomChange]);
 
   useEffect(() => {
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws/chat/rooms/`;
+    const backendUrl = new URL(PUBLIC_BACKEND_URL);
+    const protocol = backendUrl.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${protocol}//${backendUrl.host}/ws/chat/rooms/`;
     let cancelled = false;
     let socket: WebSocket | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;

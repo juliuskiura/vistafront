@@ -8,6 +8,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/lib/context";
+import { PUBLIC_BACKEND_URL } from "@/lib/env";
 import {
   ArrowLeft,
   RefreshCw,
@@ -56,14 +57,17 @@ export function RoomConsole({
   const basePath = `/${workspaceDomain}/dashboard/livechat`;
 
   const [room, setRoom] = useState<ChatRoom>(initialRoom);
+  const hasAgent = Boolean(room.agent_name || room.agent?.user_name);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [busy, setBusy] = useState(false);
   const [wsReady, setWsReady] = useState(false);
+  const [hasPending, setHasPending] = useState(false);
   const [composerValue, setComposerValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const seenRef = useRef(new Set(initialMessages.map((m) => m.nanoid)));
   const messagesRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const pendingMessagesRef = useRef<string[]>([]);
 
   const resize = useCallback(() => {
     const el = textareaRef.current;
@@ -95,8 +99,9 @@ export function RoomConsole({
       return;
     }
 
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws/chat/${room.nanoid}/`;
+    const backendUrl = new URL(PUBLIC_BACKEND_URL);
+    const protocol = backendUrl.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${protocol}//${backendUrl.host}/ws/chat/${room.nanoid}/`;
     let cancelled = false;
     let socket: WebSocket | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -108,7 +113,17 @@ export function RoomConsole({
         socket = new WebSocket(wsUrl);
         wsRef.current = socket;
         socket.onopen = () => {
-          if (!cancelled) setWsReady(true);
+          if (!cancelled) {
+            setWsReady(true);
+            if (pendingMessagesRef.current.length > 0) {
+              const queued = [...pendingMessagesRef.current];
+              pendingMessagesRef.current = [];
+              setHasPending(false);
+              for (const content of queued) {
+                socket?.send(JSON.stringify({ action: "send_message", content }));
+              }
+            }
+          }
         };
         socket.onmessage = (event) => {
           try {
@@ -148,6 +163,8 @@ export function RoomConsole({
       socket?.close();
       socket = null;
       wsRef.current = null;
+      pendingMessagesRef.current = [];
+      setHasPending(false);
     };
   }, [room.nanoid, room.is_active, appendMessage]);
 
@@ -237,7 +254,7 @@ export function RoomConsole({
     }
   }, [room.nanoid, workspaceDomain]);
 
-  const handleSend = useCallback(async () => {
+  const handleSend = useCallback(() => {
     const text = composerValue.trim();
     if (!text) return;
     setComposerValue("");
@@ -250,17 +267,9 @@ export function RoomConsole({
       return;
     }
 
-    try {
-      const res = await fetch(`/api/livechat/messages?room=${room.nanoid}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: text }),
-      });
-      if (!res.ok) throw new Error("send failed");
-    } catch {
-      toast.push({ variant: "error", message: "Failed to send message" });
-    }
-  }, [composerValue, room.nanoid, toast, resize]);
+    pendingMessagesRef.current.push(text);
+    setHasPending(true);
+  }, [composerValue, resize]);
 
   const sendKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -280,7 +289,7 @@ export function RoomConsole({
           <ArrowLeft className="h-4 w-4 mr-1" />
           Back
         </Button>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <span
             className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
               room.is_active
@@ -290,20 +299,20 @@ export function RoomConsole({
           >
             {room.is_active ? "Active" : "Closed"}
           </span>
-          <p className="text-sm font-semibold text-slate-900">
-            {room.customer_name ?? "Customer"}
-          </p>
-          {room.agent_name && (
-            <p className="text-xs text-slate-500">
-              Agent: {room.agent_name}
+          <div className="leading-tight">
+            <p className="text-sm font-semibold text-slate-900">
+              {room.customer_name ?? "Customer"}
             </p>
-          )}
-          {wsReady && room.is_active && (
-            <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Live
-            </span>
-          )}
+            <p className="text-xs text-slate-500">
+              {room.agent_name ? `Agent: ${room.agent_name}` : "Unassigned"}
+            </p>
+          </div>
+{wsReady && room.is_active && (
+              <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Live
+              </span>
+            )}
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-1">
           <Button
@@ -314,7 +323,7 @@ export function RoomConsole({
           >
             <RefreshCw className="h-3.5 w-3.5" />
           </Button>
-          {room.is_active && (
+          {room.is_active && !hasAgent && (
             <Button
               variant="outline"
               size="sm"
@@ -408,7 +417,12 @@ export function RoomConsole({
               className="flex min-h-[40px] w-full resize-none overflow-hidden border-none bg-transparent p-0 text-sm leading-relaxed shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
             />
           </div>
-          <div className="flex items-center justify-end border-t border-slate-100 px-2.5 py-1.5">
+          <div className="flex items-center justify-between border-t border-slate-100 px-2.5 py-1.5">
+            {hasPending && (
+              <span className="text-[10px] text-amber-600">
+                Reconnecting — messages will send when online
+              </span>
+            )}
             <button
               type="button"
               onClick={() => void handleSend()}

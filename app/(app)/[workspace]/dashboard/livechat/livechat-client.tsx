@@ -1,17 +1,11 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { useToast } from "@/lib/context";
 import { useRoomsFeed, type RoomFeedRoom } from "./rooms-feed";
-import {
-  Users,
-  MessageSquare,
-  Plus,
-  CheckCircle2,
-  XCircle,
-  Clock,
-} from "lucide-react";
+import { mapChatRoomsToFeed } from "./room-mappers";
+import { RoomsTable } from "./rooms-table";
+import { Users, MessageSquare, Plus, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   listWorkspaceMembers,
@@ -21,6 +15,7 @@ import {
   deleteChatAgent,
   type ChatAgent,
   type WorkspaceMember,
+  type ChatRoom,
 } from "@/lib/api";
 import type { ActionResultLike } from "@/lib/api/server-fetch-types";
 
@@ -75,14 +70,11 @@ export function LivechatClient({
   initialAgents,
   initialMembers,
 }: Props) {
-  const router = useRouter();
   const mutate = useMutator();
   const [rooms, setRooms] = useState<RoomFeedRoom[]>(initialRooms);
   const [agents, setAgents] = useState<ChatAgent[]>(initialAgents);
   const [members, setMembers] = useState<WorkspaceMember[]>(initialMembers);
   const [activeTab, setActiveTab] = useState<"rooms" | "agents">("rooms");
-
-  const basePath = `/${workspaceDomain}/dashboard/livechat`;
 
   const refreshData = useCallback(async () => {
     const [roomData, agentData, memberData] = await Promise.all([
@@ -90,15 +82,8 @@ export function LivechatClient({
       listAgents(workspaceDomain).catch(() => []),
       listWorkspaceMembers(workspaceNanoid, workspaceDomain).catch(() => []),
     ]);
-    setRooms(
-      (Array.isArray(roomData) ? roomData : []).map((r) => ({
-        nanoid: r.nanoid,
-        is_active: r.is_active,
-        customer_name: r.customer_name ?? null,
-        agent_name: r.agent?.user_name ?? r.agent_name ?? null,
-        created_at: r.created_at ?? null,
-      })),
-    );
+    const safeRooms: ChatRoom[] = Array.isArray(roomData) ? roomData : [];
+    setRooms(mapChatRoomsToFeed(safeRooms));
     setAgents(Array.isArray(agentData) ? agentData : []);
     setMembers(Array.isArray(memberData) ? memberData : []);
   }, [workspaceDomain, workspaceNanoid]);
@@ -113,6 +98,16 @@ export function LivechatClient({
     });
   }, []);
 
+  const handleUpdateRoom = useCallback((updated: RoomFeedRoom) => {
+    setRooms((prev) => {
+      const idx = prev.findIndex((r) => r.nanoid === updated.nanoid);
+      if (idx === -1) return prev;
+      const next = [...prev];
+      next[idx] = updated;
+      return next;
+    });
+  }, []);
+
   useRoomsFeed(handleRoomFeed);
 
   const handleCreateAgent = async (memberNanoid: string) => {
@@ -120,9 +115,7 @@ export function LivechatClient({
       createChatAgent(memberNanoid, workspaceDomain),
       "Chat agent created.",
     );
-    if (ok) {
-      await refreshData();
-    }
+    if (ok) await refreshData();
   };
 
   const isAgent = (member: WorkspaceMember) =>
@@ -139,20 +132,16 @@ export function LivechatClient({
       deleteChatAgent(agent.nanoid, workspaceDomain),
       "Agent removed.",
     );
-    if (ok) {
-      await refreshData();
-    }
+    if (ok) await refreshData();
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900">Live Chat</h2>
-          <p className="text-sm text-slate-500 mt-1">
-            Manage chat rooms and agents for your workspace.
-          </p>
-        </div>
+      <div>
+        <h2 className="text-xl font-bold text-slate-900">Live Chat</h2>
+        <p className="text-sm text-slate-500 mt-1">
+          Manage chat rooms and agents for your workspace.
+        </p>
       </div>
 
       <div className="flex gap-2">
@@ -169,65 +158,26 @@ export function LivechatClient({
           size="sm"
           onClick={() => setActiveTab("agents")}
         >
-          <Users className="h-4 w-4 mr-1.5" />
           Agents ({agents.length})
         </Button>
       </div>
 
       {activeTab === "rooms" && (
-        <div className="rounded-xl border bg-card divide-y divide-slate-100">
-          {rooms.length === 0 && (
-            <div className="p-8 text-center text-sm text-muted-foreground">
-              No rooms yet. Rooms appear here the moment a customer starts a
-              chat.
-            </div>
-          )}
-          {rooms.map((room) => (
-            <div
-              key={room.nanoid}
-              className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors cursor-pointer"
-              onClick={() => router.push(`${basePath}/rooms/${room.nanoid}`)}
-            >
-              <div className="flex items-center gap-4">
-                <div
-                  className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                    room.is_active
-                      ? "bg-emerald-100 text-emerald-700"
-                      : "bg-slate-100 text-slate-500"
-                  }`}
-                >
-                  <MessageSquare className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-900">
-                    {room.customer_name ?? "Customer"}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    {room.agent_name ?? "No agent assigned"}
-                  </p>
-                </div>
-              </div>
-              <span
-                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                  room.is_active
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-slate-100 text-slate-500"
-                }`}
-              >
-                {room.is_active ? (
-                  <CheckCircle2 className="h-3 w-3" />
-                ) : (
-                  <XCircle className="h-3 w-3" />
-                )}
-                {room.is_active ? "Active" : "Closed"}
-              </span>
-            </div>
-          ))}
-        </div>
+        <RoomsTable
+          rooms={rooms}
+          agents={agents}
+          workspaceDomain={workspaceDomain}
+          onUpdateRoom={handleUpdateRoom}
+        />
       )}
 
       {activeTab === "agents" && (
         <div className="space-y-4">
+          <div className="text-sm text-slate-500">
+            {agents.filter((a) => a.is_available).length} available ·{" "}
+            {agents.filter((a) => !a.is_available).length} busy
+          </div>
+
           <div className="rounded-xl border bg-card divide-y divide-slate-100">
             {agents.map((agent) => (
               <div
@@ -255,22 +205,20 @@ export function LivechatClient({
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                      agent.is_available
-                        ? "bg-emerald-100 text-emerald-700"
-                        : "bg-slate-100 text-slate-500"
-                    }`}
-                  >
-                    {agent.is_available ? (
-                      <CheckCircle2 className="h-3 w-3" />
-                    ) : (
-                      <Clock className="h-3 w-3" />
-                    )}
-                    {agent.is_available ? "Available" : "Busy"}
-                  </span>
-                </div>
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                    agent.is_available
+                      ? "bg-emerald-100 text-emerald-700"
+                      : "bg-slate-100 text-slate-500"
+                  }`}
+                >
+                  {agent.is_available ? (
+                    <CheckCircle2 className="h-3 w-3" />
+                  ) : (
+                    <Clock className="h-3 w-3" />
+                  )}
+                  {agent.is_available ? "Available" : "Busy"}
+                </span>
               </div>
             ))}
           </div>
