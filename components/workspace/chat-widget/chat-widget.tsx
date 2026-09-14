@@ -17,7 +17,6 @@ export function ChatWidget({ userName = null }: ChatWidgetProps) {
   const [minimized, setMinimized] = useState(true);
   const minimizedRef = useRef(true);
   const roomNanoidRef = useRef<string | null>(null);
-
   useEffect(() => {
     minimizedRef.current = minimized;
   }, [minimized]);
@@ -28,19 +27,17 @@ export function ChatWidget({ userName = null }: ChatWidgetProps) {
 
   const [starting, setStarting] = useState(false);
   const startingRef = useRef(false);
-
   useEffect(() => {
     if (currentRoom?.nanoid) {
       roomNanoidRef.current = currentRoom.nanoid;
     }
   }, [currentRoom]);
-
   const handleStart = async () => {
     if (startingRef.current) return;
     startingRef.current = true;
     setStarting(true);
     try {
-      const res = await fetch("/api/livechat/rooms", { method: "POST" });
+      const res = await fetch("/api/livechat/rooms/", { method: "POST" });
       if (!res.ok) throw new Error("create failed");
       const newRoom = (await res.json()) as ChatRoom;
       await queryClient.invalidateQueries({ queryKey: ["chatRooms"] });
@@ -58,7 +55,7 @@ export function ChatWidget({ userName = null }: ChatWidgetProps) {
     if (!nanoid) return;
     try {
       await fetch(
-        `/api/livechat/rooms/${nanoid}/close`,
+        `/api/livechat/rooms/${nanoid}/close/`,
         { method: "POST", credentials: "include" }
       );
     } catch {
@@ -75,7 +72,7 @@ export function ChatWidget({ userName = null }: ChatWidgetProps) {
     setMinimized(false);
   };
 
-  const room = isPending ? null : currentRoom;
+  const room = isPending || !currentRoom?.nanoid ? null : currentRoom;
 
   return (
     <ChatWidgetInner
@@ -121,11 +118,11 @@ function ChatWidgetInner({
   const { data: history } = useQuery<ChatMessage[]>({
     queryKey: ["chatMessages", room?.nanoid],
     queryFn: () =>
-      fetch(`/api/livechat/messages?room=${room?.nanoid}`).then((r) => r.json()),
+      fetch(`/api/livechat/${room?.nanoid}/messages/`).then((r) => r.json()),
     enabled: !!room?.nanoid,
   });
 
-  const { messages, replaceHistory, wsReady, sendMessage } = useChatSocket({
+  const { messages, replaceHistory, wsReady, hasPending, sendMessage } = useChatSocket({
     roomNanoid: room?.nanoid,
     minimizedRef,
     userName,
@@ -156,6 +153,7 @@ function ChatWidgetInner({
       hasRoom={!!room}
       userName={userName}
       starting={starting}
+      hasPending={hasPending}
       onStart={onStart}
       onClose={onClose}
       onMinimize={onMinimize}

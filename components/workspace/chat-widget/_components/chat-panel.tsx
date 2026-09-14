@@ -14,6 +14,7 @@ interface ChatPanelProps {
   hasRoom: boolean;
   userName?: string | null;
   starting?: boolean;
+  hasPending?: boolean;
   onStart: () => void;
   onMinimize: () => void;
   onClose: () => void;
@@ -26,6 +27,7 @@ export function ChatPanel({
   hasRoom,
   userName,
   starting = false,
+  hasPending = false,
   onStart,
   onMinimize,
   onClose,
@@ -33,12 +35,13 @@ export function ChatPanel({
 }: ChatPanelProps) {
   const status = starting
     ? "Connecting..."
-    : online
-      ? "Online"
-      : hasRoom
-        ? "Connecting..."
-        : "Start a new chat";
-
+    : hasPending
+      ? "Connecting..."
+      : online
+        ? "Online"
+        : hasRoom
+          ? "Connecting..."
+          : "Start a new chat";
   return (
     <div className="fixed bottom-5 right-5 z-50 flex h-[min(600px,calc(100vh-2.5rem))] w-[min(380px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl animate-in fade-in zoom-in-95 duration-200">
       <div className="flex items-center justify-between bg-gradient-to-r from-primary/90 to-primary/70 px-4 py-3.5 shadow-sm">

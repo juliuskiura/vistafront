@@ -7,7 +7,6 @@ import {
   useState,
   type MutableRefObject,
 } from "react";
-import { useToast } from "@/lib/context";
 import type { ChatMessage } from "./types";
 
 export function isOwnMessage(
@@ -32,14 +31,16 @@ export function useChatSocket({
 }: UseChatSocketArgs) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [wsReady, setWsReady] = useState(false);
+  const [hasPending, setHasPending] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
+  const pendingMessagesRef = useRef<string[]>([]);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onUnreadRef = useRef(onUnread);
   useEffect(() => {
     onUnreadRef.current = onUnread;
   }, [onUnread]);
-  const { push: toast } = useToast();
-
+console.log("useChatSocket", { roomNanoid, minimizedRef, userName, onUnread });
+console.log("useChatSocket", { messages, wsReady, hasPending });
   const replaceHistory = useCallback((history: ChatMessage[]) => {
     setMessages(history);
   }, []);
@@ -57,24 +58,39 @@ export function useChatSocket({
 
     if (!roomNanoid) return;
 
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws/chat/${roomNanoid}/`;
+    const backendUrl = new URL(
+      process.env.NEXT_PUBLIC_BACKEND_URL ?? window.location.origin,
+    );
+    const protocol = backendUrl.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${protocol}//${backendUrl.host}/ws/chat/${roomNanoid}/`;
     let cancelled = false;
     let socket: WebSocket | null = null;
 
     const connect = () => {
       if (cancelled) return;
       try {
-        socket = new WebSocket(wsUrl);
-        wsRef.current = socket;
+        const sock = new WebSocket(wsUrl);
+        socket = sock;
+        wsRef.current = sock;
 
-        socket.onopen = () => {
-          if (!cancelled) setWsReady(true);
+        sock.onopen = () => {
+          if (!cancelled) {
+            setWsReady(true);
+            if (pendingMessagesRef.current.length > 0) {
+              const queued = [...pendingMessagesRef.current];
+              pendingMessagesRef.current = [];
+              setHasPending(false);
+              for (const content of queued) {
+                sock.send(JSON.stringify({ action: "send_message", content }));
+              }
+            }
+          }
         };
 
         socket.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
+            console.log('dataEcho: ', data)
             if (data.type === "message") {
               setMessages((prev) => [...prev, data.message]);
               if (
@@ -117,6 +133,8 @@ export function useChatSocket({
         wsRef.current = null;
       }
       setWsReady(false);
+      pendingMessagesRef.current = [];
+      setHasPending(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomNanoid]);
@@ -135,19 +153,11 @@ export function useChatSocket({
         return;
       }
 
-      fetch(
-        `/api/livechat/messages?room=${roomNanoid}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: text }),
-        },
-      ).catch(() => {
-        toast({ variant: "error", message: "Failed to send message" });
-      });
+      pendingMessagesRef.current.push(text);
+      setHasPending(true);
     },
-    [roomNanoid, toast],
+    [roomNanoid],
   );
 
-  return { messages, replaceHistory, wsReady, sendMessage };
+  return { messages, replaceHistory, wsReady, hasPending, sendMessage };
 }

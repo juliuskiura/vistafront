@@ -59,22 +59,10 @@ export async function POST(request: NextRequest) {
       },
     });
     return NextResponse.json(message);
-  } catch {
-    try {
-      const message = await serverMutate(`/apis/livechat/public/messages/`, {
-        method: "POST",
-        body: {
-          chat_room: roomNanoid,
-          content: body.content,
-          reply_to: body.reply_to,
-        },
-      });
-      return NextResponse.json(message);
-    } catch {
+  } catch  {
       return NextResponse.json(
         { error: "Failed to send message" },
         { status: 500 },
       );
     }
   }
-}
