@@ -39,6 +39,7 @@ export interface ChatMessage {
   content: string;
   sender_id: number | null;
   sender_name: string | null;
+  source: "customer" | "admin";
   reply_to_nanoid: string | null;
   is_deleted: boolean;
   created_at: string;

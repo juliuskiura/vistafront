@@ -32,6 +32,7 @@ interface Props {
     email: string | null;
     isAdmin: boolean;
   };
+  hasActiveChat?: boolean;
   children: React.ReactNode;
 }
 
@@ -182,6 +183,7 @@ export function WorkspaceShell({
   workspaces,
   nav,
   user,
+  hasActiveChat = false,
   children,
 }: Props) {
   const pathname = usePathname();
@@ -325,7 +327,15 @@ export function WorkspaceShell({
                 className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
                 title="Live Chat"
               >
-                <ChatIcon size={18} />
+                <span className="relative flex">
+                  <ChatIcon size={18} />
+                  {hasActiveChat && (
+                    <span
+                      aria-label="Active chat"
+                      className="absolute -right-1.5 -top-1.4 h-4 w-4 animate-pulse rounded-full border-2 border-background bg-destructive-600"
+                    />
+                  )}
+                </span>
                 <span className="hidden sm:inline">Chat</span>
               </Link>
             ) : (

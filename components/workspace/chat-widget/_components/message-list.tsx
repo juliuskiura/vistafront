@@ -4,16 +4,14 @@ import { useEffect, useRef } from "react";
 import { CheckCheck } from "lucide-react";
 import { ChatIcon } from "@/lib/icons";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { isOwnMessage } from "../use-chat-socket";
 import type { ChatMessage } from "../types";
 
 interface MessageListProps {
   messages: ChatMessage[];
-  userName?: string | null;
   hasRoom: boolean;
 }
 
-export function MessageList({ messages, userName, hasRoom }: MessageListProps) {
+export function MessageList({ messages, hasRoom }: MessageListProps) {
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -39,22 +37,21 @@ export function MessageList({ messages, userName, hasRoom }: MessageListProps) {
           </div>
         ) : (
           messages.map((msg) => {
-            const isSent =
-              isOwnMessage(msg, userName) || (!userName && !msg.sender_name);
+            const isCustomer = msg.source === "customer";
             return (
               <div
                 key={msg.nanoid}
-                className={`flex ${isSent ? "justify-end" : "justify-start"}`}
+                className={`flex ${isCustomer ? "justify-end" : "justify-start"}`}
               >
                 <div
                   className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm shadow-sm ${
-                    isSent
-                      ? "bg-primary text-primary-foreground rounded-br-sm"
-                      : "bg-muted/80 text-muted-foreground rounded-bl-sm backdrop-blur-sm"
+                    isCustomer
+                      ? "rounded-br-sm bg-primary-600 text-white shadow-primary/20"
+                      : "rounded-bl-sm border border-amber-200 bg-amber-50 text-slate-900"
                   }`}
                 >
-                  {!isSent && msg.sender_name && (
-                    <p className="mb-1 text-[11px] font-semibold text-foreground/80">
+                  {!isCustomer && msg.sender_name && (
+                    <p className="mb-1 text-[11px] font-semibold text-slate-700">
                       {msg.sender_name}
                     </p>
                   )}
@@ -66,7 +63,7 @@ export function MessageList({ messages, userName, hasRoom }: MessageListProps) {
                         minute: "2-digit",
                       })}
                     </p>
-                    {isSent && <CheckCheck className="size-3 opacity-50" />}
+                    {isCustomer && <CheckCheck className="size-3 opacity-50" />}
                   </div>
                 </div>
               </div>

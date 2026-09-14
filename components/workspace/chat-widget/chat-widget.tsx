@@ -145,13 +145,16 @@ function ChatWidgetInner({
   const online = wsReady;
 
   return minimized ? (
-    <ChatLauncher unread={unread} online={online} onClick={onOpen} />
+    <ChatLauncher
+      unread={unread}
+      online={online}
+      onClick={onOpen}
+    />
   ) : (
     <ChatPanel
       messages={messages}
       online={online}
-      hasRoom={!!room}
-      userName={userName}
+        hasRoom={!!room}
       starting={starting}
       hasPending={hasPending}
       onStart={onStart}

@@ -1,4 +1,4 @@
-import { listWorkspaces, getNavigationSidebar } from "@/lib/api";
+import { listWorkspaces, getNavigationSidebar, listRooms } from "@/lib/api";
 import { requireAuth, requireWorkspace } from "@/lib/auth/server";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
 
@@ -22,8 +22,9 @@ export default async function WorkspaceLayout({
   const user = await requireAuth();
   const allWorkspaces = await listWorkspaces().catch(() => []);
   const active = await requireWorkspace(slug, allWorkspaces);
-  const [nav] = await Promise.all([
+  const [nav, rooms] = await Promise.all([
     getNavigationSidebar().catch(() => []),
+    user.is_admin ? listRooms(active.domain, "all").catch(() => []) : Promise.resolve([]),
   ]);
 
   return (
@@ -41,6 +42,7 @@ export default async function WorkspaceLayout({
         email: user.email,
         isAdmin: user.is_admin,
       }}
+      hasActiveChat={rooms.some((room) => room.is_active)}
     >
       {children}
     </WorkspaceShell>

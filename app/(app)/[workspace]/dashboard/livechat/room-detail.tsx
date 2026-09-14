@@ -27,11 +27,10 @@ interface Props {
   onReopen: () => Promise<boolean>;
 }
 
-function bubbleClass(senderName: string | null) {
-  if (senderName === "You") {
-    return "bg-indigo-600 text-white self-end";
-  }
-  return "bg-slate-100 text-slate-900 self-start";
+function bubbleClass(source: ChatMessage["source"]) {
+  return source === "customer"
+    ? "self-start border border-amber-200 bg-amber-50 text-slate-900 shadow-sm"
+    : "self-end bg-slate-900 text-white shadow-lg shadow-slate-900/15";
 }
 
 export function RoomDetail({
@@ -167,9 +166,7 @@ export function RoomDetail({
           messages.map((message) => (
             <div
               key={message.nanoid}
-              className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm ${bubbleClass(
-                message.sender_name,
-              )}`}
+              className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm ${bubbleClass(message.source)}`}
             >
               <p className="text-[10px] opacity-70 mb-0.5">
                 {message.sender_name ?? "Customer"} ·{" "}

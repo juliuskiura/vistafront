@@ -2,6 +2,7 @@ export interface ChatMessage {
   nanoid: string;
   content: string;
   sender_name: string | null;
+  source: "customer" | "admin";
   is_deleted: boolean;
   created_at: string;
 }

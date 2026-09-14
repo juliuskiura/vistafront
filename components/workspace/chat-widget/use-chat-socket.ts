@@ -13,7 +13,7 @@ export function isOwnMessage(
   msg: ChatMessage,
   userName?: string | null,
 ): boolean {
-  return msg.sender_name === "You" || (!!userName && msg.sender_name === userName);
+  return msg.source === "customer" || msg.sender_name === "You" || (!!userName && msg.sender_name === userName);
 }
 
 interface UseChatSocketArgs {
@@ -39,8 +39,6 @@ export function useChatSocket({
   useEffect(() => {
     onUnreadRef.current = onUnread;
   }, [onUnread]);
-console.log("useChatSocket", { roomNanoid, minimizedRef, userName, onUnread });
-console.log("useChatSocket", { messages, wsReady, hasPending });
   const replaceHistory = useCallback((history: ChatMessage[]) => {
     setMessages(history);
   }, []);
@@ -90,7 +88,6 @@ console.log("useChatSocket", { messages, wsReady, hasPending });
         socket.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
-            console.log('dataEcho: ', data)
             if (data.type === "message") {
               setMessages((prev) => [...prev, data.message]);
               if (

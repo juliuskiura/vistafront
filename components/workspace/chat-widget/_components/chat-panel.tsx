@@ -12,7 +12,6 @@ interface ChatPanelProps {
   messages: ChatMessage[];
   online: boolean;
   hasRoom: boolean;
-  userName?: string | null;
   starting?: boolean;
   hasPending?: boolean;
   onStart: () => void;
@@ -25,7 +24,6 @@ export function ChatPanel({
   messages,
   online,
   hasRoom,
-  userName,
   starting = false,
   hasPending = false,
   onStart,
@@ -79,7 +77,7 @@ export function ChatPanel({
         </div>
       </div>
 
-      <MessageList messages={messages} userName={userName} hasRoom={hasRoom} />
+      <MessageList messages={messages} hasRoom={hasRoom} />
 
       {hasRoom ? (
         <ChatInput onSend={onSend} />
