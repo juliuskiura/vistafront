@@ -228,7 +228,6 @@ function PlansTab({
   workspaceName: string;
 }) {
   const hasSubscription = subscription !== null;
-console.log("plan.app_keys ", plans);
   return (
     <div className="mx-auto max-w-5xl space-y-8">
       <header className="flex flex-wrap items-center justify-between gap-3">
@@ -350,9 +349,7 @@ console.log("plan.app_keys ", plans);
                       </Badge>
                     )}
                   </div>
-                  <p className="mt-1 min-h-[2.5rem] text-sm text-muted-foreground">
-                    {plan.description}
-                  </p>
+                  
                   <div className="mt-3 text-sm">
                     <span className="font-semibold">
                       {plan.price_per_seat != null
@@ -360,22 +357,24 @@ console.log("plan.app_keys ", plans);
                         : "Custom"}
                     </span>
                     <span className="text-muted-foreground"> / Month</span>
-                  
+                  <p className="mt-1 min-h-[2.5rem] text-sm text-muted-foreground">
+                    {plan.description}
+                  </p>
                   </div>
                   <div className="mt-4">
-                    <dl className="flex flex-col gap-2 text-sm">
+                    <dl className="flex flex-col text-sm">
                       <div>
-                        <dt className="sr-only">Features</dt>
+                        <dt className="font-semibold">Features</dt>
                         <dd>
-                          <ul className="flex flex-wrap gap-3">
-                            {plan.app_keys.map((key) => (
-                              <li key={key} className="text-muted-foreground">
-                                {key}
+                          <ul className="flex flex-col gap-1 flex-wrap">
+                            {plan.features.map((feature) => (
+                              <li key={feature.nanoid} className="list-inside list-disc text-muted-foreground">
+                                {feature.feature}
                               </li>
                             ))}
                             {plan.feature_flags.map((flag) => (
                               <li key={flag} className="text-muted-foreground">
-                                {flag}
+                                {flag} sxx
                               </li>
                             ))}
                           </ul>

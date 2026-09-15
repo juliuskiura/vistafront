@@ -1,6 +1,7 @@
 import { serverFetch, serverMutate } from "./server-fetch";
 import type {
   Invoice,
+  Paginated,
   Payment,
   PaymentMethod,
   Plan,
@@ -12,7 +13,8 @@ import type {
 // ── Invoices ────────────────────────────────────────────────────────────────
 
 export async function listInvoices({ workspace }: { workspace: string }): Promise<Invoice[]> {
-  return serverFetch<Invoice[]>("/apis/invoices/", { workspace });
+  const payload = await serverFetch<Paginated<Invoice> | Invoice[]>("/apis/invoices/", { workspace });
+  return Array.isArray(payload) ? payload : payload.results ?? [];
 }
 
 export async function createInvoice(
@@ -44,7 +46,8 @@ export async function extendInvoice(
 // ── Payments ────────────────────────────────────────────────────────────────
 
 export async function listPayments({ workspace }: { workspace: string }): Promise<Payment[]> {
-  return serverFetch<Payment[]>("/apis/payments/", { workspace });
+  const payload = await serverFetch<Paginated<Payment> | Payment[]>("/apis/payments/", { workspace });
+  return Array.isArray(payload) ? payload : payload.results ?? [];
 }
 
 // ── Payment methods ─────────────────────────────────────────────────────────
@@ -54,13 +57,18 @@ export async function listPaymentMethods(
   clientBusiness?: string,
 ): Promise<PaymentMethod[]> {
   const qs = clientBusiness ? `?client_business=${encodeURIComponent(clientBusiness)}` : "";
-  return serverFetch<PaymentMethod[]>(`/apis/payment-methods/${qs}`, { workspace });
+  const payload = await serverFetch<Paginated<PaymentMethod> | PaymentMethod[]>(
+    `/apis/payment-methods/${qs}`,
+    { workspace },
+  );
+  return Array.isArray(payload) ? payload : payload.results ?? [];
 }
 
 // ── Plans ───────────────────────────────────────────────────────────────────
 
 export async function listPlans({ workspace }: { workspace: string }): Promise<Plan[]> {
-  return serverFetch<Plan[]>("/apis/plans/", { workspace });
+  const payload = await serverFetch<Paginated<Plan> | Plan[]>("/apis/plans/", { workspace });
+  return Array.isArray(payload) ? payload : payload.results ?? [];
 }
 
 // ── Subscriptions ───────────────────────────────────────────────────────────

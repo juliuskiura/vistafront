@@ -223,6 +223,7 @@ export interface Plan {
   includes_enterprise_features: boolean;
   app_keys: string[];
   feature_flags: string[];
+  features: { nanoid: string; plan: number; feature: string; order: number }[];
 }
 
 export interface Subscription {
