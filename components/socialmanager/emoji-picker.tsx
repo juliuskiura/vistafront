@@ -61,9 +61,13 @@ export default function EmojiPicker({ onEmojiSelect, children }: EmojiPickerProp
   const [search, setSearch] = useState("");
 
   const allEmojis = EMOJI_CATEGORIES.flatMap((c) => c.emojis);
-  const filteredEmojis = search
-    ? allEmojis.filter((e) => e.includes(search))
-    : EMOJI_CATEGORIES[activeCategory].emojis;
+  const filteredEmojis = Array.from(
+    new Set(
+      search
+        ? allEmojis.filter((e) => e.includes(search))
+        : EMOJI_CATEGORIES[activeCategory].emojis,
+    ),
+  );
 
   return (
     <Popover>

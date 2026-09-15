@@ -19,11 +19,13 @@ import {
   RotateCcw,
   MessageSquare,
   Send,
+  Smile,
   Check,
   CheckCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import EmojiPicker from "@/components/socialmanager/emoji-picker";
 import {
   assignAgent,
   closeRoom,
@@ -468,32 +470,41 @@ export function RoomConsole({
             No messages yet in this room.
           </div>
         ) : (
-          messages.map((message) => (
-            <div
-              key={message.nanoid}
-              className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm ${bubbleClass(message.source)}`}
-            >
-              <p className="text-[10px] opacity-70 mb-0.5">
-                {message.sender_name ?? "System"} ·{" "}
-                {new Date(message.created_at).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </p>
-              <p className="whitespace-pre-wrap break-words">
-                {message.content}
-              </p>
-              {message.source === "admin" && (
-                <div className="mt-1 flex items-center justify-end opacity-60">
+            messages.map((message) =>
+              message.is_system ? (
+                <div
+                  key={message.nanoid}
+                  className="flex items-center gap-2 border-t border-slate-200 px-2 py-2 text-center"
+                >
+                  <span className="flex-1 text-xs text-slate-500">
+                    {message.content}
+                  </span>
+                </div>
+              ) : (
+                <div
+                  key={message.nanoid}
+                  className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm ${bubbleClass(message.source)}`}
+                >
+                  <p className="text-[10px] opacity-70 mb-0.5">
+                      {message.sender_name ?? "Customer"} ·{" "}
+                      {new Date(message.created_at).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="whitespace-pre-wrap break-words">
+                        {message.content}
+                      </p>
                   {message.is_read ? (
                     <CheckCheck className="h-3 w-3" />
                   ) : (
                     <Check className="h-3 w-3" />
                   )}
-                </div>
-              )}
-            </div>
-          ))
+                    </div>
+                  </div>
+              ),
+            )
         )}
       </div>
 
@@ -521,11 +532,28 @@ export function RoomConsole({
             />
           </div>
           <div className="flex items-center justify-between border-t border-slate-100 px-2.5 py-1.5">
-            {hasPending && (
-              <span className="text-[10px] text-amber-600">
-                Reconnecting — messages will send when online
-              </span>
-            )}
+            <div className="flex items-center gap-1">
+              <EmojiPicker
+                onEmojiSelect={(emoji) => {
+                  setComposerValue((value) => `${value}${emoji}`);
+                  requestAnimationFrame(resize);
+                }}
+              >
+                <button
+                  type="button"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                  aria-label="Emoji picker"
+                  title="Insert emoji"
+                >
+                  <Smile className="h-4 w-4" />
+                </button>
+              </EmojiPicker>
+              {hasPending && (
+                <span className="text-[10px] text-amber-600">
+                  Reconnecting — messages will send when online
+                </span>
+              )}
+            </div>
             <button
               type="button"
               onClick={() => void handleSend()}

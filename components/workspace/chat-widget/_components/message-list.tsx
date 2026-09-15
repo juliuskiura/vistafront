@@ -40,6 +40,18 @@ export function MessageList({ messages, hasRoom }: MessageListProps) {
           </div>
         ) : (
           messages.map((msg) => {
+            if (msg.is_system) {
+              return (
+                <div
+                  key={msg.nanoid}
+                  className="flex items-center gap-2 border-t border-slate-200 px-2 py-2 text-center"
+                >
+                  <span className="flex-1 text-xs text-muted-foreground">
+                    {msg.content}
+                  </span>
+                </div>
+              );
+            }
             const isCustomer = msg.source === "customer";
             return (
               <div

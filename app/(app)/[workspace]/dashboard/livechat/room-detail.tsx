@@ -163,23 +163,34 @@ export function RoomDetail({
             No messages yet in this room.
           </div>
         ) : (
-          messages.map((message) => (
-            <div
-              key={message.nanoid}
-              className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm ${bubbleClass(message.source)}`}
-            >
-              <p className="text-[10px] opacity-70 mb-0.5">
-                {message.sender_name ?? "Customer"} ·{" "}
-                {new Date(message.created_at).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </p>
-              <p className="whitespace-pre-wrap break-words">
-                {message.content}
-              </p>
-            </div>
-          ))
+              messages.map((message) =>
+                message.is_system ? (
+                  <div
+                    key={message.nanoid}
+                    className="flex items-center gap-2 border-t border-slate-200 px-2 py-2 text-center"
+                  >
+                    <span className="flex-1 text-xs text-slate-500">
+                      {message.content}
+                    </span>
+                  </div>
+                ) : (
+                  <div
+                    key={message.nanoid}
+                    className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm ${bubbleClass(message.source)}`}
+                  >
+                    <p className="text-[10px] opacity-70 mb-0.5">
+                      {message.sender_name ?? "Customer"} ·{" "}
+                      {new Date(message.created_at).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                    <p className="whitespace-pre-wrap break-words">
+                      {message.content}
+                    </p>
+                  </div>
+            ),
+          )
         )}
       </div>
     </div>

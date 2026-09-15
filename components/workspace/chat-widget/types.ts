@@ -4,6 +4,7 @@ export interface ChatMessage {
   sender_name: string | null;
   source: "customer" | "admin";
   is_read: boolean;
+  is_system?: boolean;
   is_deleted: boolean;
   created_at: string;
 }
