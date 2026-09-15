@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { useToast } from "@/lib/context";
 import { useTabNotification } from "@/hooks/use-tab-notification";
 import { getWebSocketUrl } from "@/lib/env";
@@ -18,14 +19,11 @@ import {
   XCircle,
   RotateCcw,
   MessageSquare,
-  Send,
-  Smile,
   Check,
   CheckCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import EmojiPicker from "@/components/socialmanager/emoji-picker";
+import { ChatInput } from "@/components/workspace/chat-input";
 import {
   assignAgent,
   closeRoom,
@@ -33,6 +31,7 @@ import {
   transferRoom,
   getMessages,
   type ChatAgent,
+  type ChatAttachment,
   type ChatMessage,
   type ChatRoom,
 } from "@/lib/api";
@@ -41,6 +40,7 @@ interface Props {
   workspaceDomain: string;
   room: ChatRoom;
   initialMessages: ChatMessage[];
+  initialAttachments: ChatAttachment[];
   agents: ChatAgent[];
 }
 
@@ -50,10 +50,17 @@ function bubbleClass(source: ChatMessage["source"]) {
     : "self-end bg-slate-900 text-white shadow-lg shadow-slate-900/15";
 }
 
+function uniqueMessages(messages: ChatMessage[]) {
+  return Array.from(
+    new Map(messages.map((message) => [message.nanoid, message])).values(),
+  );
+}
+
 export function RoomConsole({
   workspaceDomain,
   room: initialRoom,
   initialMessages,
+  initialAttachments,
   agents,
 }: Props) {
   const router = useRouter();
@@ -62,27 +69,25 @@ export function RoomConsole({
 
   const [room, setRoom] = useState<ChatRoom>(initialRoom);
   const hasAgent = Boolean(room.agent_name || room.agent?.user_name);
-  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+  const [messages, setMessages] = useState<ChatMessage[]>(() =>
+    uniqueMessages(initialMessages),
+  );
+  const [attachments, setAttachments] = useState<ChatAttachment[]>(initialAttachments);
   const [busy, setBusy] = useState(false);
   const [wsReady, setWsReady] = useState(false);
   const [hasPending, setHasPending] = useState(false);
   const [typingSource, setTypingSource] = useState<ChatMessage["source"] | null>(null);
   const [composerValue, setComposerValue] = useState("");
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const seenRef = useRef(new Set(initialMessages.map((m) => m.nanoid)));
+  const [uploading, setUploading] = useState(false);
+  const seenRef = useRef(
+    new Set(uniqueMessages(initialMessages).map((message) => message.nanoid)),
+  );
   const messagesRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const pendingMessagesRef = useRef<string[]>([]);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const remoteTypingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { notify: notifyTab, clear: clearTabNotification } = useTabNotification();
-
-  const resize = useCallback(() => {
-    const el = textareaRef.current;
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
-  }, []);
 
   const scrollToBottom = useCallback(() => {
     const el = messagesRef.current;
@@ -97,7 +102,11 @@ export function RoomConsole({
     (msg: ChatMessage) => {
       if (seenRef.current.has(msg.nanoid)) return;
       seenRef.current.add(msg.nanoid);
-      setMessages((prev) => [...prev, msg]);
+      setMessages((prev) =>
+        prev.some((message) => message.nanoid === msg.nanoid)
+          ? prev
+          : [...prev, msg],
+      );
     },
     [],
   );
@@ -153,6 +162,12 @@ export function RoomConsole({
                   notifyTab();
                 }
               }
+            } else if (data.type === "attachment_added") {
+              setAttachments((prev) =>
+                prev.some((item) => item.nanoid === data.attachment.nanoid)
+                  ? prev
+                  : [...prev, data.attachment],
+              );
             } else if (data.type === "message_read") {
               setMessages((prev) => {
                 const next = prev.map((message) =>
@@ -222,6 +237,36 @@ export function RoomConsole({
       setHasPending(false);
     };
   }, [room.nanoid, room.is_active, appendMessage, clearTabNotification, notifyTab]);
+
+  const uploadImage = useCallback((file: File) => {
+    if (!room.is_active || uploading) return;
+    if (!file.type.startsWith("image/")) {
+      toast.push({ variant: "error", message: "Only image files can be attached." });
+      return;
+    }
+    setUploading(true);
+    const formData = new FormData();
+    formData.append("file", file, file.name);
+    void fetch(`/api/livechat/rooms/${room.nanoid}/attachments/`, {
+      method: "POST",
+      headers: { "X-Workspace": workspaceDomain },
+      body: formData,
+      credentials: "include",
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("upload failed");
+        const attachment = (await response.json()) as ChatAttachment;
+        setAttachments((current) =>
+          current.some((item) => item.nanoid === attachment.nanoid)
+            ? current
+            : [...current, attachment],
+        );
+      })
+      .catch(() =>
+        toast.push({ variant: "error", message: "Failed to upload image." }),
+      )
+      .finally(() => setUploading(false));
+  }, [room.is_active, room.nanoid, toast, uploading, workspaceDomain]);
 
   useEffect(() => {
     if (!room.is_active || !wsReady) return;
@@ -323,21 +368,21 @@ export function RoomConsole({
     try {
       const data = await getMessages(room.nanoid, workspaceDomain, "all");
       if (Array.isArray(data)) {
-        setMessages(data);
-        seenRef.current = new Set(data.map((m) => m.nanoid));
+        const nextMessages = uniqueMessages(data);
+        setMessages(nextMessages);
+        seenRef.current = new Set(nextMessages.map((message) => message.nanoid));
       }
     } catch {
       /* silent */
     }
   }, [room.nanoid, workspaceDomain]);
 
-  const handleSend = useCallback(() => {
-    const text = composerValue.trim();
+  const handleSend = useCallback((content: string) => {
+    const text = content.trim();
     if (!text) return;
     if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     wsRef.current?.send(JSON.stringify({ action: "typing", is_typing: false }));
     setComposerValue("");
-    requestAnimationFrame(resize);
 
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(
@@ -348,11 +393,22 @@ export function RoomConsole({
 
     pendingMessagesRef.current.push(text);
     setHasPending(true);
-  }, [composerValue, resize]);
+  }, []);
 
-  const handleTyping = useCallback((value: string) => {
+  const handleAttach = useCallback(
+    (file: File) => {
+      if (!room.is_active || uploading) return;
+      if (!file.type.startsWith("image/")) {
+        toast.push({ variant: "error", message: "Only image files can be attached." });
+        return;
+      }
+      uploadImage(file);
+    },
+    [room.is_active, toast, uploading, uploadImage],
+  );
+
+  const handleTyping = useCallback((isTyping: boolean) => {
     if (wsRef.current?.readyState !== WebSocket.OPEN) return;
-    const isTyping = value.trim().length > 0;
     wsRef.current.send(JSON.stringify({ action: "typing", is_typing: isTyping }));
     if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     if (isTyping) {
@@ -361,13 +417,6 @@ export function RoomConsole({
       }, 3000);
     }
   }, []);
-
-  const sendKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
 
   return (
     <div className="space-y-4">
@@ -506,65 +555,43 @@ export function RoomConsole({
               ),
             )
         )}
+        {attachments.map((attachment) => (
+          <div key={attachment.nanoid} className="flex items-end justify-end gap-2">
+                      <a
+                        href={attachment.file}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block max-w-[75%] overflow-hidden rounded-2xl rounded-br-sm border border-primary/20 bg-primary-50 p-1 shadow-sm"
+                      >
+                        <Image
+                          src={attachment.file}
+                          alt={attachment.file_name ?? "Attached image"}
+                          width={640}
+                          height={480}
+                          className="block h-auto max-h-72 w-auto rounded-xl object-cover"
+                        />
+                      </a>
+                    </div>
+        ))}
       </div>
 
       <div className="rounded-xl border bg-card p-3">
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm transition-all focus-within:border-indigo-300 focus-within:ring-1 focus-within:ring-indigo-300/30">
-          {typingSource === "customer" && (
-            <p className="px-3 pt-2 text-[11px] text-slate-500">
-              Customer is typing...
-            </p>
+        <ChatInput
+          variant="admin"
+          value={composerValue}
+          onChange={setComposerValue}
+          onSend={handleSend}
+          onAttach={handleAttach}
+          onTyping={handleTyping}
+          typing={typingSource === "customer"}
+          typingLabel="Customer is typing..."
+          disabled={!room.is_active || uploading}
+          statusMessage={hasPending && (
+            <span className="text-[10px] text-amber-600">
+              Reconnecting — messages will send when online
+            </span>
           )}
-          <div className="px-3 pt-2.5">
-            <Textarea
-              ref={textareaRef}
-              placeholder="Type a message..."
-              value={composerValue}
-              onChange={(e) => {
-                setComposerValue(e.target.value);
-                handleTyping(e.target.value);
-                requestAnimationFrame(resize);
-              }}
-              onBlur={() => handleTyping("")}
-              onKeyDown={sendKeyDown}
-              rows={1}
-              className="flex min-h-[40px] w-full resize-none overflow-hidden border-none bg-transparent p-0 text-sm leading-relaxed shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
-            />
-          </div>
-          <div className="flex items-center justify-between border-t border-slate-100 px-2.5 py-1.5">
-            <div className="flex items-center gap-1">
-              <EmojiPicker
-                onEmojiSelect={(emoji) => {
-                  setComposerValue((value) => `${value}${emoji}`);
-                  requestAnimationFrame(resize);
-                }}
-              >
-                <button
-                  type="button"
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
-                  aria-label="Emoji picker"
-                  title="Insert emoji"
-                >
-                  <Smile className="h-4 w-4" />
-                </button>
-              </EmojiPicker>
-              {hasPending && (
-                <span className="text-[10px] text-amber-600">
-                  Reconnecting — messages will send when online
-                </span>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={() => void handleSend()}
-              disabled={!composerValue.trim()}
-              aria-label="Send message"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:pointer-events-none disabled:opacity-45"
-            >
-              <Send size={12} />
-            </button>
-          </div>
-        </div>
+        />
       </div>
     </div>
   );

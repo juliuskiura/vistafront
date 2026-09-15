@@ -1,20 +1,22 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import Image from "next/image";
 import { Check, CheckCheck } from "lucide-react";
 import { ChatIcon } from "@/lib/icons";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { ChatMessage } from "../types";
+import type { ChatAttachment, ChatMessage } from "../types";
 
 const SUPPORT_LOGO_URL =
   "https://vsregmedia.s3.amazonaws.com/branding/icon_tn0FNHi.svg";
 
 interface MessageListProps {
   messages: ChatMessage[];
+  attachments: ChatAttachment[];
   hasRoom: boolean;
 }
 
-export function MessageList({ messages, hasRoom }: MessageListProps) {
+export function MessageList({ messages, attachments, hasRoom }: MessageListProps) {
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -97,6 +99,24 @@ export function MessageList({ messages, hasRoom }: MessageListProps) {
             );
           })
         )}
+        {attachments.map((attachment) => (
+          <div key={attachment.nanoid} className="flex items-end justify-end gap-2">
+            <a
+              href={attachment.file}
+              target="_blank"
+              rel="noreferrer"
+              className="block max-w-[75%] overflow-hidden rounded-2xl rounded-br-sm border border-primary/20 bg-primary-50 p-1 shadow-sm"
+            >
+              <Image
+                src={attachment.file}
+                alt={attachment.file_name ?? "Attached image"}
+                width={640}
+                height={480}
+                className="block h-auto max-h-72 w-auto rounded-xl object-cover"
+              />
+            </a>
+          </div>
+        ))}
         <div ref={endRef} />
       </div>
     </ScrollArea>

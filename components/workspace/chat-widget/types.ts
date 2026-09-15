@@ -9,6 +9,16 @@ export interface ChatMessage {
   created_at: string;
 }
 
+export interface ChatAttachment {
+  nanoid: string;
+  room: string;
+  message: string | null;
+  file: string;
+  file_name: string | null;
+  file_type: string;
+  file_size: number;
+}
+
 export interface ChatRoom {
   nanoid: string;
   is_active: boolean;

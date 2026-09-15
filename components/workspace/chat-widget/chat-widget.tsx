@@ -7,7 +7,7 @@ import { useChatSocket } from "./use-chat-socket";
 import { useToast } from "@/lib/context";
 import { ChatLauncher } from "./_components/chat-launcher";
 import { ChatPanel } from "./_components/chat-panel";
-import type { ChatMessage, ChatRoom } from "./types";
+import type { ChatAttachment, ChatMessage, ChatRoom } from "./types";
 
 interface ChatWidgetProps {
   userName?: string | null;
@@ -113,12 +113,20 @@ function ChatWidgetInner({
   onClose,
 }: ChatWidgetInnerProps) {
   const [unread, setUnread] = useState(room?.unread_count ?? 0);
+  const [uploading, setUploading] = useState(false);
+  const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
   const { push: toast } = useToast();
 
   const { data: history } = useQuery<ChatMessage[]>({
     queryKey: ["chatMessages", room?.nanoid],
     queryFn: () =>
       fetch(`/api/livechat/${room?.nanoid}/messages/`).then((r) => r.json()),
+    enabled: !!room?.nanoid,
+  });
+  const { data: roomAttachments } = useQuery<ChatAttachment[]>({
+    queryKey: ["chatAttachments", room?.nanoid],
+    queryFn: () =>
+      fetch(`/api/livechat/rooms/${room?.nanoid}/attachments/`).then((r) => r.json()),
     enabled: !!room?.nanoid,
   });
 
@@ -136,7 +144,21 @@ function ChatWidgetInner({
     minimizedRef,
     userName,
     onUnread: () => setUnread((u) => u + 1),
+    onAttachment: (attachment) =>
+      setAttachments((current) =>
+        current.some((item) => item.nanoid === attachment.nanoid)
+          ? current
+          : [...current, attachment],
+      ),
   });
+
+  useEffect(() => {
+    if (roomAttachments) {
+      // Synchronize the initial room attachment query with live socket additions.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setAttachments(roomAttachments);
+    }
+  }, [roomAttachments]);
 
   const markVisibleMessagesRead = useCallback(() => {
     if (!room || minimized || document.visibilityState !== "visible") return;
@@ -172,6 +194,33 @@ function ChatWidgetInner({
     sendMessage(trimmed);
   };
 
+  const handleAttach = (file: File) => {
+    if (!room?.nanoid || uploading) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ variant: "error", message: "Only image files can be attached" });
+      return;
+    }
+    setUploading(true);
+    const formData = new FormData();
+    formData.append("file", file, file.name);
+    void fetch(`/api/livechat/rooms/${room.nanoid}/attachments/`, {
+      method: "POST",
+      body: formData,
+      credentials: "include",
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("upload failed");
+        const attachment = (await response.json()) as ChatAttachment;
+        setAttachments((current) =>
+          current.some((item) => item.nanoid === attachment.nanoid)
+            ? current
+            : [...current, attachment],
+        );
+      })
+      .catch(() => toast({ variant: "error", message: "Failed to upload image" }))
+      .finally(() => setUploading(false));
+  };
+
   const online = wsReady;
 
   return minimized ? (
@@ -183,6 +232,7 @@ function ChatWidgetInner({
   ) : (
     <ChatPanel
       messages={messages}
+        attachments={attachments}
       online={online}
         hasRoom={!!room}
       starting={starting}
@@ -191,6 +241,7 @@ function ChatWidgetInner({
       onClose={onClose}
       onMinimize={onMinimize}
       onSend={handleSend}
+        onAttach={handleAttach}
         onTyping={sendTyping}
         typing={typingSource === "admin"}
     />

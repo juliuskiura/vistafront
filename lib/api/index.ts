@@ -249,5 +249,6 @@ export {
   deleteChatAgent,
   type ChatRoom,
   type ChatMessage,
+  type ChatAttachment,
   type ChatAgent,
 } from "./livechat";

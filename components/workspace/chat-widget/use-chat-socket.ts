@@ -7,7 +7,7 @@ import {
   useState,
   type MutableRefObject,
 } from "react";
-import type { ChatMessage } from "./types";
+import type { ChatAttachment, ChatMessage } from "./types";
 import { useTabNotification } from "@/hooks/use-tab-notification";
 import { getWebSocketUrl } from "@/lib/env";
 
@@ -18,11 +18,18 @@ export function isOwnMessage(
   return msg.source === "customer" || msg.sender_name === "You" || (!!userName && msg.sender_name === userName);
 }
 
+function uniqueMessages(messages: ChatMessage[]) {
+  return Array.from(
+    new Map(messages.map((message) => [message.nanoid, message])).values(),
+  );
+}
+
 interface UseChatSocketArgs {
   roomNanoid?: string;
   minimizedRef: MutableRefObject<boolean>;
   userName?: string | null;
   onUnread?: () => void;
+  onAttachment?: (attachment: ChatAttachment) => void;
 }
 
 export function useChatSocket({
@@ -30,6 +37,7 @@ export function useChatSocket({
   minimizedRef,
   userName,
   onUnread,
+  onAttachment,
 }: UseChatSocketArgs) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [wsReady, setWsReady] = useState(false);
@@ -40,6 +48,7 @@ export function useChatSocket({
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onUnreadRef = useRef(onUnread);
+  const onAttachmentRef = useRef(onAttachment);
   const {
     notify: notifyTab,
     clear: clearTabNotification,
@@ -59,8 +68,11 @@ export function useChatSocket({
   useEffect(() => {
     onUnreadRef.current = onUnread;
   }, [onUnread]);
+  useEffect(() => {
+    onAttachmentRef.current = onAttachment;
+  }, [onAttachment]);
   const replaceHistory = useCallback((history: ChatMessage[]) => {
-    setMessages(history);
+    setMessages(uniqueMessages(history));
   }, []);
 
   useEffect(() => {
@@ -72,6 +84,8 @@ export function useChatSocket({
       wsRef.current.close();
       wsRef.current = null;
     }
+    // Reset the local transcript when the active room changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMessages([]);
 
     if (!roomNanoid) return;
@@ -105,7 +119,11 @@ export function useChatSocket({
           try {
             const data = JSON.parse(event.data);
             if (data.type === "message") {
-              setMessages((prev) => [...prev, data.message]);
+              setMessages((prev) =>
+                prev.some((message) => message.nanoid === data.message.nanoid)
+                  ? prev
+                  : [...prev, data.message],
+              );
               const isIncoming = !isOwnMessage(data.message, userName);
               if (isIncoming) {
                 setTypingSource(null);
@@ -120,6 +138,8 @@ export function useChatSocket({
                   markRead(data.message.nanoid);
                 }
               }
+            } else if (data.type === "attachment_added") {
+              onAttachmentRef.current?.(data.attachment);
             } else if (data.type === "message_read") {
               setMessages((prev) => {
                 const next = prev.map((message) =>

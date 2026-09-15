@@ -5,11 +5,12 @@ import { ChatIcon } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { VSButton } from "@/components/shared/components/customUi/VSButton";
 import { MessageList } from "./message-list";
-import { ChatInput } from "./chat-input";
-import type { ChatMessage } from "../types";
+import { ChatInput } from "@/components/workspace/chat-input";
+import type { ChatAttachment, ChatMessage } from "../types";
 
 interface ChatPanelProps {
   messages: ChatMessage[];
+  attachments: ChatAttachment[];
   online: boolean;
   hasRoom: boolean;
   starting?: boolean;
@@ -18,12 +19,14 @@ interface ChatPanelProps {
   onMinimize: () => void;
   onClose: () => void;
   onSend: (content: string) => void;
+  onAttach: (file: File) => void;
   onTyping: (isTyping: boolean) => void;
   typing: boolean;
 }
 
 export function ChatPanel({
   messages,
+  attachments,
   online,
   hasRoom,
   starting = false,
@@ -32,6 +35,7 @@ export function ChatPanel({
   onMinimize,
   onClose,
   onSend,
+  onAttach,
   onTyping,
   typing,
 }: ChatPanelProps) {
@@ -81,7 +85,7 @@ export function ChatPanel({
         </div>
       </div>
 
-      <MessageList messages={messages} hasRoom={hasRoom} />
+      <MessageList messages={messages} attachments={attachments} hasRoom={hasRoom} />
 
       {hasRoom ? (
         <>
@@ -90,7 +94,7 @@ export function ChatPanel({
               Support is typing...
             </p>
           )}
-          <ChatInput onSend={onSend} onTyping={onTyping} />
+          <ChatInput onSend={onSend} onAttach={onAttach} onTyping={onTyping} />
         </>
       ) : (
         <div className="border-t border-sidebar-divider bg-background/95 p-4 backdrop-blur-sm">
