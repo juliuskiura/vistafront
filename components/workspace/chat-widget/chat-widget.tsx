@@ -39,7 +39,6 @@ export function ChatWidget({ userName = null }: ChatWidgetProps) {
     try {
       const res = await fetch("/api/livechat/rooms/", { method: "POST" });
       if (!res.ok) throw new Error("create failed");
-      const newRoom = (await res.json()) as ChatRoom;
       await queryClient.invalidateQueries({ queryKey: ["chatRooms"] });
     } catch {
       toast({ variant: "error", message: "Failed to open a chat" });
@@ -74,6 +73,13 @@ export function ChatWidget({ userName = null }: ChatWidgetProps) {
 
   const room = isPending || !currentRoom?.nanoid ? null : currentRoom;
 
+  const handleRoomClosed = () => {
+    roomNanoidRef.current = null;
+    queryClient.removeQueries({ queryKey: ["chatRooms"] });
+    queryClient.removeQueries({ queryKey: ["chatMessages"] });
+    setMinimized(true);
+  };
+
   return (
     <ChatWidgetInner
       room={room}
@@ -85,6 +91,7 @@ export function ChatWidget({ userName = null }: ChatWidgetProps) {
       onMinimize={() => setMinimized(true)}
       onOpen={handleOpen}
       onClose={handleClose}
+      onRoomClosed={handleRoomClosed}
     />
   );
 }
@@ -99,6 +106,7 @@ interface ChatWidgetInnerProps {
   onMinimize: () => void;
   onOpen: () => void;
   onClose: () => void;
+  onRoomClosed: () => void;
 }
 
 function ChatWidgetInner({
@@ -111,22 +119,17 @@ function ChatWidgetInner({
   onMinimize,
   onOpen,
   onClose,
+  onRoomClosed,
 }: ChatWidgetInnerProps) {
   const [unread, setUnread] = useState(room?.unread_count ?? 0);
   const [uploading, setUploading] = useState(false);
-  const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
+  const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
   const { push: toast } = useToast();
 
   const { data: history } = useQuery<ChatMessage[]>({
     queryKey: ["chatMessages", room?.nanoid],
     queryFn: () =>
       fetch(`/api/livechat/${room?.nanoid}/messages/`).then((r) => r.json()),
-    enabled: !!room?.nanoid,
-  });
-  const { data: roomAttachments } = useQuery<ChatAttachment[]>({
-    queryKey: ["chatAttachments", room?.nanoid],
-    queryFn: () =>
-      fetch(`/api/livechat/rooms/${room?.nanoid}/attachments/`).then((r) => r.json()),
     enabled: !!room?.nanoid,
   });
 
@@ -145,20 +148,26 @@ function ChatWidgetInner({
     userName,
     onUnread: () => setUnread((u) => u + 1),
     onAttachment: (attachment) =>
-      setAttachments((current) =>
+      setPendingAttachments((current) =>
         current.some((item) => item.nanoid === attachment.nanoid)
           ? current
           : [...current, attachment],
       ),
+    onRoomClosed: onRoomClosed,
   });
 
   useEffect(() => {
-    if (roomAttachments) {
-      // Synchronize the initial room attachment query with live socket additions.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setAttachments(roomAttachments);
-    }
-  }, [roomAttachments]);
+    if (!messages.length) return;
+    const linked = new Set(
+      messages.flatMap((message) => message.attachments?.map((a) => a.nanoid) ?? []),
+    );
+    if (linked.size === 0) return;
+    // Drop pending previews once an incoming message owns the attachment.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPendingAttachments((current) =>
+      current.filter((attachment) => !linked.has(attachment.nanoid)),
+    );
+  }, [messages]);
 
   const markVisibleMessagesRead = useCallback(() => {
     if (!room || minimized || document.visibilityState !== "visible") return;
@@ -191,7 +200,9 @@ function ChatWidgetInner({
     const trimmed = content.trim();
     if (!trimmed || !room?.nanoid) return;
 
-    sendMessage(trimmed);
+    const nanoids = pendingAttachments.map((attachment) => attachment.nanoid);
+    sendMessage(trimmed, nanoids.length ? nanoids : undefined);
+    if (nanoids.length) setPendingAttachments([]);
   };
 
   const handleAttach = (file: File) => {
@@ -211,7 +222,7 @@ function ChatWidgetInner({
       .then(async (response) => {
         if (!response.ok) throw new Error("upload failed");
         const attachment = (await response.json()) as ChatAttachment;
-        setAttachments((current) =>
+        setPendingAttachments((current) =>
           current.some((item) => item.nanoid === attachment.nanoid)
             ? current
             : [...current, attachment],
@@ -232,7 +243,7 @@ function ChatWidgetInner({
   ) : (
     <ChatPanel
       messages={messages}
-        attachments={attachments}
+        pendingAttachments={pendingAttachments}
       online={online}
         hasRoom={!!room}
       starting={starting}

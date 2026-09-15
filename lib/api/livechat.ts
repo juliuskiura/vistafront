@@ -45,6 +45,7 @@ export interface ChatMessage {
   reply_to_nanoid: string | null;
   is_deleted: boolean;
   created_at: string;
+  attachments?: ChatAttachment[];
 }
 
 export interface ChatAttachment {

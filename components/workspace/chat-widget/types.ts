@@ -7,6 +7,7 @@ export interface ChatMessage {
   is_system?: boolean;
   is_deleted: boolean;
   created_at: string;
+  attachments?: ChatAttachment[];
 }
 
 export interface ChatAttachment {

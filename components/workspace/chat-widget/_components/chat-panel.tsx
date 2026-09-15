@@ -10,7 +10,7 @@ import type { ChatAttachment, ChatMessage } from "../types";
 
 interface ChatPanelProps {
   messages: ChatMessage[];
-  attachments: ChatAttachment[];
+  pendingAttachments: ChatAttachment[];
   online: boolean;
   hasRoom: boolean;
   starting?: boolean;
@@ -26,7 +26,7 @@ interface ChatPanelProps {
 
 export function ChatPanel({
   messages,
-  attachments,
+  pendingAttachments,
   online,
   hasRoom,
   starting = false,
@@ -85,7 +85,7 @@ export function ChatPanel({
         </div>
       </div>
 
-      <MessageList messages={messages} attachments={attachments} hasRoom={hasRoom} />
+      <MessageList messages={messages} pendingAttachments={pendingAttachments} hasRoom={hasRoom} />
 
       {hasRoom ? (
         <>

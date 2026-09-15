@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import Image from "next/image";
-import { Check, CheckCheck } from "lucide-react";
+import { Check, CheckCheck, ImageIcon } from "lucide-react";
 import { ChatIcon } from "@/lib/icons";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { ChatAttachment, ChatMessage } from "../types";
@@ -10,18 +10,79 @@ import type { ChatAttachment, ChatMessage } from "../types";
 const SUPPORT_LOGO_URL =
   "https://vsregmedia.s3.amazonaws.com/branding/icon_tn0FNHi.svg";
 
+function AttachmentThumbnails({ attachments }: { attachments: ChatAttachment[] }) {
+  if (!attachments?.length) return null;
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      {attachments.map((attachment) => (
+        <a
+          key={attachment.nanoid}
+          href={attachment.file}
+          target="_blank"
+          rel="noreferrer"
+          className="block max-w-[220px] overflow-hidden rounded-xl border border-primary/20 bg-primary-50 p-1 shadow-sm"
+        >
+          <Image
+            src={attachment.file}
+            alt={attachment.file_name ?? "Attached image"}
+            width={640}
+            height={480}
+            className="block h-auto max-h-48 w-auto rounded-lg object-cover"
+          />
+        </a>
+      ))}
+    </div>
+  );
+}
+
+function PendingAttachmentStrip({
+  attachments,
+}: {
+  attachments: ChatAttachment[];
+}) {
+  if (!attachments?.length) return null;
+  return (
+    <div className="flex flex-wrap justify-end gap-2">
+      {attachments.map((attachment) => (
+        <div
+          key={attachment.nanoid}
+          className="flex items-end gap-1.5 rounded-2xl rounded-br-sm border border-dashed border-primary/40 bg-primary-50/60 p-1.5"
+        >
+          <a
+            href={attachment.file}
+            target="_blank"
+            rel="noreferrer"
+            className="block overflow-hidden rounded-lg border border-primary/20 bg-primary-50"
+          >
+            <Image
+              src={attachment.file}
+              alt={attachment.file_name ?? "Attached image"}
+              width={160}
+              height={120}
+              className="block h-auto max-h-24 w-auto rounded-lg object-cover"
+            />
+          </a>
+          <div className="flex flex-col items-start gap-1">
+            <ImageIcon className="h-3 w-3 opacity-50" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 interface MessageListProps {
   messages: ChatMessage[];
-  attachments: ChatAttachment[];
+  pendingAttachments: ChatAttachment[];
   hasRoom: boolean;
 }
 
-export function MessageList({ messages, attachments, hasRoom }: MessageListProps) {
+export function MessageList({ messages, pendingAttachments, hasRoom }: MessageListProps) {
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, pendingAttachments]);
 
   return (
     <ScrollArea className="flex-1 px-0">
@@ -80,7 +141,10 @@ export function MessageList({ messages, attachments, hasRoom }: MessageListProps
                       {msg.sender_name}
                     </p>
                   )}
-                  <p className="leading-relaxed break-words">{msg.content}</p>
+                  {msg.content && (
+                    <p className="leading-relaxed break-words">{msg.content}</p>
+                  )}
+                  <AttachmentThumbnails attachments={msg.attachments ?? []} />
                   <div className="mt-1 flex items-center justify-end gap-1">
                     <p className="text-[10px] opacity-50">
                       {new Date(msg.created_at).toLocaleTimeString([], {
@@ -99,24 +163,7 @@ export function MessageList({ messages, attachments, hasRoom }: MessageListProps
             );
           })
         )}
-        {attachments.map((attachment) => (
-          <div key={attachment.nanoid} className="flex items-end justify-end gap-2">
-            <a
-              href={attachment.file}
-              target="_blank"
-              rel="noreferrer"
-              className="block max-w-[75%] overflow-hidden rounded-2xl rounded-br-sm border border-primary/20 bg-primary-50 p-1 shadow-sm"
-            >
-              <Image
-                src={attachment.file}
-                alt={attachment.file_name ?? "Attached image"}
-                width={640}
-                height={480}
-                className="block h-auto max-h-72 w-auto rounded-xl object-cover"
-              />
-            </a>
-          </div>
-        ))}
+        <PendingAttachmentStrip attachments={pendingAttachments} />
         <div ref={endRef} />
       </div>
     </ScrollArea>

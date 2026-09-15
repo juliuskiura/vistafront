@@ -30,6 +30,7 @@ interface UseChatSocketArgs {
   userName?: string | null;
   onUnread?: () => void;
   onAttachment?: (attachment: ChatAttachment) => void;
+  onRoomClosed?: () => void;
 }
 
 export function useChatSocket({
@@ -38,17 +39,21 @@ export function useChatSocket({
   userName,
   onUnread,
   onAttachment,
+  onRoomClosed,
 }: UseChatSocketArgs) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [wsReady, setWsReady] = useState(false);
   const [hasPending, setHasPending] = useState(false);
   const [typingSource, setTypingSource] = useState<ChatMessage["source"] | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
-  const pendingMessagesRef = useRef<string[]>([]);
+  const pendingMessagesRef = useRef<
+    { content: string; attachment_nanoids?: string[] }[]
+  >([]);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onUnreadRef = useRef(onUnread);
   const onAttachmentRef = useRef(onAttachment);
+  const onRoomClosedRef = useRef(onRoomClosed);
   const {
     notify: notifyTab,
     clear: clearTabNotification,
@@ -71,6 +76,9 @@ export function useChatSocket({
   useEffect(() => {
     onAttachmentRef.current = onAttachment;
   }, [onAttachment]);
+  useEffect(() => {
+    onRoomClosedRef.current = onRoomClosed;
+  }, [onRoomClosed]);
   const replaceHistory = useCallback((history: ChatMessage[]) => {
     setMessages(uniqueMessages(history));
   }, []);
@@ -108,8 +116,14 @@ export function useChatSocket({
               const queued = [...pendingMessagesRef.current];
               pendingMessagesRef.current = [];
               setHasPending(false);
-              for (const content of queued) {
-                sock.send(JSON.stringify({ action: "send_message", content }));
+              for (const pending of queued) {
+                sock.send(
+                  JSON.stringify({
+                    action: "send_message",
+                    content: pending.content,
+                    attachment_nanoids: pending.attachment_nanoids,
+                  }),
+                );
               }
             }
           }
@@ -140,6 +154,8 @@ export function useChatSocket({
               }
             } else if (data.type === "attachment_added") {
               onAttachmentRef.current?.(data.attachment);
+            } else if (data.type === "room_closed") {
+              onRoomClosedRef.current?.();
             } else if (data.type === "message_read") {
               setMessages((prev) => {
                 const next = prev.map((message) =>
@@ -213,7 +229,7 @@ export function useChatSocket({
   }, [roomNanoid]);
 
   const sendMessage = useCallback(
-    (content: string) => {
+    (content: string, attachmentNanoids?: string[]) => {
       if (!roomNanoid) return;
 
       const text = content.trim();
@@ -221,12 +237,23 @@ export function useChatSocket({
 
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(
-          JSON.stringify({ action: "send_message", content: text }),
+          JSON.stringify({
+            action: "send_message",
+            content: text,
+            attachment_nanoids: attachmentNanoids?.length
+              ? attachmentNanoids
+              : undefined,
+          }),
         );
         return;
       }
 
-      pendingMessagesRef.current.push(text);
+      pendingMessagesRef.current.push({
+        content: text,
+        attachment_nanoids: attachmentNanoids?.length
+          ? attachmentNanoids
+          : undefined,
+      });
       setHasPending(true);
     },
     [roomNanoid],

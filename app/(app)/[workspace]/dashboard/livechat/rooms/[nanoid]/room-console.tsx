@@ -40,7 +40,6 @@ interface Props {
   workspaceDomain: string;
   room: ChatRoom;
   initialMessages: ChatMessage[];
-  initialAttachments: ChatAttachment[];
   agents: ChatAgent[];
 }
 
@@ -60,7 +59,6 @@ export function RoomConsole({
   workspaceDomain,
   room: initialRoom,
   initialMessages,
-  initialAttachments,
   agents,
 }: Props) {
   const router = useRouter();
@@ -72,7 +70,7 @@ export function RoomConsole({
   const [messages, setMessages] = useState<ChatMessage[]>(() =>
     uniqueMessages(initialMessages),
   );
-  const [attachments, setAttachments] = useState<ChatAttachment[]>(initialAttachments);
+  const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
   const [busy, setBusy] = useState(false);
   const [wsReady, setWsReady] = useState(false);
   const [hasPending, setHasPending] = useState(false);
@@ -84,7 +82,9 @@ export function RoomConsole({
   );
   const messagesRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
-  const pendingMessagesRef = useRef<string[]>([]);
+  const pendingMessagesRef = useRef<
+    { content: string; attachment_nanoids?: string[] }[]
+  >([]);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const remoteTypingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { notify: notifyTab, clear: clearTabNotification } = useTabNotification();
@@ -134,8 +134,14 @@ export function RoomConsole({
               const queued = [...pendingMessagesRef.current];
               pendingMessagesRef.current = [];
               setHasPending(false);
-              for (const content of queued) {
-                socket?.send(JSON.stringify({ action: "send_message", content }));
+              for (const pending of queued) {
+                socket?.send(
+                  JSON.stringify({
+                    action: "send_message",
+                    content: pending.content,
+                    attachment_nanoids: pending.attachment_nanoids,
+                  }),
+                );
               }
             }
           }
@@ -163,11 +169,19 @@ export function RoomConsole({
                 }
               }
             } else if (data.type === "attachment_added") {
-              setAttachments((prev) =>
+              setPendingAttachments((prev) =>
                 prev.some((item) => item.nanoid === data.attachment.nanoid)
                   ? prev
                   : [...prev, data.attachment],
               );
+            } else if (data.type === "room_closed") {
+              setRoom((current) => ({
+                ...current,
+                is_active: false,
+                agent: null,
+                agent_name: null,
+              }));
+              setTypingSource(null);
             } else if (data.type === "message_read") {
               setMessages((prev) => {
                 const next = prev.map((message) =>
@@ -256,7 +270,7 @@ export function RoomConsole({
       .then(async (response) => {
         if (!response.ok) throw new Error("upload failed");
         const attachment = (await response.json()) as ChatAttachment;
-        setAttachments((current) =>
+        setPendingAttachments((current) =>
           current.some((item) => item.nanoid === attachment.nanoid)
             ? current
             : [...current, attachment],
@@ -377,23 +391,49 @@ export function RoomConsole({
     }
   }, [room.nanoid, workspaceDomain]);
 
-  const handleSend = useCallback((content: string) => {
-    const text = content.trim();
-    if (!text) return;
-    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
-    wsRef.current?.send(JSON.stringify({ action: "typing", is_typing: false }));
-    setComposerValue("");
+  const handleSend = useCallback(
+    (content: string) => {
+      const text = content.trim();
+      if (!text) return;
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      wsRef.current?.send(JSON.stringify({ action: "typing", is_typing: false }));
+      setComposerValue("");
 
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(
-        JSON.stringify({ action: "send_message", content: text }),
-      );
-      return;
-    }
+      const nanoids = pendingAttachments.map((attachment) => attachment.nanoid);
+      if (nanoids.length) setPendingAttachments([]);
 
-    pendingMessagesRef.current.push(text);
-    setHasPending(true);
-  }, []);
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(
+          JSON.stringify({
+            action: "send_message",
+            content: text,
+            attachment_nanoids: nanoids.length ? nanoids : undefined,
+          }),
+        );
+        return;
+      }
+
+      pendingMessagesRef.current.push({
+        content: text,
+        attachment_nanoids: nanoids.length ? nanoids : undefined,
+      });
+      setHasPending(true);
+    },
+    [pendingAttachments],
+  );
+
+  useEffect(() => {
+    if (!messages.length) return;
+    const linked = new Set(
+      messages.flatMap((message) => message.attachments?.map((a) => a.nanoid) ?? []),
+    );
+    if (linked.size === 0) return;
+    // Drop pending previews once an incoming message owns the attachment.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPendingAttachments((current) =>
+      current.filter((attachment) => !linked.has(attachment.nanoid)),
+    );
+  }, [messages]);
 
   const handleAttach = useCallback(
     (file: File) => {
@@ -551,48 +591,79 @@ export function RoomConsole({
                     <Check className="h-3 w-3" />
                   )}
                     </div>
+                    {Array.isArray(message.attachments) &&
+                      message.attachments.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {message.attachments.map((attachment) => (
+                            <a
+                              key={attachment.nanoid}
+                              href={attachment.file}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="block max-w-[220px] overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-1 shadow-sm"
+                            >
+                              <Image
+                                src={attachment.file}
+                                alt={attachment.file_name ?? "Attached image"}
+                                width={640}
+                                height={480}
+                                className="block h-auto max-h-48 w-auto rounded-lg object-cover"
+                              />
+                            </a>
+                          ))}
+                        </div>
+                      )}
                   </div>
               ),
             )
         )}
-        {attachments.map((attachment) => (
-          <div key={attachment.nanoid} className="flex items-end justify-end gap-2">
-                      <a
-                        href={attachment.file}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="block max-w-[75%] overflow-hidden rounded-2xl rounded-br-sm border border-primary/20 bg-primary-50 p-1 shadow-sm"
-                      >
-                        <Image
-                          src={attachment.file}
-                          alt={attachment.file_name ?? "Attached image"}
-                          width={640}
-                          height={480}
-                          className="block h-auto max-h-72 w-auto rounded-xl object-cover"
-                        />
-                      </a>
-                    </div>
-        ))}
+        {pendingAttachments.length > 0 && (
+          <div className="flex flex-wrap justify-end gap-2">
+            {pendingAttachments.map((attachment) => (
+              <div
+                key={attachment.nanoid}
+                className="flex items-end gap-1.5 rounded-2xl rounded-br-sm border border-dashed border-slate-400/60 bg-slate-50 p-1.5"
+              >
+                <a
+                  href={attachment.file}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block overflow-hidden rounded-lg border border-slate-200 bg-white"
+                >
+                  <Image
+                    src={attachment.file}
+                    alt={attachment.file_name ?? "Attached image"}
+                    width={160}
+                    height={120}
+                    className="block h-auto max-h-24 w-auto rounded-lg object-cover"
+                  />
+                </a>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      <div className="rounded-xl border bg-card p-3">
-        <ChatInput
-          variant="admin"
-          value={composerValue}
-          onChange={setComposerValue}
-          onSend={handleSend}
-          onAttach={handleAttach}
-          onTyping={handleTyping}
-          typing={typingSource === "customer"}
-          typingLabel="Customer is typing..."
-          disabled={!room.is_active || uploading}
-          statusMessage={hasPending && (
-            <span className="text-[10px] text-amber-600">
-              Reconnecting — messages will send when online
-            </span>
-          )}
-        />
-      </div>
+        {room.is_active ? (
+          <div className="rounded-xl border bg-card p-3">
+            <ChatInput
+              variant="admin"
+              value={composerValue}
+              onChange={setComposerValue}
+              onSend={handleSend}
+              onAttach={handleAttach}
+              onTyping={handleTyping}
+              typing={typingSource === "customer"}
+              typingLabel="Customer is typing..."
+              disabled={uploading}
+              statusMessage={hasPending && (
+                <span className="text-[10px] text-amber-600">
+                  Reconnecting — messages will send when online
+                </span>
+              )}
+            />
+          </div>
+        ) : null}
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { requireWorkspace } from "@/lib/auth/server";
 import { serverFetch } from "@/lib/api/server-fetch";
 import { RoomConsole } from "./room-console";
-import type { ChatAttachment, ChatRoom, ChatMessage, ChatAgent } from "@/lib/api/livechat";
+import type { ChatRoom, ChatMessage, ChatAgent } from "@/lib/api/livechat";
 
 interface Paginated<T> {
   count: number;
@@ -60,17 +60,6 @@ async function fetchAgents(workspace: string): Promise<ChatAgent[]> {
   }
 }
 
-async function fetchAttachments(nanoid: string, workspace: string): Promise<ChatAttachment[]> {
-  try {
-    return await serverFetch<ChatAttachment[]>(
-      `/apis/livechat/attachments/by-room/${nanoid}/`,
-      { workspace },
-    );
-  } catch {
-    return [];
-  }
-}
-
 export default async function RoomPage({
   params,
 }: {
@@ -80,11 +69,10 @@ export default async function RoomPage({
   const active = await requireWorkspace(slug);
   const ws = active.domain;
 
-  const [rooms, messages, agents, attachments] = await Promise.all([
+  const [rooms, messages, agents] = await Promise.all([
     fetchRooms(ws),
     fetchMessages(nanoid, ws, "all"),
     fetchAgents(ws),
-    fetchAttachments(nanoid, ws),
   ]);
 
   const room = rooms.find((r) => r.nanoid === nanoid);
@@ -95,7 +83,6 @@ export default async function RoomPage({
       workspaceDomain={ws}
       room={room}
       initialMessages={messages}
-      initialAttachments={attachments}
       agents={agents}
     />
   );
