@@ -228,7 +228,7 @@ function PlansTab({
   workspaceName: string;
 }) {
   const hasSubscription = subscription !== null;
-
+console.log("plan.app_keys ", plans);
   return (
     <div className="mx-auto max-w-5xl space-y-8">
       <header className="flex flex-wrap items-center justify-between gap-3">
@@ -278,9 +278,10 @@ function PlansTab({
                 Renewal
               </dt>
               <dd className="mt-1 text-sm">
-                {subscription.cancel_at_period_end
+                {/* {subscription.cancel_at_period_end
                   ? "Cancels at period end"
-                  : "Renews automatically"}
+                  : "Renews automatically"} */}
+                  Free
               </dd>
             </div>
           </dl>
@@ -289,7 +290,7 @@ function PlansTab({
             <p className="text-xs uppercase tracking-wide text-muted-foreground">
               Included apps
             </p>
-            <div className="mt-2 flex flex-wrap gap-2">
+            {/* <div className="mt-2 flex flex-wrap gap-2">
               {subscription.app_keys.length === 0 && (
                 <span className="text-sm text-muted-foreground">None</span>
               )}
@@ -298,7 +299,7 @@ function PlansTab({
                   {key}
                 </Badge>
               ))}
-            </div>
+            </div> */}
           </div>
 
           {subscription.feature_flags.length > 0 && (
@@ -355,27 +356,32 @@ function PlansTab({
                   <div className="mt-3 text-sm">
                     <span className="font-semibold">
                       {plan.price_per_seat != null
-                        ? `$${Number(plan.price_per_seat).toLocaleString()}`
+                        ? `Ksh ${Number(plan.price_per_seat).toLocaleString()}`
                         : "Custom"}
                     </span>
-                    <span className="text-muted-foreground"> / seat</span>
-                    {plan.seat_limit != null && (
-                      <span className="ml-2 text-muted-foreground">
-                        · up to {plan.seat_limit} seats
-                      </span>
-                    )}
+                    <span className="text-muted-foreground"> / Month</span>
+                  
                   </div>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {plan.app_keys.map((key) => (
-                      <Badge key={key} variant="secondary">
-                        {key}
-                      </Badge>
-                    ))}
-                    {plan.feature_flags.map((flag) => (
-                      <Badge key={flag} variant="outline">
-                        {flag}
-                      </Badge>
-                    ))}
+                  <div className="mt-4">
+                    <dl className="flex flex-col gap-2 text-sm">
+                      <div>
+                        <dt className="sr-only">Features</dt>
+                        <dd>
+                          <ul className="flex flex-wrap gap-3">
+                            {plan.app_keys.map((key) => (
+                              <li key={key} className="text-muted-foreground">
+                                {key}
+                              </li>
+                            ))}
+                            {plan.feature_flags.map((flag) => (
+                              <li key={flag} className="text-muted-foreground">
+                                {flag}
+                              </li>
+                            ))}
+                          </ul>
+                        </dd>
+                      </div>
+                    </dl>
                   </div>
                 </div>
               );
