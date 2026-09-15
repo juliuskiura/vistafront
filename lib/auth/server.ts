@@ -134,7 +134,7 @@ export async function requireWorkspace(
     workspaces = preloadedWorkspaces ?? await listWorkspaces();
   } catch (error) {
     console.error("Failed to load workspaces for requireWorkspace:", error);
-    redirect("/restricted");
+    redirect("/onboarding");
   }
 
   const match = workspaces.find(
@@ -142,8 +142,15 @@ export async function requireWorkspace(
   );
 
   if (!match) {
-    // Check if the user has a redirect_url pointing to a workspace
-    // they belong to (from their last_workspace profile attribute).
+    // A user with no workspace membership at all has nothing to be
+    // "restricted" to — send them to onboarding to create or join a
+    // workspace instead of the workspace-access page.
+    if (workspaces.length === 0) {
+      redirect("/onboarding");
+    }
+
+    // Check if the user has a redirect_url pointing to a workspace they belong to
+    // (from their last_workspace profile attribute).
     // If so, redirect there instead of showing /restricted.
     if (user.redirect_url) {
       const redirectMatch = workspaces.find(

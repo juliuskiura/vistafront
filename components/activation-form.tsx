@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { Loader2 } from "lucide-react";
 
 import { AuthShell } from "@/components/auth/auth-shell";
 import { AuthCard } from "@/components/auth/auth-card";
@@ -30,14 +31,18 @@ export function ActivationForm({ uid, token }: Props) {
     activateAndLoginAction,
     initialResult,
   );
+  
   const formRef = useRef<HTMLFormElement>(null);
+  const submittedRef = useRef(false);
 
+  // Submit once on mount. `submittedRef` guards against re-submitting while
+  // the previous attempt is in flight or has already completed; a fresh
+  // component mount (e.g. the user navigates back) resets it and re-fires.
   useEffect(() => {
-    if (state.status === "ok" || pending) return;
+    if (submittedRef.current || pending) return;
+    submittedRef.current = true;
     formRef.current?.requestSubmit();
-    // Only fire once on mount; we re-fire only if the user navigates back.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [pending]);
 
   const heading = pending
     ? "Activating your account…"
@@ -48,7 +53,10 @@ export function ActivationForm({ uid, token }: Props) {
   return (
     <AuthShell>
       <AuthCard className="text-center">
-        <h1 className="text-xl font-semibold">{heading}</h1>
+        <h1 className="flex items-center justify-center gap-2 text-xl font-semibold">
+          {pending && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+          {heading}
+        </h1>
         {state.status === "error" && (
           <p className="mt-2 text-sm text-destructive">{state.message}</p>
         )}
