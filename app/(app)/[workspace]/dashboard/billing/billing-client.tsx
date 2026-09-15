@@ -1,16 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import type {
   Invoice,
+  InvoiceExtension,
   Payment,
   Plan,
   Subscription,
-  InvoiceExtension,
 } from "@/lib/api";
+import { formatDate } from "./_components/dates";
+import { PlansTab } from "./_components/plans-tab";
 
 type Tab = "plans" | "invoices" | "payment-history";
 
@@ -35,29 +35,13 @@ const PAYMENT_STATUS_STYLES: Record<string, string> = {
   refunded: "bg-amber-100 text-amber-700 border-amber-200",
 };
 
-const SUBSCRIPTION_STATUS_STYLES: Record<string, string> = {
-  active: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  past_due: "bg-amber-100 text-amber-700 border-amber-200",
-  cancelled: "bg-rose-100 text-rose-700 border-rose-200",
-};
-
-function formatDate(value: string | null): string {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
 export function BillingClient({
   invoices,
   payments,
   plans,
   subscription,
   workspaceName,
+  referralCode,
 }: {
   invoices: Invoice[];
   payments: Payment[];
@@ -65,6 +49,7 @@ export function BillingClient({
   subscription: Subscription | null;
   workspaceName: string;
   workspaceDomain: string;
+  referralCode?: string;
 }) {
   const [tab, setTab] = useState<Tab>("plans");
 
@@ -107,6 +92,7 @@ export function BillingClient({
             plans={plans}
             subscription={subscription}
             workspaceName={workspaceName}
+            referralCode={referralCode}
           />
         )}
       </div>
@@ -215,179 +201,5 @@ function PaymentHistoryTab({ payments }: { payments: Payment[] }) {
         ))}
       </ul>
     </section>
-  );
-}
-
-function PlansTab({
-  plans,
-  subscription,
-  workspaceName,
-}: {
-  plans: Plan[];
-  subscription: Subscription | null;
-  workspaceName: string;
-}) {
-  const hasSubscription = subscription !== null;
-  return (
-    <div className="mx-auto max-w-5xl space-y-8">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">Available Plans</h1>
-          <p className="text-sm text-muted-foreground">
-            {workspaceName}&apos;s plan and the full catalog of available plans.
-          </p>
-        </div>
-        <Button variant="outline" disabled title="Contact sales to change plans">
-          Change plan
-        </Button>
-      </header>
-
-      {hasSubscription ? (
-        <section className="glass-surface-green rounded-xl p-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/15 px-3 py-1 text-sm font-bold uppercase tracking-wider text-emerald-600 ring-1 ring-emerald-500/30">
-                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                Current plan
-              </span>
-              <h2 className="mt-2 text-3xl font-bold tracking-tight">
-                {subscription.plan_label}
-              </h2>
-            </div>
-            <Badge
-              className={`${SUBSCRIPTION_STATUS_STYLES[subscription.status] ?? ""} border px-3 py-1 text-sm font-semibold capitalize`}
-              variant="outline"
-            >
-              {subscription.status}
-            </Badge>
-          </div>
-
-          <dl className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
-                Current period
-              </dt>
-              <dd className="mt-1 text-sm">
-                {formatDate(subscription.current_period_start)} –{" "}
-                {formatDate(subscription.current_period_end)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
-                Renewal
-              </dt>
-              <dd className="mt-1 text-sm">
-                {/* {subscription.cancel_at_period_end
-                  ? "Cancels at period end"
-                  : "Renews automatically"} */}
-                  Free
-              </dd>
-            </div>
-          </dl>
-
-          <div className="mt-5">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              Included apps
-            </p>
-            {/* <div className="mt-2 flex flex-wrap gap-2">
-              {subscription.app_keys.length === 0 && (
-                <span className="text-sm text-muted-foreground">None</span>
-              )}
-              {subscription.app_keys.map((key) => (
-                <Badge key={key} variant="secondary">
-                  {key}
-                </Badge>
-              ))}
-            </div> */}
-          </div>
-
-          {subscription.feature_flags.length > 0 && (
-            <div className="mt-4">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                Add-on capabilities
-              </p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {subscription.feature_flags.map((flag) => (
-                  <Badge key={flag} variant="outline">
-                    {flag}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-        </section>
-      ) : (
-        <section className="rounded-xl border border-dashed border-sidebar-divider bg-card p-6 text-sm text-muted-foreground">
-          No active subscription was found for this organization.
-        </section>
-      )}
-
-      <section>
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">Plan catalog</h2>
-        </div>
-        {plans.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Loading plans…</p>
-        ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {plans.map((plan) => {
-              const isCurrent = subscription?.plan_slug === plan.slug;
-              return (
-                <div
-                  key={plan.slug}
-                  className={`flex flex-col rounded-xl border p-5 shadow-sm ${
-                    isCurrent
-                      ? "glass-surface-green border-emerald-400/50 ring-1 ring-emerald-400/30"
-                      : "border-sidebar-divider bg-card"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold">{plan.label}</h3>
-                    {isCurrent && (
-                      <Badge className="border-emerald-500/40 bg-emerald-500/15 px-3 py-1 text-sm font-semibold text-emerald-600 ring-1 ring-emerald-500/30">
-                        Current
-                      </Badge>
-                    )}
-                  </div>
-                  
-                  <div className="mt-3 text-sm">
-                    <span className="font-semibold">
-                      {plan.price_per_seat != null
-                        ? `Ksh ${Number(plan.price_per_seat).toLocaleString()}`
-                        : "Custom"}
-                    </span>
-                    <span className="text-muted-foreground"> / Month</span>
-                  <p className="mt-1 min-h-[2.5rem] text-sm text-muted-foreground">
-                    {plan.description}
-                  </p>
-                  </div>
-                  <div className="mt-4">
-                    <dl className="flex flex-col text-sm">
-                      <div>
-                        <dt className="font-semibold">Features</dt>
-                        <dd>
-                          <ul className="flex flex-col gap-1 flex-wrap">
-                            {plan.features.map((feature) => (
-                              <li key={feature.nanoid} className="list-inside list-disc text-muted-foreground">
-                                {feature.feature}
-                              </li>
-                            ))}
-                            {plan.feature_flags.map((flag) => (
-                              <li key={flag} className="text-muted-foreground">
-                                {flag} sxx
-                              </li>
-                            ))}
-                          </ul>
-                        </dd>
-                      </div>
-                    </dl>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
-    </div>
   );
 }
