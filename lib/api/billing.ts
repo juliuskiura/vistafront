@@ -71,6 +71,14 @@ export async function listPlans({ workspace }: { workspace: string }): Promise<P
   return Array.isArray(payload) ? payload : payload.results ?? [];
 }
 
+export async function getPlanByNanoid(
+  nanoid: string,
+  { workspace }: { workspace: string },
+): Promise<Plan | null> {
+  const plans = await listPlans({ workspace });
+  return plans.find((plan) => plan.nanoid === nanoid) ?? null;
+}
+
 // ── Subscriptions ───────────────────────────────────────────────────────────
 
 export async function getSubscription({

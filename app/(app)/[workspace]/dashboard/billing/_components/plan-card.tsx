@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Check, Clock, Users } from "lucide-react";
 import { VSButton } from "@/components/shared/components/customUi/VSButton";
 import type { Plan, Subscription } from "@/lib/api";
@@ -35,12 +36,14 @@ export function PlanCard({
   isTrial,
   isCurrent,
   subscription,
+  workspaceDomain,
   referralCode,
 }: {
   plan: Plan;
   isTrial: boolean;
   isCurrent: boolean;
   subscription: Subscription | null;
+  workspaceDomain: string;
   referralCode?: string;
 }) {
   const [referralOpen, setReferralOpen] = useState(false);
@@ -144,13 +147,23 @@ export function PlanCard({
       ) : (
         <VSButton
           id="btn-choose-paid"
-          onClick={() => {}}
+          asChild
           variant="primary"
           appearance="solid"
           size="lg"
           className="w-full"
         >
-          {isCurrent ? 'Manage Billing Details' : 'Choose Paid Plan →'}
+          {isCurrent ? (
+            <Link href={`/${workspaceDomain}/dashboard/billing`}>
+              Manage Billing Details
+            </Link>
+          ) : (
+            <Link
+              href={`/${workspaceDomain}/dashboard/billing/plans/${plan.nanoid}`}
+            >
+              Choose Paid Plan →
+            </Link>
+          )}
         </VSButton>
       )}
     </div>

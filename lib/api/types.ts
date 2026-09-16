@@ -123,6 +123,42 @@ export interface WorkspaceMember {
   joined_at: string;
 }
 
+/**
+ * A custom role defined inside a workspace (models.WorkspaceRole).
+ * Backed by `/apis/workspaces/roles/`.
+ */
+export interface WorkspaceRoleItem {
+  nanoid: string;
+  workspace: string;
+  workspace_name: string;
+  name: string;
+}
+
+/**
+ * A permission entry granted to a workspace role for a given model
+ * (models.WorkspaceRolePermission). Backed by
+ * `/apis/workspaces/role-permissions/`.
+ */
+export interface WorkspaceRolePermissionItem {
+  nanoid: string;
+  workspace: string;
+  role: string;
+  role_name: string;
+  model: string;
+  mask: number;
+}
+
+export interface CreateWorkspaceRoleBody {
+  workspace: string;
+  name: string;
+}
+
+export interface CreateWorkspaceRolePermissionBody {
+  role: string;
+  model: string;
+  mask?: number;
+}
+
 export interface PersonalDetails {
   nanoid: string;
   first_name: string | null;
@@ -212,6 +248,7 @@ export interface PaymentMethod {
 
 export interface Plan {
   id: number;
+  nanoid: string;
   slug: string;
   name: string;
   label: string;

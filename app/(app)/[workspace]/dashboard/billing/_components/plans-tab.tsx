@@ -7,11 +7,13 @@ export function PlansTab({
   plans,
   subscription,
   workspaceName,
+  workspaceDomain,
   referralCode,
 }: {
   plans: Plan[];
   subscription: Subscription | null;
   workspaceName: string;
+  workspaceDomain: string;
   referralCode?: string;
 }) {
   // Find trial and paid plans from the plans array
@@ -58,6 +60,7 @@ export function PlansTab({
             isTrial={isTrial}
             isCurrent={subscription?.plan_slug === plan.slug}
             subscription={subscription}
+            workspaceDomain={workspaceDomain}
             referralCode={referralCode}
           />
         ))}

@@ -42,7 +42,6 @@ export default async function WorkspacesSettingsPage({
         domain: ws.domain,
         myRole: ws.my_role,
       }))}
-      membersHref={`/${active.domain}/dashboard/members`}
     />
   );
 }

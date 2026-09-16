@@ -14,9 +14,15 @@ export * from "./types";
 export {
   checkDomainAvailability,
   createWorkspace,
+  createWorkspaceRole,
+  createWorkspaceRolePermission,
+  deleteWorkspaceRole,
+  deleteWorkspaceRolePermission,
   getWorkspace,
   leaveWorkspace,
   listWorkspaceMembers,
+  listWorkspaceRolePermissions,
+  listWorkspaceRoles,
   listWorkspaces,
   updateWorkspace,
 } from "./workspaces";
@@ -44,6 +50,7 @@ export {
   listPayments,
   listPaymentMethods,
   listPlans,
+  getPlanByNanoid,
   getSubscription,
 } from "./billing";
 

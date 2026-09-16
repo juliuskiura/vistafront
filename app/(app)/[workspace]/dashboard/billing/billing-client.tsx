@@ -41,6 +41,7 @@ export function BillingClient({
   plans,
   subscription,
   workspaceName,
+  workspaceDomain,
   referralCode,
 }: {
   invoices: Invoice[];
@@ -92,6 +93,7 @@ export function BillingClient({
             plans={plans}
             subscription={subscription}
             workspaceName={workspaceName}
+            workspaceDomain={workspaceDomain}
             referralCode={referralCode}
           />
         )}
