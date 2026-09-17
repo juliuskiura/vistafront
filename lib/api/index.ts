@@ -20,12 +20,19 @@ export {
   deleteWorkspaceRolePermission,
   getWorkspace,
   leaveWorkspace,
+  listAvailableModels,
   listWorkspaceMembers,
   listWorkspaceRolePermissions,
   listWorkspaceRoles,
   listWorkspaces,
   updateWorkspace,
+  updateWorkspaceRolePermission,
 } from "./workspaces";
+
+export {
+  listPermissionActions,
+  resolvePermissionMasks,
+} from "./permstack";
 
 export { getCurrentUser, getUserProfile, updateCurrentUser, updateUserProfile } from "./users";
 

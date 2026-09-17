@@ -15,7 +15,6 @@ import {
 import { VSButton } from "@/components/shared/components/customUi/VSButton";
 import { Fab } from "@/components/ui/fab";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -113,8 +112,13 @@ export function RolesClient({
           {roles.map((role) => (
             <Card
               key={role.nanoid}
-              className="group flex items-center gap-4 rounded-2xl border bg-card p-4 transition-all hover:shadow-md"
+              className="group relative flex items-center gap-4 rounded-2xl border bg-card p-4 transition-all hover:border-primary-300 hover:shadow-md"
             >
+              <Link
+                href={`${basePath}/permissions?role=${role.nanoid}`}
+                className="absolute inset-0 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
+                aria-label={`Open permissions for ${role.name}`}
+              />
               <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary-400 to-primary-600 text-white shadow-sm">
                 <ShieldCheck className="size-5" />
               </div>
@@ -126,14 +130,12 @@ export function RolesClient({
                   {role.workspace_name || "This workspace"}
                 </p>
               </div>
-              <Badge variant="soft" className="shrink-0">
-                {role.workspace_name ? "Custom" : "Role"}
-              </Badge>
+              <ArrowRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary-600" />
               <Fab
                 type="button"
                 variant="outline"
                 size="sm"
-                className="text-muted-foreground hover:text-destructive"
+                className="relative z-10 text-muted-foreground hover:text-destructive"
                 onClick={() => setDeleteTarget(role)}
                 aria-label={`Delete ${role.name}`}
               >

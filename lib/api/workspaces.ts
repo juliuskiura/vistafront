@@ -1,12 +1,15 @@
 import { serverFetch, serverMutate } from "./server-fetch";
 import { toQueryString } from "./query-string";
 import type {
+  AvailableModelApp,
+  AvailableModelsResponse,
   CreateWorkspaceBody,
   CreateWorkspaceRoleBody,
   CreateWorkspaceRolePermissionBody,
   DomainAvailability,
   Paginated,
   UpdateWorkspaceBody,
+  UpdateWorkspaceRolePermissionBody,
   Workspace,
   WorkspaceMember,
   WorkspaceRoleItem,
@@ -212,4 +215,37 @@ export async function deleteWorkspaceRolePermission(
     `/apis/workspaces/role-permissions/${nanoid}/`,
     { body: {}, method: "DELETE", workspace },
   );
+}
+
+/**
+ * Update the permission bitmask on an existing role-permission entry.
+ *
+ * Tenant-scoped — pass the active workspace slug.
+ */
+export async function updateWorkspaceRolePermission(
+  nanoid: string,
+  body: UpdateWorkspaceRolePermissionBody,
+  workspace: string,
+): Promise<WorkspaceRolePermissionItem> {
+  return serverMutate<WorkspaceRolePermissionItem>(
+    `/apis/workspaces/role-permissions/${nanoid}/`,
+    { body, method: "PATCH", workspace },
+  );
+}
+
+/**
+ * List the models the active workspace may grant role permissions on. The
+ * backend filters the catalog to the organization's paid apps and returns
+ * them grouped by app, each model carrying the actions registered against it.
+ *
+ * Tenant-scoped — pass the active workspace slug.
+ */
+export async function listAvailableModels(
+  workspace: string,
+): Promise<AvailableModelApp[]> {
+  const data = await serverFetch<AvailableModelsResponse>(
+    "/apis/workspaces/available-models/",
+    { workspace },
+  );
+  return data.apps;
 }

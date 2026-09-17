@@ -159,6 +159,57 @@ export interface CreateWorkspaceRolePermissionBody {
   mask?: number;
 }
 
+export interface UpdateWorkspaceRolePermissionBody {
+  mask: number;
+}
+
+/**
+ * One action column of the permission matrix (e.g. view / create / delete).
+ * Backed by `/apis/permstack/actions/`.
+ */
+export interface PermissionAction {
+  action: string;
+  bit: number;
+  label: string;
+  description: string;
+}
+
+export interface PermissionActionList {
+  actions: PermissionAction[];
+}
+
+/**
+ * A model that a workspace may grant role permissions on, as advertised by the
+ * backend for the active workspace (filtered to the organization's paid apps).
+ */
+export interface AvailableModel {
+  key: string;
+  label: string;
+  label_plural: string;
+  actions: string[];
+}
+
+/**
+ * The models a single paid app exposes, grouped for the permission matrix.
+ * Backed by `/apis/workspaces/available-models/`.
+ */
+export interface AvailableModelApp {
+  app_key: string;
+  label: string;
+  models: AvailableModel[];
+}
+
+export interface AvailableModelsResponse {
+  apps: AvailableModelApp[];
+}
+
+/** A permission bitmask translated into action names and display labels. */
+export interface PermissionMaskResolution {
+  mask: number;
+  actions: string[];
+  labels: string[];
+}
+
 export interface PersonalDetails {
   nanoid: string;
   first_name: string | null;

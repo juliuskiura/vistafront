@@ -1,34 +1,39 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
+  ArrowRight,
   KeyRound,
   Lock,
+  RotateCcw,
+  Save,
   Shield,
-  ShieldPlus,
-  Trash2,
-  ArrowRight,
+  ShieldCheck,
 } from "lucide-react";
 
 import { VSButton } from "@/components/shared/components/customUi/VSButton";
-import { Fab } from "@/components/ui/fab";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/lib/context";
+import { cn } from "@/lib/utils";
 import type {
+  AvailableModelApp,
+  PermissionAction,
   WorkspaceRoleItem,
   WorkspaceRolePermissionItem,
 } from "@/lib/api";
-import { deletePermissionAction } from "./actions";
-import { CreatePermissionDialog } from "./_components/create-permission-dialog";
+import { saveRolePermissionsAction } from "./actions";
+import { PermissionMatrix } from "./_components/permission-matrix";
 
 interface Props {
   workspaceDomain: string;
   canManage: boolean;
   roles: WorkspaceRoleItem[];
   permissions: WorkspaceRolePermissionItem[];
+  availableModels: AvailableModelApp[];
+  actions: PermissionAction[];
+  initialRole?: string;
 }
 
 export function PermissionsClient({
@@ -36,13 +41,94 @@ export function PermissionsClient({
   canManage,
   roles,
   permissions,
+  availableModels,
+  actions,
+  initialRole,
 }: Props) {
   const router = useRouter();
-  const [createOpen, setCreateOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] =
-    useState<WorkspaceRolePermissionItem | null>(null);
+  const toast = useToast();
+  const [selectedRole, setSelectedRole] = useState(
+    initialRole && roles.some((role) => role.nanoid === initialRole)
+      ? initialRole
+      : (roles[0]?.nanoid ?? ""),
+  );
+  const [draft, setDraft] = useState<{
+    role: string;
+    values: Record<string, number>;
+  } | null>(null);
+  const [pending, startTransition] = useTransition();
 
   const basePath = `/${workspaceDomain}/dashboard/workspaces`;
+
+  const base = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const permission of permissions) {
+      if (permission.role === selectedRole) map[permission.model] = permission.mask;
+    }
+    return map;
+  }, [permissions, selectedRole]);
+
+  const values = draft && draft.role === selectedRole ? draft.values : base;
+
+  const models = useMemo(
+    () => availableModels.flatMap((app) => app.models),
+    [availableModels],
+  );
+
+  const dirty = useMemo(
+    () =>
+      models.some((model) => (values[model.key] ?? 0) !== (base[model.key] ?? 0)),
+    [models, values, base],
+  );
+
+  const grantedCount = useMemo(
+    () => models.filter((model) => (values[model.key] ?? 0) > 0).length,
+    [models, values],
+  );
+
+  function update(
+    mutator: (current: Record<string, number>) => Record<string, number>,
+  ) {
+    setDraft((prev) => {
+      const current = prev && prev.role === selectedRole ? prev.values : base;
+      return { role: selectedRole, values: mutator(current) };
+    });
+  }
+
+  function handleToggle(modelKey: string, bit: number) {
+    update((current) => {
+      const mask = current[modelKey] ?? 0;
+      const next = (mask & bit) === bit ? mask & ~bit : mask | bit;
+      return { ...current, [modelKey]: next };
+    });
+  }
+
+  function handleSetAll(modelKey: string, mask: number) {
+    update((current) => ({ ...current, [modelKey]: mask }));
+  }
+
+  function handleSave() {
+    const changes = models
+      .map((model) => ({ model: model.key, mask: values[model.key] ?? 0 }))
+      .filter((change) => change.mask !== (base[change.model] ?? 0));
+    if (changes.length === 0) return;
+
+    startTransition(async () => {
+      const result = await saveRolePermissionsAction({
+        role: selectedRole,
+        workspace: workspaceDomain,
+        changes,
+      });
+      toast.push({
+        variant: result.status === "success" ? "success" : "error",
+        message: result.message,
+      });
+      if (result.status === "success") {
+        setDraft(null);
+        router.refresh();
+      }
+    });
+  }
 
   if (!canManage) {
     return (
@@ -54,8 +140,8 @@ export function PermissionsClient({
           Permissions are managed by admins
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Only workspace owners and admins can grant permissions to roles. Ask
-          an admin in your workspace to make changes here.
+          Only workspace owners and admins can grant permissions to roles. Ask an
+          admin in your workspace to make changes here.
         </p>
         <VSButton appearance="outline" size="md" asChild className="mt-5">
           <Link href={basePath}>
@@ -66,20 +152,39 @@ export function PermissionsClient({
     );
   }
 
+  const selectedRoleName =
+    roles.find((role) => role.nanoid === selectedRole)?.name ?? "role";
+
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Permissions</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Decide which roles can access each feature of this workspace. A
-            permission pairs a role with a model and an access mask.
+            Tick the actions each role may perform on a model, then save. Models
+            come from the apps your organization has paid for.
           </p>
         </div>
-        <VSButton appearance="threeD" onClick={() => setCreateOpen(true)} disabled={roles.length === 0}>
-          <ShieldPlus className="size-4" />
-          New Permission
-        </VSButton>
+        <div className="flex items-center gap-2">
+          {dirty ? (
+            <VSButton
+              appearance="outline"
+              onClick={() => setDraft(null)}
+              disabled={pending}
+            >
+              <RotateCcw className="size-4" />
+              Discard
+            </VSButton>
+          ) : null}
+          <VSButton
+            appearance="threeD"
+            onClick={handleSave}
+            disabled={!dirty || pending || !selectedRole}
+          >
+            <Save className="size-4" />
+            {pending ? "Saving…" : "Save changes"}
+          </VSButton>
+        </div>
       </div>
 
       {roles.length === 0 ? (
@@ -98,94 +203,63 @@ export function PermissionsClient({
             </Link>
           </VSButton>
         </Card>
-      ) : permissions.length === 0 ? (
+      ) : availableModels.length === 0 ? (
         <Card className="rounded-2xl border bg-card p-10 text-center">
           <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-2xl bg-secondary-50 text-secondary-600">
             <KeyRound className="size-6" />
           </div>
-          <h2 className="text-base font-semibold">No permissions yet</h2>
+          <h2 className="text-base font-semibold">No apps in your plan</h2>
           <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-            Grant your first permission — pick a role, the model it should
-            access, and the access mask.
+            This workspace has no paid apps with configurable permissions yet.
+            Add an app to your organization&apos;s plan to manage role access.
           </p>
-          <VSButton appearance="threeD" onClick={() => setCreateOpen(true)}>
-            <ShieldPlus className="size-4" />
-            Grant a permission
-          </VSButton>
         </Card>
       ) : (
-        <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b bg-muted/40 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3">Role</th>
-                <th className="px-4 py-3">Model</th>
-                <th className="px-4 py-3">Mask</th>
-                <th className="px-4 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-muted">
-              {permissions.map((permission) => (
-                <tr key={permission.nanoid} className="transition-colors hover:bg-muted/30">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-600">
-                        <Shield className="size-4" />
-                      </div>
-                      <span className="font-medium text-neutral-900">
-                        {permission.role_name || "Role"}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge variant="soft" className="font-normal">
-                      {permission.model}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {permission.mask}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Fab
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="text-muted-foreground hover:text-destructive"
-                      onClick={() => setDeleteTarget(permission)}
-                      aria-label="Revoke permission"
-                    >
-                      <Trash2 className="size-4" />
-                    </Fab>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <>
+          <div className="flex flex-wrap items-center gap-2">
+            {roles.map((role) => (
+              <button
+                key={role.nanoid}
+                type="button"
+                onClick={() => {
+                  setSelectedRole(role.nanoid);
+                  setDraft(null);
+                }}
+                className={cn(
+                  "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
+                  selectedRole === role.nanoid
+                    ? "border-primary-600 bg-primary-50 text-primary-700"
+                    : "border-neutral-200 bg-card text-muted-foreground hover:border-primary-300 hover:text-neutral-900",
+                )}
+              >
+                {role.name}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <ShieldCheck className="size-4 text-primary-600" />
+            <span>
+              <span className="font-semibold text-neutral-900">
+                {grantedCount}
+              </span>{" "}
+              of {models.length} models grant access to{" "}
+              <span className="font-medium text-neutral-900">
+                {selectedRoleName}
+              </span>
+              .
+            </span>
+          </div>
+
+          <PermissionMatrix
+            actions={actions}
+            models={models}
+            values={values}
+            onToggle={handleToggle}
+            onSetAll={handleSetAll}
+          />
+        </>
       )}
-
-      <CreatePermissionDialog
-        workspaceDomain={workspaceDomain}
-        roles={roles}
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-      />
-
-      <ConfirmDialog
-        open={deleteTarget !== null}
-        onOpenChange={(open) => {
-          if (!open) setDeleteTarget(null);
-        }}
-        title="Revoke this permission?"
-        description={`This will remove "${deleteTarget?.model}" access from the "${deleteTarget?.role_name || "selected"}" role. Members of the role lose this access immediately.`}
-        confirmLabel="Revoke permission"
-        variant="destructive"
-        onConfirm={async () => {
-          if (!deleteTarget) return;
-          await deletePermissionAction(deleteTarget.nanoid, workspaceDomain);
-          router.refresh();
-        }}
-      />
     </div>
   );
 }
