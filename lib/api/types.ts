@@ -297,6 +297,23 @@ export interface PaymentMethod {
   is_active: boolean;
 }
 
+export interface PlanFeature {
+  nanoid: string;
+  /** Plan slug (backend serializes the FK as its slug). */
+  plan: string;
+  feature: string;
+  order: number;
+}
+
+export interface PlanApp {
+  id: number;
+  plan: string;
+  app_key: string;
+  feature_flag: string;
+}
+
+export type SubscriptionStatus = "active" | "past_due" | "cancelled";
+
 export interface Plan {
   id: number;
   nanoid: string;
@@ -311,7 +328,32 @@ export interface Plan {
   includes_enterprise_features: boolean;
   app_keys: string[];
   feature_flags: string[];
-  features: { nanoid: string; plan: number; feature: string; order: number }[];
+  features: PlanFeature[];
+}
+
+export interface PlanFormInput {
+  slug: string;
+  name: string;
+  label: string;
+  description?: string;
+  order: number;
+  is_active: boolean;
+  seat_limit?: number | null;
+  price_per_seat?: string | null;
+  includes_enterprise_features?: boolean;
+  /** Replacement feature list (sent to the Plan write serializer). */
+  features?: { feature: string }[];
+}
+
+export interface PlanAppFormInput {
+  plan: string;
+  app_key: string;
+  feature_flag?: string;
+}
+
+export interface PlanFeatureFormInput {
+  plan: string;
+  feature: string;
 }
 
 export interface Subscription {
@@ -321,12 +363,29 @@ export interface Subscription {
   client_business_name: string;
   plan_slug: string;
   plan_label: string;
-  status: string;
+  status: SubscriptionStatus;
   current_period_start: string | null;
   current_period_end: string | null;
   cancel_at_period_end: boolean;
   app_keys: string[];
   feature_flags: string[];
+}
+
+export interface SubscriptionCreateInput {
+  client_business: string;
+  plan: string;
+  status?: SubscriptionStatus;
+  current_period_start?: string | null;
+  current_period_end?: string | null;
+  cancel_at_period_end?: boolean;
+}
+
+export interface SubscriptionUpdateInput {
+  plan?: string;
+  status?: SubscriptionStatus;
+  current_period_start?: string | null;
+  current_period_end?: string | null;
+  cancel_at_period_end?: boolean;
 }
 
 export interface InvoiceExtensionForm {

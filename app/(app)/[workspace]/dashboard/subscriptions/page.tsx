@@ -1,118 +1,66 @@
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { requireWorkspace } from "@/lib/auth/server";
+import { requireAuth, requireWorkspace } from "@/lib/auth/server";
+import {
+  listClientBusinesses,
+  listPlanApps,
+  listPlans,
+  listSubscriptions,
+  type ClientBusiness,
+  type Plan,
+  type PlanApp,
+  type Subscription,
+} from "@/lib/api";
+import { SubscriptionsClient } from "./subscriptions-client";
 
 /**
- * Subscriptions (Server Component).
+ * Subscriptions console (Server Component).
  *
- * Reads `app_access` from the active workspace — the backend already tells
- * us which app keys the org is entitled to under its active subscription.
- * Pure server render: no client interactivity needed.
+ * This route backs the sidebar's "Subscriptions" item, which the backend flags
+ * as ``console_admin_only``. Platform admins land here to run CRUD over the
+ * plan catalog (Plans + their ordered PlanFeatures and PlanApp bindings) and
+ * every organization's Subscription. Reads are fetched through
+ * ``lib/api/billing.ts`` → ``serverFetch``; all writes go through Server
+ * Actions in ``./actions.ts``.
  */
-
-const APP_LABELS: Record<string, { label: string; description: string }> = {
-  crm: {
-    label: "CRM",
-    description: "Contacts, companies, deals, and pipeline.",
-  },
-  projects: {
-    label: "Projects",
-    description: "Plan and track project work, deliverables, and tasks.",
-  },
-  notebook: {
-    label: "Notebook",
-    description: "Long-form notes and knowledge base.",
-  },
-  developer: {
-    label: "Developer",
-    description: "API tokens, webhooks, and platform integrations.",
-  },
-  schedules: {
-    label: "Schedules",
-    description: "Calendar and today views for the team.",
-  },
-  socialmanager: {
-    label: "Social manager",
-    description: "Channels, calendar, composer, and analytics.",
-  },
-  media_libary: {
-    label: "Media library",
-    description: "Centralised media assets, folders, and collections.",
-  },
-  billing: {
-    label: "Billing",
-    description: "Invoices, payment methods, and receipts.",
-  },
-  platform: {
-    label: "Platform",
-    description: "Configure third-party platforms and content formats.",
-  },
-};
-
-function describe(key: string) {
-  return (
-    APP_LABELS[key] ?? {
-      label: key.replace(/_/g, " "),
-      description: "Workspace entitlement.",
-    }
-  );
-}
-
 export default async function SubscriptionsPage({
   params,
 }: {
   params: Promise<{ workspace: string }>;
 }) {
   const { workspace: slug } = await params;
-  const active = await requireWorkspace(slug);
+  const [active, user] = await Promise.all([
+    requireWorkspace(slug),
+    requireAuth(),
+  ]);
 
-  const keys = Array.from(new Set(active.app_access ?? []));
+  // The backend grants write access to platform admins (IsConsoleAdmin) and
+  // resolves the "console" scope from the active workspace's domain. We mirror
+  // that with the user's `is_admin` flag so the UI hides privileged controls
+  // from non-admins even if they navigate here directly.
+  const canManage = user.is_admin;
+
+  const workspace = active.domain;
+  const plans: Plan[] = await listPlans({ workspace }).catch(() => []);
+  const subscriptions: Subscription[] = canManage
+    ? await listSubscriptions({ workspace }).catch(() => [])
+    : [];
+
+  let planApps: PlanApp[] = [];
+  let clientBusinesses: ClientBusiness[] = [];
+  if (canManage) {
+    [planApps, clientBusinesses] = await Promise.all([
+      listPlanApps({ workspace }).catch(() => []),
+      listClientBusinesses().catch(() => []),
+    ]);
+  }
 
   return (
-    <div className="max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold">Subscriptions</h1>
-        <p className="text-sm text-muted-foreground">
-          Apps and entitlements included in your subscription for{" "}
-          <strong>{active.name}</strong>.
-        </p>
-      </div>
-
-      {keys.length === 0 ? (
-        <Card className="rounded-xl border bg-card p-6 text-center text-sm text-muted-foreground">
-          No apps are included in this subscription. Contact your workspace
-          owner to upgrade.
-        </Card>
-      ) : (
-        <Card className="rounded-xl border bg-card">
-          <CardHeader>
-            <CardTitle>Included apps</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="divide-y">
-              {keys.map((key) => {
-                const meta = describe(key);
-                return (
-                  <li
-                    key={key}
-                    className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">
-                        {meta.label}
-                      </p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {meta.description}
-                      </p>
-                    </div>
-                    <Badge variant="secondary">Included</Badge>
-                  </li>
-                );
-              })}
-            </ul>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+    <SubscriptionsClient
+      canManage={canManage}
+      workspaceDomain={workspace}
+      plans={plans}
+      subscriptions={subscriptions}
+      planApps={planApps}
+      clientBusinesses={clientBusinesses}
+    />
   );
 }
