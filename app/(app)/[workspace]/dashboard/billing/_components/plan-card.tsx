@@ -4,27 +4,27 @@ import { useState } from "react";
 import Link from "next/link";
 import { Check, Clock, Users } from "lucide-react";
 import { VSButton } from "@/components/shared/components/customUi/VSButton";
-import type { Plan, Subscription } from "@/lib/api";
+import type { CurrentSubscription, SubsPlan } from "@/lib/api";
 import { formatDate, trialDaysLeft } from "./dates";
 import { ReferralModal } from "./referral-modal";
 
-function PlanFeatures({ plan }: { plan: Plan }) {
+function PlanFeatures({ plan }: { plan: SubsPlan }) {
+  const features = plan.features ?? [];
   return (
     <ul className="space-y-3.5 text-sm text-slate-700 mb-8">
-      {plan.features.map((feature) => (
+      {features.map((feature) => (
         <li key={feature.nanoid} className="flex items-start gap-3">
           <div className="mt-0.5 w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
             <Check className="w-3.5 h-3.5 stroke-[2.5]" />
           </div>
-          <span>{feature.feature}</span>
-        </li>
-      ))}
-      {plan.feature_flags.map((flag, index) => (
-        <li key={flag || index} className="flex items-start gap-3">
-          <div className="mt-0.5 w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-            <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+          <div>
+            <span className="block">{feature.feature}</span>
+            {feature.description ? (
+              <span className="block text-xs text-slate-500">
+                {feature.description}
+              </span>
+            ) : null}
           </div>
-          <span>{flag}</span>
         </li>
       ))}
     </ul>
@@ -39,10 +39,10 @@ export function PlanCard({
   workspaceDomain,
   referralCode,
 }: {
-  plan: Plan;
+  plan: SubsPlan;
   isTrial: boolean;
   isCurrent: boolean;
-  subscription: Subscription | null;
+  subscription: CurrentSubscription | null;
   workspaceDomain: string;
   referralCode?: string;
 }) {
@@ -96,11 +96,11 @@ export function PlanCard({
         <div className="pb-6 mb-6 border-b border-slate-100">
           <div className="flex items-baseline gap-1.5">
             <span className="text-4xl sm:text-5xl font-extrabold text-slate-900 font-display">
-              Ksh {plan.price_per_seat != null
-                ? Number(plan.price_per_seat).toLocaleString()
+              Ksh {plan.price != null
+                ? Number(plan.price).toLocaleString()
                 : 'Custom'}
             </span>
-            {plan.price_per_seat != null && (
+            {plan.price != null && (
               <span className="text-slate-500 text-sm font-medium">
                 / month
               </span>

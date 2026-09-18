@@ -1,12 +1,12 @@
 import { requireAuth, requireWorkspace } from "@/lib/auth/server";
 import {
   listClientBusinesses,
-  listPlanApps,
   listPlans,
+  listRegistryFeatures,
   listSubscriptions,
   type ClientBusiness,
-  type Plan,
-  type PlanApp,
+  type RegistryFeature,
+  type SubsPlan,
   type Subscription,
 } from "@/lib/api";
 import { SubscriptionsClient } from "./subscriptions-client";
@@ -16,10 +16,9 @@ import { SubscriptionsClient } from "./subscriptions-client";
  *
  * This route backs the sidebar's "Subscriptions" item, which the backend flags
  * as ``console_admin_only``. Platform admins land here to run CRUD over the
- * plan catalog (Plans + their ordered PlanFeatures and PlanApp bindings) and
- * every organization's Subscription. Reads are fetched through
- * ``lib/api/billing.ts`` → ``serverFetch``; all writes go through Server
- * Actions in ``./actions.ts``.
+ * plan catalog (Plans + their PlanFeatures) and every organization's
+ * Subscription. Reads are fetched through ``lib/api/subscriptions.ts`` →
+ * ``serverFetch``; all writes go through Server Actions in ``./actions.ts``.
  */
 export default async function SubscriptionsPage({
   params,
@@ -27,10 +26,8 @@ export default async function SubscriptionsPage({
   params: Promise<{ workspace: string }>;
 }) {
   const { workspace: slug } = await params;
-  const [active, user] = await Promise.all([
-    requireWorkspace(slug),
-    requireAuth(),
-  ]);
+  await requireWorkspace(slug);
+  const user = await requireAuth();
 
   // The backend grants write access to platform admins (IsConsoleAdmin) and
   // resolves the "console" scope from the active workspace's domain. We mirror
@@ -38,29 +35,25 @@ export default async function SubscriptionsPage({
   // from non-admins even if they navigate here directly.
   const canManage = user.is_admin;
 
-  const workspace = active.domain;
-  const plans: Plan[] = await listPlans({ workspace }).catch(() => []);
-  const subscriptions: Subscription[] = canManage
-    ? await listSubscriptions({ workspace }).catch(() => [])
-    : [];
-
-  let planApps: PlanApp[] = [];
-  let clientBusinesses: ClientBusiness[] = [];
-  if (canManage) {
-    [planApps, clientBusinesses] = await Promise.all([
-      listPlanApps({ workspace }).catch(() => []),
-      listClientBusinesses().catch(() => []),
-    ]);
-  }
+  const [plans, subscriptions, clientBusinesses, featureOptions]: [
+    SubsPlan[],
+    Subscription[],
+    ClientBusiness[],
+    RegistryFeature[],
+  ] = await Promise.all([
+    listPlans().catch(() => []),
+    canManage ? listSubscriptions().catch(() => []) : Promise.resolve([]),
+    canManage ? listClientBusinesses().catch(() => []) : Promise.resolve([]),
+    canManage ? listRegistryFeatures().catch(() => []) : Promise.resolve([]),
+  ]);
 
   return (
     <SubscriptionsClient
       canManage={canManage}
-      workspaceDomain={workspace}
       plans={plans}
       subscriptions={subscriptions}
-      planApps={planApps}
       clientBusinesses={clientBusinesses}
+      featureOptions={featureOptions}
     />
   );
 }

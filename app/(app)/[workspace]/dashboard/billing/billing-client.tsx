@@ -6,8 +6,8 @@ import type {
   Invoice,
   InvoiceExtension,
   Payment,
-  Plan,
-  Subscription,
+  CurrentSubscription,
+  SubsPlan,
 } from "@/lib/api";
 import { formatDate } from "./_components/dates";
 import { PlansTab } from "./_components/plans-tab";
@@ -46,8 +46,8 @@ export function BillingClient({
 }: {
   invoices: Invoice[];
   payments: Payment[];
-  plans: Plan[];
-  subscription: Subscription | null;
+  plans: SubsPlan[];
+  subscription: CurrentSubscription | null;
   workspaceName: string;
   workspaceDomain: string;
   referralCode?: string;

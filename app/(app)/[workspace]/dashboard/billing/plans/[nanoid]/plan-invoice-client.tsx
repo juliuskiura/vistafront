@@ -7,7 +7,7 @@ import { Check, ChevronLeft, Phone, Smartphone } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { VSButton } from "@/components/shared/components/customUi/VSButton";
-import type { Plan } from "@/lib/api";
+import type { SubsPlan } from "@/lib/api";
 
 const MPESA_KE = /^(?:\+?254|0)[17]\d{8}$/;
 
@@ -39,10 +39,10 @@ function PaymentMethodOption() {
   );
 }
 
-function InvoiceSummary({ plan }: { plan: Plan }) {
+function InvoiceSummary({ plan }: { plan: SubsPlan }) {
   const price =
-    plan.price_per_seat != null
-      ? `Ksh ${Number(plan.price_per_seat).toLocaleString()}`
+    plan.price != null
+      ? `Ksh ${Number(plan.price).toLocaleString()}`
       : "Custom";
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-6">
@@ -57,7 +57,7 @@ function InvoiceSummary({ plan }: { plan: Plan }) {
         </div>
         <span className="shrink-0 rounded-xl bg-primary-50 px-3 py-1.5 text-sm font-extrabold text-primary-700 border border-primary-100">
           {price}
-          {plan.price_per_seat != null && (
+          {plan.price != null && (
             <span className="text-xs font-medium"> /month</span>
           )}
         </span>
@@ -69,21 +69,17 @@ function InvoiceSummary({ plan }: { plan: Plan }) {
             <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
               <Check className="h-3.5 w-3.5 stroke-[2.5]" />
             </span>
-            <span>{feature.feature}</span>
+            <div>
+              <span className="block">{feature.feature}</span>
+              {feature.description ? (
+                <span className="block text-xs text-slate-500">
+                  {feature.description}
+                </span>
+              ) : null}
+            </div>
           </li>
         ))}
-        {(plan.feature_flags ?? []).map((flag, index) => (
-          <li
-            key={flag || index}
-            className="flex items-start gap-3"
-          >
-            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-              <Check className="h-3.5 w-3.5 stroke-[2.5]" />
-            </span>
-            <span>{flag}</span>
-          </li>
-        ))}
-        {plan.features.length === 0 && plan.feature_flags.length === 0 && (
+        {(plan.features ?? []).length === 0 && (
           <li className="text-slate-500">No listed features.</li>
         )}
       </ul>
@@ -92,7 +88,7 @@ function InvoiceSummary({ plan }: { plan: Plan }) {
         <span className="font-medium text-slate-600">Total due</span>
         <span className="font-extrabold text-slate-900">
           {price}
-          {plan.price_per_seat != null && <span className="text-xs"> /month</span>}
+          {plan.price != null && <span className="text-xs"> /month</span>}
         </span>
       </div>
     </section>
@@ -104,7 +100,7 @@ export function PlanInvoiceClient({
   workspaceDomain,
   workspaceName,
 }: {
-  plan: Plan;
+  plan: SubsPlan;
   workspaceDomain: string;
   workspaceName: string;
 }) {

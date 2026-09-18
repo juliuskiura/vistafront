@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Pencil, Trash2, Users } from "lucide-react";
 
@@ -20,7 +20,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/lib/context";
 import type {
   ClientBusiness,
-  Plan,
+  SubsPlan,
   Subscription,
   SubscriptionStatus,
 } from "@/lib/api";
@@ -28,22 +28,22 @@ import {
   createSubscriptionAction,
   updateSubscriptionAction,
   deleteSubscriptionAction,
+} from "../actions";
+import {
   initialActionState,
   type ActionState,
-} from "../actions";
+} from "../action-state";
 
 interface Props {
   subscriptions: Subscription[];
-  plans: Plan[];
+  plans: SubsPlan[];
   clientBusinesses: ClientBusiness[];
-  workspaceDomain: string;
 }
 
 export function SubscriptionsPanel({
   subscriptions,
   plans,
   clientBusinesses,
-  workspaceDomain,
 }: Props) {
   const router = useRouter();
   const toast = useToast();
@@ -72,14 +72,14 @@ export function SubscriptionsPanel({
         <div className="divide-y rounded-xl border bg-card">
           {subscriptions.map((sub) => (
             <div
-              key={sub.id}
+              key={sub.nanoid}
               className="flex flex-wrap items-center gap-3 p-4"
             >
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <Users className="size-4 shrink-0 text-muted-foreground" />
                   <p className="truncate text-sm font-semibold">
-                    {sub.client_business_name}
+                    {sub.client_business_name ?? "Unknown org"}
                   </p>
                   <StatusBadge status={sub.status} />
                   {sub.cancel_at_period_end ? (
@@ -87,7 +87,7 @@ export function SubscriptionsPanel({
                   ) : null}
                 </div>
                 <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                  Plan: <span className="font-medium">{sub.plan_label}</span>
+                  Plan: <span className="font-medium">{sub.plan_label ?? "—"}</span>
                   {sub.current_period_end
                     ? ` · renews ${formatDate(sub.current_period_end)}`
                     : ""}
@@ -122,7 +122,6 @@ export function SubscriptionsPanel({
           onOpenChange={setCreateOpen}
           plans={plans}
           clientBusinesses={clientBusinesses}
-          workspaceDomain={workspaceDomain}
         />
       ) : null}
       {editTarget ? (
@@ -135,7 +134,6 @@ export function SubscriptionsPanel({
           }}
           plans={plans}
           clientBusinesses={clientBusinesses}
-          workspaceDomain={workspaceDomain}
         />
       ) : null}
 
@@ -144,16 +142,13 @@ export function SubscriptionsPanel({
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null);
         }}
-        title={`Delete subscription for "${deleteTarget?.client_business_name}"?`}
+        title={`Delete subscription for "${deleteTarget?.client_business_name ?? "this org"}"?`}
         description="The organization immediately loses the plan's apps and features until a new subscription is created."
         confirmLabel="Delete subscription"
         variant="destructive"
         onConfirm={async () => {
           if (!deleteTarget) return;
-          const result = await deleteSubscriptionAction(
-            deleteTarget.id,
-            workspaceDomain,
-          );
+          const result = await deleteSubscriptionAction(deleteTarget.nanoid);
           if (!result.ok) {
             toast.push({ variant: "error", message: result.error ?? "Failed." });
           } else {
@@ -184,6 +179,12 @@ function formatDate(value: string): string {
   return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString();
 }
 
+function planValueOf(subscription: Subscription | undefined): string {
+  const plan = subscription?.plan;
+  if (typeof plan === "object" && plan) return plan.nanoid;
+  return (plan as string | undefined) ?? "";
+}
+
 // ── Create / edit dialog ────────────────────────────────────────────────────
 
 interface DialogProps {
@@ -191,9 +192,8 @@ interface DialogProps {
   subscription?: Subscription;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  plans: Plan[];
+  plans: SubsPlan[];
   clientBusinesses: ClientBusiness[];
-  workspaceDomain: string;
 }
 
 function SubscriptionDialog({
@@ -203,7 +203,6 @@ function SubscriptionDialog({
   onOpenChange,
   plans,
   clientBusinesses,
-  workspaceDomain,
 }: DialogProps) {
   const router = useRouter();
   const toast = useToast();
@@ -214,7 +213,11 @@ function SubscriptionDialog({
     initialActionState,
   );
 
+  const handledState = useRef<ActionState>(initialActionState);
+
   useEffect(() => {
+    if (handledState.current === state) return;
+    handledState.current = state;
     if (state.status === "success") {
       toast.push({ variant: "success", message: state.message ?? "Saved." });
       onOpenChange(false);
@@ -261,18 +264,17 @@ function SubscriptionDialog({
           </DialogTitle>
           <DialogDescription>
             {editing
-              ? `Change the plan or status for ${subscription?.client_business_name}.`
+              ? `Change the plan or status for ${subscription?.client_business_name ?? "this org"}.`
               : "Attach a plan to an organization."}
           </DialogDescription>
         </DialogHeader>
 
         <form action={formAction} className="space-y-4" noValidate>
-          <input type="hidden" name="workspace" value={workspaceDomain} />
           {editing ? (
             <input
               type="hidden"
-              name="id"
-              value={subscription!.id}
+              name="nanoid"
+              value={subscription!.nanoid}
             />
           ) : null}
 
@@ -310,7 +312,7 @@ function SubscriptionDialog({
             <select
               id="plan"
               name="plan"
-              defaultValue={subscription?.plan_slug ?? ""}
+              defaultValue={planValueOf(subscription)}
               aria-invalid={!!errors.plan}
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
             >
@@ -318,7 +320,7 @@ function SubscriptionDialog({
                 Select a plan…
               </option>
               {activePlans.map((p) => (
-                <option key={p.slug} value={p.slug}>
+                <option key={p.nanoid} value={p.nanoid}>
                   {p.label} ({p.slug})
                 </option>
               ))}

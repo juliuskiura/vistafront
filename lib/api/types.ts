@@ -297,13 +297,7 @@ export interface PaymentMethod {
   is_active: boolean;
 }
 
-export interface PlanFeature {
-  nanoid: string;
-  /** Plan slug (backend serializes the FK as its slug). */
-  plan: string;
-  feature: string;
-  order: number;
-}
+
 
 export interface PlanApp {
   id: number;
@@ -314,22 +308,26 @@ export interface PlanApp {
 
 export type SubscriptionStatus = "active" | "past_due" | "cancelled";
 
-export interface Plan {
+/**
+ * The active workspace's own subscription, as returned by the workspace-scoped
+ * `/apis/subscription/current/` endpoint (customer-facing billing).
+ */
+export interface CurrentSubscription {
   id: number;
   nanoid: string;
-  slug: string;
-  name: string;
-  label: string;
-  description: string;
-  order: number;
-  is_active: boolean;
-  seat_limit: number | null;
-  price_per_seat: string | null;
-  includes_enterprise_features: boolean;
+  client_business_nanoid: string;
+  client_business_name: string;
+  plan_slug: string;
+  plan_label: string;
+  status: SubscriptionStatus;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
   app_keys: string[];
   feature_flags: string[];
-  features: PlanFeature[];
 }
+
+
 
 export interface PlanFormInput {
   slug: string;
@@ -354,21 +352,66 @@ export interface PlanAppFormInput {
 export interface PlanFeatureFormInput {
   plan: string;
   feature: string;
+  description?: string;
+}
+
+export interface PlanFeatureUpdateInput {
+  feature: string;
+  description?: string;
+}
+
+
+export interface PlanFeature {
+  nanoid: string;
+  plan: SubsPlan;
+  feature: string;
+  description: string;
+  order: number;
+}
+
+/**
+ * A feature registered in the backend's subscription registry
+ * (`regwakes/subscriptions/registry.py`), exposed read-only via
+ * `GET /apis/subscriptions/feature-registry/`.
+ *
+ * Distinct from `PlanFeature` (the database row): this is the catalog of
+ * available feature types. `key` is what a `PlanFeature.feature` stores;
+ * `label` / `description` are the human-facing copy rendered in the picker.
+ */
+export interface RegistryFeature {
+  key: string;
+  label: string;
+  description: string;
+  app_key: string;
+}
+export interface SubsPlan {
+  nanoid: string;
+  name: string;
+  label: string;
+  description: string;
+  is_active: boolean;
+  slug: string;
+  price: number | null;
+  order?: number;
+  features?: PlanFeature[]
 }
 
 export interface Subscription {
-  id: number;
   nanoid: string;
-  client_business_nanoid: string;
-  client_business_name: string;
-  plan_slug: string;
-  plan_label: string;
+  client_business: {
+    nanoid: string;
+    name: string;
+    domain: string;
+  } | string | null;
+  client_business_name?: string | null;
+  plan: SubsPlan | string | null;
+  plan_name?: string | null;
+  plan_label?: string | null;
   status: SubscriptionStatus;
   current_period_start: string | null;
   current_period_end: string | null;
   cancel_at_period_end: boolean;
-  app_keys: string[];
-  feature_flags: string[];
+  created_at: string;
 }
 
 export interface SubscriptionCreateInput {

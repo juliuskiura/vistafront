@@ -34,6 +34,20 @@ export type WorkspaceItem = Workspace;
 const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:8000";
 
 /**
+ * Fetch the current user's workspaces once per server request.
+ *
+ * `requireWorkspace` is called from the `[workspace]/layout.tsx` guard and
+ * from every nested layout/page, each of which previously triggered its own
+ * `GET /apis/workspaces/workspaces/`. Django rate-limits authenticated users
+ * (30/min), so duplicating that call per layout caused 429s during full-tree
+ * revalidations (e.g. after role deletion). Wrapping in React `cache()`
+ * collapses all calls in a request into a single backend fetch.
+ */
+const getWorkspacesForUser = cache(
+  async (): Promise<Workspace[]> => listWorkspaces(),
+);
+
+/**
  * Get the current authenticated user from the server.
  * Reads the HttpOnly 'access' cookie and validates with Django backend,
  * refreshing the access token once via `refreshAccessToken()` on a 401.
@@ -131,7 +145,7 @@ export async function requireWorkspace(
 
   let workspaces: Workspace[];
   try {
-    workspaces = preloadedWorkspaces ?? await listWorkspaces();
+    workspaces = preloadedWorkspaces ?? await getWorkspacesForUser();
   } catch (error) {
     console.error("Failed to load workspaces for requireWorkspace:", error);
     redirect("/onboarding");

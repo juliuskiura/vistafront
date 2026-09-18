@@ -1,6 +1,6 @@
 "use client";
 
-import type { Plan, Subscription } from "@/lib/api";
+import type { CurrentSubscription, SubsPlan } from "@/lib/api";
 import { PlanCard } from "./plan-card";
 
 export function PlansTab({
@@ -10,8 +10,8 @@ export function PlansTab({
   workspaceDomain,
   referralCode,
 }: {
-  plans: Plan[];
-  subscription: Subscription | null;
+  plans: SubsPlan[];
+  subscription: CurrentSubscription | null;
   workspaceName: string;
   workspaceDomain: string;
   referralCode?: string;
@@ -30,7 +30,7 @@ export function PlansTab({
     );
   }
 
-  const cards: { plan: Plan; isTrial: boolean }[] = [
+  const cards: { plan: SubsPlan; isTrial: boolean }[] = [
     { plan: trialPlan, isTrial: true },
     { plan: paidPlan, isTrial: false },
   ];

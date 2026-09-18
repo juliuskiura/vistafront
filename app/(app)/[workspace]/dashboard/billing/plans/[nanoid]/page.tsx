@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { getPlanByNanoid } from "@/lib/api";
+import { getPlan } from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
 import { PlanInvoiceClient } from "./plan-invoice-client";
 
@@ -12,9 +12,7 @@ export default async function PlanInvoicePage({
   const { workspace: slug, nanoid } = await params;
   const active = await requireWorkspace(slug);
 
-  const plan = await getPlanByNanoid(nanoid, {
-    workspace: active.domain,
-  }).catch(() => null);
+  const plan = await getPlan(nanoid).catch(() => null);
 
   if (!plan) {
     return (

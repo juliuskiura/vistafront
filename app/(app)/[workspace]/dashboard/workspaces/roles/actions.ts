@@ -5,7 +5,7 @@ import { z, flattenError } from "zod";
 
 import { createWorkspaceRole, deleteWorkspaceRole } from "@/lib/api";
 
-export const CreateRoleSchema = z.object({
+const CreateRoleSchema = z.object({
   workspace: z.string().min(1, "Missing workspace. Refresh and try again."),
   name: z
     .string()
@@ -13,15 +13,9 @@ export const CreateRoleSchema = z.object({
     .min(1, "Role name is required.")
     .max(100, "Role name must be 100 characters or fewer."),
 });
-export type CreateRoleInput = z.infer<typeof CreateRoleSchema>;
+type CreateRoleInput = z.infer<typeof CreateRoleSchema>;
 
-export interface RoleActionState {
-  status: "idle" | "success" | "error";
-  message?: string;
-  fieldErrors?: Record<string, string[]>;
-}
-
-export const initialRoleState: RoleActionState = { status: "idle" };
+import { RoleActionState } from "./role-state";
 
 export async function createRoleAction(
   _prev: RoleActionState,

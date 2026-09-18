@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -14,22 +14,22 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/lib/context";
-import type { Plan } from "@/lib/api";
+import type { SubsPlan } from "@/lib/api";
 import {
   createPlanAction,
   updatePlanAction,
+} from "../actions";
+import {
   initialActionState,
   type ActionState,
-} from "../actions";
+} from "../action-state";
 
 interface Props {
   mode: "create" | "edit";
-  plan: Plan | null;
+  plan: SubsPlan | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  workspaceDomain: string;
 }
 
 export function PlanFormDialog({
@@ -37,7 +37,6 @@ export function PlanFormDialog({
   plan,
   open,
   onOpenChange,
-  workspaceDomain,
 }: Props) {
   const router = useRouter();
   const toast = useToast();
@@ -47,7 +46,11 @@ export function PlanFormDialog({
     initialActionState,
   );
 
+  const handledState = useRef<ActionState>(initialActionState);
+
   useEffect(() => {
+    if (handledState.current === state) return;
+    handledState.current = state;
     if (state.status === "success") {
       toast.push({ variant: "success", message: state.message ?? "Saved." });
       onOpenChange(false);
@@ -60,28 +63,20 @@ export function PlanFormDialog({
   const editing = mode === "edit" && plan !== null;
   const defaults = plan
     ? {
-        slug: plan.slug,
         name: plan.name,
         label: plan.label,
         description: plan.description ?? "",
-        order: plan.order,
+        order: plan.order ?? 0,
+        price: plan.price ?? "",
         is_active: plan.is_active,
-        seat_limit: plan.seat_limit ?? "",
-        price_per_seat: plan.price_per_seat ?? "",
-        includes_enterprise_features: plan.includes_enterprise_features,
-        features: (plan.features ?? []).map((f) => f.feature).join("\n"),
       }
     : {
-        slug: "",
         name: "",
         label: "",
         description: "",
         order: 0,
+        price: "",
         is_active: true,
-        seat_limit: "",
-        price_per_seat: "",
-        includes_enterprise_features: false,
-        features: "",
       };
 
   const errors = state.fieldErrors ?? {};
@@ -100,8 +95,8 @@ export function PlanFormDialog({
           <DialogTitle>{editing ? "Edit plan" : "Create a plan"}</DialogTitle>
           <DialogDescription>
             {editing
-              ? "The slug is permanent after creation — change the rest freely."
-              : "Plans define what organizations can access: features, app bindings, seats, and price."}
+              ? "Change the plan's name, label, pricing, or visibility."
+              : "Plans define what organizations can access: their feature list and monthly price."}
           </DialogDescription>
         </DialogHeader>
 
@@ -111,41 +106,9 @@ export function PlanFormDialog({
           noValidate
           key={editing ? plan?.nanoid : "create"}
         >
-          <input type="hidden" name="workspace" value={workspaceDomain} />
-          {editing ? <input type="hidden" name="slug" value={plan!.slug} /> : null}
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="slug">Slug</Label>
-              <Input
-                id="slug"
-                name="slug"
-                placeholder="e.g. growth"
-                disabled={editing}
-                defaultValue={defaults.slug}
-                aria-invalid={!!errors.slug}
-                autoFocus={!editing}
-              />
-              {errors.slug?.[0] ? (
-                <p className="text-xs text-destructive">{errors.slug[0]}</p>
-              ) : null}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="order">Display order</Label>
-              <Input
-                id="order"
-                name="order"
-                type="number"
-                min={0}
-                inputMode="numeric"
-                defaultValue={defaults.order}
-                aria-invalid={!!errors.order}
-              />
-              {errors.order?.[0] ? (
-                <p className="text-xs text-destructive">{errors.order[0]}</p>
-              ) : null}
-            </div>
-          </div>
+          {editing ? (
+            <input type="hidden" name="nanoid" value={plan!.nanoid} />
+          ) : null}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
@@ -156,6 +119,7 @@ export function PlanFormDialog({
                 placeholder="e.g. Growth"
                 defaultValue={defaults.name}
                 aria-invalid={!!errors.name}
+                autoFocus={!editing}
               />
               {errors.name?.[0] ? (
                 <p className="text-xs text-destructive">{errors.name[0]}</p>
@@ -188,53 +152,35 @@ export function PlanFormDialog({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="seat_limit">Seat limit</Label>
+              <Label htmlFor="order">Display order</Label>
               <Input
-                id="seat_limit"
-                name="seat_limit"
+                id="order"
+                name="order"
                 type="number"
                 min={0}
                 inputMode="numeric"
-                placeholder="Leave empty for unlimited"
-                defaultValue={defaults.seat_limit}
-                aria-invalid={!!errors.seat_limit}
+                defaultValue={defaults.order}
+                aria-invalid={!!errors.order}
               />
-              {errors.seat_limit?.[0] ? (
-                <p className="text-xs text-destructive">{errors.seat_limit[0]}</p>
+              {errors.order?.[0] ? (
+                <p className="text-xs text-destructive">{errors.order[0]}</p>
               ) : null}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="price_per_seat">Price per seat (Ksh)</Label>
+              <Label htmlFor="price">Price (Ksh / month)</Label>
               <Input
-                id="price_per_seat"
-                name="price_per_seat"
+                id="price"
+                name="price"
                 type="text"
                 inputMode="decimal"
-                placeholder="e.g. 2500"
-                defaultValue={defaults.price_per_seat}
-                aria-invalid={!!errors.price_per_seat}
+                placeholder="e.g. 2500 — empty for custom"
+                defaultValue={defaults.price}
+                aria-invalid={!!errors.price}
               />
-              {errors.price_per_seat?.[0] ? (
-                <p className="text-xs text-destructive">{errors.price_per_seat[0]}</p>
+              {errors.price?.[0] ? (
+                <p className="text-xs text-destructive">{errors.price[0]}</p>
               ) : null}
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="feature_text">
-              Features{" "}
-              <span className="font-normal text-muted-foreground">
-                (one per line)
-              </span>
-            </Label>
-            <Textarea
-              id="feature_text"
-              name="feature_text"
-              rows={4}
-              className="min-h-[90px]"
-              placeholder={"Unlimited projects\nPriority support"}
-              defaultValue={defaults.features}
-            />
           </div>
 
           <div className="space-y-3">
@@ -248,19 +194,6 @@ export function PlanFormDialog({
                 className="size-4 rounded border-input"
               />
               <span className="text-sm font-medium">Active (visible to customers)</span>
-            </label>
-            <label className="flex items-center gap-3">
-              <input type="hidden" name="includes_enterprise_features" value="off" />
-              <input
-                type="checkbox"
-                name="includes_enterprise_features"
-                value="on"
-                defaultChecked={defaults.includes_enterprise_features}
-                className="size-4 rounded border-input"
-              />
-              <span className="text-sm font-medium">
-                Includes enterprise features
-              </span>
             </label>
           </div>
 

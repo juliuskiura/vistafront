@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, Lock, Package, Plus, TableProperties } from "lucide-react";
+import { ChevronDown, Lock, Package, TableProperties } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,8 +11,8 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/lib/context";
 import type {
   ClientBusiness,
-  Plan,
-  PlanApp,
+  RegistryFeature,
+  SubsPlan,
   Subscription,
 } from "@/lib/api";
 import { deletePlanAction } from "./actions";
@@ -24,33 +24,28 @@ type Tab = "plans" | "subscriptions";
 
 export function SubscriptionsClient({
   canManage,
-  workspaceDomain,
   plans,
   subscriptions,
-  planApps,
   clientBusinesses,
+  featureOptions,
 }: {
   canManage: boolean;
-  workspaceDomain: string;
-  plans: Plan[];
+  plans: SubsPlan[];
   subscriptions: Subscription[];
-  planApps: PlanApp[];
   clientBusinesses: ClientBusiness[];
+  featureOptions: RegistryFeature[];
 }) {
   const router = useRouter();
   const toast = useToast();
   const [tab, setTab] = useState<Tab>("plans");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
-  const [editPlan, setEditPlan] = useState<Plan | null>(null);
-  const [deletePlan, setDeletePlan] = useState<Plan | null>(null);
+  const [editPlan, setEditPlan] = useState<SubsPlan | null>(null);
+  const [deletePlan, setDeletePlan] = useState<SubsPlan | null>(null);
 
   if (!canManage) {
     return <ReadOnlyView plans={plans} />;
   }
-
-  const appsFor = (plan: Plan) =>
-    planApps.filter((app) => app.plan === plan.slug);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -62,12 +57,6 @@ export function SubscriptionsClient({
             subscription.
           </p>
         </div>
-        {tab === "plans" ? (
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="size-4" />
-            New plan
-          </Button>
-        ) : null}
       </header>
 
       <div className="flex flex-wrap gap-1 border-b border-sidebar-divider">
@@ -106,17 +95,16 @@ export function SubscriptionsClient({
               </Card>
             ) : (
               plans.map((plan) => {
-                const isOpen = expanded === plan.slug;
-                const apps = appsFor(plan);
+                const isOpen = expanded === plan.nanoid;
                 return (
                   <Card
-                    key={plan.slug}
+                    key={plan.nanoid}
                     className="overflow-hidden rounded-xl border bg-card"
                   >
                     <div className="flex flex-wrap items-center gap-3 p-4">
                       <button
                         type="button"
-                        onClick={() => setExpanded(isOpen ? null : plan.slug)}
+                        onClick={() => setExpanded(isOpen ? null : plan.nanoid)}
                         className="flex min-w-0 flex-1 items-center gap-3 text-left"
                       >
                         <ChevronDown
@@ -138,18 +126,7 @@ export function SubscriptionsClient({
                               <Badge variant="outline">Inactive</Badge>
                             )}
                           </div>
-                          <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                            {plan.description ||
-                              `${plan.features.length} features · ${apps.length} apps · ${
-                                plan.seat_limit ?? "∞"
-                              } seats`}
-                          </p>
                         </div>
-                        <span className="shrink-0 text-sm font-semibold">
-                          {plan.price_per_seat != null
-                            ? `Ksh ${Number(plan.price_per_seat).toLocaleString()}`
-                            : "Custom"}
-                        </span>
                       </button>
                       <div className="flex shrink-0 gap-2">
                         <Button
@@ -172,8 +149,7 @@ export function SubscriptionsClient({
                     {isOpen && (
                       <PlanResources
                         plan={plan}
-                        apps={apps}
-                        workspaceDomain={workspaceDomain}
+                        featureOptions={featureOptions}
                       />
                     )}
                   </Card>
@@ -186,13 +162,12 @@ export function SubscriptionsClient({
             subscriptions={subscriptions}
             plans={plans}
             clientBusinesses={clientBusinesses}
-            workspaceDomain={workspaceDomain}
           />
         )}
       </div>
 
       <PlanFormDialog
-        key={editPlan?.slug ?? (createOpen ? "create" : "closed")}
+        key={editPlan?.nanoid ?? (createOpen ? "create" : "closed")}
         mode={editPlan ? "edit" : "create"}
         plan={editPlan}
         open={createOpen || editPlan !== null}
@@ -202,7 +177,6 @@ export function SubscriptionsClient({
             setEditPlan(null);
           }
         }}
-        workspaceDomain={workspaceDomain}
       />
 
       <ConfirmDialog
@@ -211,12 +185,12 @@ export function SubscriptionsClient({
           if (!open) setDeletePlan(null);
         }}
         title={`Delete "${deletePlan?.label ?? "plan"}"?`}
-        description="This removes the plan, its feature list, and its app bindings. Organizations currently subscribed to this plan cannot be deleted until they are moved to another plan."
+        description="This removes the plan and its feature list. Organizations currently subscribed to this plan cannot be deleted until they are moved to another plan."
         confirmLabel="Delete plan"
         variant="destructive"
         onConfirm={async () => {
           if (!deletePlan) return;
-          const result = await deletePlanAction(deletePlan.slug, workspaceDomain);
+          const result = await deletePlanAction(deletePlan.nanoid);
           if (!result.ok) {
             toast.push({
               variant: "error",
@@ -233,7 +207,7 @@ export function SubscriptionsClient({
   );
 }
 
-function ReadOnlyView({ plans }: { plans: Plan[] }) {
+function ReadOnlyView({ plans }: { plans: SubsPlan[] }) {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
@@ -255,14 +229,14 @@ function ReadOnlyView({ plans }: { plans: Plan[] }) {
       <ul className="divide-y rounded-xl border bg-card">
         {plans.map((plan) => (
           <li
-            key={plan.slug}
+            key={plan.nanoid}
             className="flex items-center justify-between gap-3 px-4 py-3 first:pt-4 last:pb-4"
           >
             <div className="min-w-0">
               <p className="truncate text-sm font-medium">{plan.label}</p>
               <p className="truncate text-xs text-muted-foreground">/{plan.slug}</p>
             </div>
-            <Badge variant="secondary">{plan.features.length} features</Badge>
+            <Badge variant="secondary">{plan.features?.length} features</Badge>
           </li>
         ))}
       </ul>

@@ -31,9 +31,9 @@ import type { WorkspaceRoleItem } from "@/lib/api";
 import {
   createRoleAction,
   deleteRoleAction,
-  initialRoleState,
-  type RoleActionState,
 } from "./actions";
+
+import { initialRoleState, type RoleActionState } from "./role-state";
 
 interface Props {
   workspaceNanoid: string;
@@ -200,7 +200,7 @@ function CreateRoleDialog({
         message: state.message ?? "Could not create role.",
       });
     }
-  }, [state, toast, onOpenChange]);
+  }, [state, onOpenChange]);
 
   const errors = state.fieldErrors ?? {};
   const formError =

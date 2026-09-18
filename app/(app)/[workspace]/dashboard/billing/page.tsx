@@ -1,4 +1,10 @@
-import { listInvoices, listPayments, listPaymentMethods, listPlans, getSubscription } from "@/lib/api";
+import {
+  listInvoices,
+  listPayments,
+  listPaymentMethods,
+  listPlans,
+  getCurrentSubscription,
+} from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
 import { BillingClient } from "./billing-client";
 
@@ -13,8 +19,8 @@ export default async function BillingPage({
   const [invoices, payments, plans, subscription] = await Promise.all([
     listInvoices({ workspace: active.domain }).catch(() => []),
     listPayments({ workspace: active.domain }).catch(() => []),
-    listPlans({ workspace: active.domain }).catch(() => []),
-    getSubscription({ workspace: active.domain }).catch(() => null),
+    listPlans().catch(() => []),
+    getCurrentSubscription({ workspace: active.domain }).catch(() => null),
   ]);
 
   return (
