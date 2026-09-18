@@ -10,6 +10,7 @@ import { ReferralModal } from "./referral-modal";
 
 function PlanFeatures({ plan }: { plan: SubsPlan }) {
   const features = plan.features ?? [];
+  console.log('plan: ', plan)
   return (
     <ul className="space-y-3.5 text-sm text-slate-700 mb-8">
       {features.map((feature) => (
@@ -18,7 +19,7 @@ function PlanFeatures({ plan }: { plan: SubsPlan }) {
             <Check className="w-3.5 h-3.5 stroke-[2.5]" />
           </div>
           <div>
-            <span className="block">{feature.feature}</span>
+            <span className="block">{feature.label}</span>
             {feature.description ? (
               <span className="block text-xs text-slate-500">
                 {feature.description}

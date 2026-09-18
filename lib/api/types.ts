@@ -365,6 +365,7 @@ export interface PlanFeature {
   nanoid: string;
   plan: SubsPlan;
   feature: string;
+  label: string;
   description: string;
   order: number;
 }
