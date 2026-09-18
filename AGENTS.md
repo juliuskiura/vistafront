@@ -592,6 +592,66 @@ Do not change the backend code. Your is to call the endpoint and ensure the fron
 
 ### 8. Destructive actions MUST use `ConfirmDialog`, never native `alert`/`confirm`
 
+---
+
+### 9. ALL external icons must be imported through `lib/icons.tsx`
+
+Every Lucide icon used anywhere in the codebase must be imported from `lucide-react`
+**inside `lib/icons.tsx`** and re-exported from there. No component, hook, or utility
+may `import { SomeIcon } from "lucide-react"` directly.
+
+- **`lib/icons.tsx` is the single source of truth for icon imports.**
+  It imports every icon the app needs from `lucide-react` and re-exports them all.
+- **All components must import icons from `@/lib/icons`**, never from
+  `lucide-react` directly.
+- **When a new icon is needed**, add it to the `import { ... } from "lucide-react"`
+  block in `lib/icons.tsx` and add it to the `export { ... }` block. Do not import it
+  anywhere else.
+
+```tsx
+// ❌ FORBIDDEN — direct lucide-react import in any component
+import { FolderKanban, ListChecks } from "lucide-react";
+
+// ✅ CORRECT — import from the central barrel
+import { FolderKanban, ListChecks } from "@/lib/icons";
+```
+
+**Why:** Centralising icon imports keeps the icon dependency in one place, makes
+it trivial to swap the icon library later, and prevents icon drift (e.g. two
+components importing the same icon from different library versions). It also makes
+`lib/icons.tsx` the canonical registry of which icons the app actually uses.
+
+---
+
+### 10. Feature icon mapping lives in `lib/icon-maps.ts`
+
+The mapping from backend feature keys (e.g. `"socialmanager.posts"`) to a Lucide
+icon + color tone lives in `lib/icon-maps.ts`, **not** inline in components.
+
+- **`lib/icon-maps.ts`** is the single source of truth for:
+  - `APP_STYLES` — default icon + tone per app key
+  - `FEATURES_STYLES` — per-feature overrides
+  - `TONES` — tone → Tailwind color classes
+  - `resolveCapabilityStyle(featureKey)` — the resolution function
+- **Components never hardcode an icon for a feature.** They call
+  `useFeatureIcon(featureKey)` (from `@/lib/icons`) and receive the resolved
+  `{ icon, iconBg, iconColor }` back.
+
+```tsx
+// ❌ FORBIDDEN — hardcoding an icon for a feature in a component
+import { FolderKanban } from "@/lib/icons";
+<FolderKanban className="size-5 text-amber-600" />;
+
+// ✅ CORRECT — resolve dynamically from the feature key
+const { icon: Icon, iconBg, iconColor } = useFeatureIcon(data.featureKey);
+<Icon className={`size-5 ${iconBg} ${iconColor}`} />;
+```
+
+**Why:** The backend is the source of truth for *which* features exist; the
+frontend is the source of truth for *how* they are rendered. Keeping the mapping in
+one file means a feature's icon/tone can be updated in a single place without
+hunting through every component that renders it.
+
 Any destructive action — deleting a post, queue, asset, company, platform, etc. — must
 confirm with the shared `ConfirmDialog` component in `components/ui/confirm-dialog.tsx`.
 **Never use the native `confirm(...)` / `alert(...)` dialogs** for delete or other
@@ -639,5 +699,9 @@ Before marking any work complete:
 - [ ] TanStack Query callers prefetch on the server under `<HydrationBoundary>` and include the workspace in the query key
 - [ ] Forms with rich client validation use React Hook Form + the Zod schema that the Server Action also uses
 - [ ] No destructive/delete action uses native `confirm()` / `alert()` — it uses `ConfirmDialog` (or another styled dialog)
+- [ ] All icons are imported from `@/lib/icons`, never from `lucide-react` directly
+- [ ] New icons are added to both the `import` and `export` blocks in `lib/icons.tsx`
+- [ ] Feature-to-icon/tone mappings are in `lib/icon-maps.ts`, not hardcoded in components
+- [ ] Components use `useFeatureIcon(featureKey)` for dynamic icon rendering, not inline icon choices
 
 <!-- END:nextjs-agent-rules -->

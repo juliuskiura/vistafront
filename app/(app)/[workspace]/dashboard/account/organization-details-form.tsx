@@ -38,12 +38,12 @@ function fullName(d: ClientBusiness): string {
 }
 
 /**
- * Account → Organization details form (Client Component island).
+ * OrganizationDetailsForm → Organization details form (Client Component island).
  *
- * The form posts to `updateAccountAction` and reflects the resulting state
+ * The form posts to `updateOrganizationAction` and reflects the resulting state
  * via `useActionState`. Toast feedback is shown for non-field errors.
  */
-export function AccountForm({ org, workspaceDomain }: Props) {
+export function OrganizationDetailsForm({ org, workspaceDomain }: Props) {
   const router = useRouter();
   const toast = useToast();
   const [state, formAction, pending] = useActionState<AccountActionState, FormData>(

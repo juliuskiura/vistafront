@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Building2, Shield, Bell, KeyRound } from "lucide-react";
+import { Building2, Shield, Bell, KeyRound, UserRound } from "lucide-react";
 import {
   WorkspaceInnerNav,
   type InnerNavItem,
@@ -9,10 +9,9 @@ import {
 import { Banner } from "@/components/banner";
 
 const NAV_ITEMS: InnerNavItem[] = [
-  { label: "Organization", href: "", end: true, icon: Building2 },
+  { label: "User Account", href: "", end: true, icon: UserRound },
+  { label: "Organization", href: "/organization", icon: Building2 },
   { label: "Security", href: "/security", icon: Shield },
-  { label: "Notifications", href: "/notifications", icon: Bell },
-  { label: "API Keys", href: "/api-keys", icon: KeyRound },
 ];
 
 interface AccountLayoutProps {
@@ -38,8 +37,9 @@ export function AccountLayout({
       <WorkspaceInnerNav
         basePath={basePath}
         brandLabel="Account"
-        brandIcon={Building2}
+        brandIcon={UserRound}
         items={NAV_ITEMS}
+        hideBrand
       />
 
       <div className="mt-6 flex-1">{children}</div>
