@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Check, Clock, Users } from "lucide-react";
+import { Check, Clock, Users } from '@/lib/icons';
 import { VSButton } from "@/components/shared/components/customUi/VSButton";
 import type { CurrentSubscription, SubsPlan } from "@/lib/api";
 import { formatDate, trialDaysLeft } from "./dates";

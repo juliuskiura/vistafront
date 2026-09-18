@@ -161,6 +161,33 @@ function InvoicesTab({ invoices }: { invoices: Invoice[] }) {
                 ))}
               </ul>
             )}
+
+            {inv.line_items && inv.line_items.length > 0 && (
+              <table className="mt-3 w-full border-t border-sidebar-divider pt-2 text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-muted-foreground">
+                    <th className="pb-1 font-medium">Description</th>
+                    <th className="pb-1 text-right font-medium">Qty</th>
+                    <th className="pb-1 text-right font-medium">Unit price</th>
+                    <th className="pb-1 text-right font-medium">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {inv.line_items.map((li) => (
+                    <tr key={li.nanoid}>
+                      <td className="py-1">{li.description}</td>
+                      <td className="py-1 text-right">{li.quantity}</td>
+                      <td className="py-1 text-right">
+                        {li.unit_price} {inv.currency}
+                      </td>
+                      <td className="py-1 text-right">
+                        {li.amount} {inv.currency}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </li>
         ))}
       </ul>

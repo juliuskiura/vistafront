@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Gift, Link2, UserPlus, Clock, Coins } from "lucide-react";
+import { X, Gift, Link2, UserPlus, Clock, Coins } from '@/lib/icons';
 import { VSButton } from "@/components/shared/components/customUi/VSButton";
 
 interface ReferralModalProps {

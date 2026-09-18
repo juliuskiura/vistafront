@@ -260,6 +260,14 @@ export interface InvoiceExtension {
   created_at: string;
 }
 
+export interface InvoiceLineItem {
+  nanoid: string;
+  description: string;
+  quantity: number;
+  unit_price: string;
+  amount: string;
+}
+
 export interface Invoice {
   refid: string;
   nanoid: string;
@@ -274,6 +282,7 @@ export interface Invoice {
   paid_at: string | null;
   grace_period_days: number;
   extensions?: InvoiceExtension[];
+  line_items?: InvoiceLineItem[];
 }
 
 export interface Payment {
