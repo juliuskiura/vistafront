@@ -6,8 +6,8 @@ import { z, flattenError } from "zod";
 import type { ActionState } from "./action-state";
 import type { PlanActionResult } from "./feature-actions";
 import {
+  addSubscription,
   createPlan,
-  createSubscription,
   deletePlan,
   deleteSubscription,
   updatePlan,
@@ -175,7 +175,7 @@ export async function createSubscriptionAction(
   }
 
   try {
-    await createSubscription({
+    await addSubscription({
       client_business: parsed.data.client_business,
       plan: parsed.data.plan,
       status: parsed.data.status,

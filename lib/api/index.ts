@@ -74,6 +74,7 @@ export {
   listPlans,
   listRegistryFeatures,
   listSubscriptions,
+  addSubscription,
   updatePlan,
   updatePlanFeature,
   updateSubscription,

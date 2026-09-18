@@ -64,6 +64,23 @@ export async function createSubscription(
 }
 
 /**
+ * Add a subscription via the viewset's purpose-built `add` action.
+ *
+ * Takes a plan nanoid and an organization nanoid (plus optional status /
+ * cancel-at-period-end). Delegates to `subscriptions.services.create_subscription`,
+ * which rejects unknown plans/organizations and organizations that already
+ * have a subscription.
+ */
+export async function addSubscription(
+  body: SubscriptionCreateInput,
+): Promise<Subscription> {
+  return serverMutate<Subscription>("/apis/subscriptions/all/add/", {
+    method: "POST",
+    body,
+  });
+}
+
+/**
  * Update a subscription
  */
 export async function updateSubscription(
