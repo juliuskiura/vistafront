@@ -4,19 +4,15 @@ import { revalidatePath } from "next/cache";
 import { z, flattenError } from "zod";
 
 import type { ActionState } from "./action-state";
+import type { PlanActionResult } from "./feature-actions";
 import {
   createPlan,
-  createPlanFeature,
   createSubscription,
   deletePlan,
-  deletePlanFeature,
   deleteSubscription,
   updatePlan,
-  updatePlanFeature,
   updateSubscription,
 } from "@/lib/api";
-
-export type PlanActionResult = { ok: boolean; error?: string };
 
 // ── Zod schemas (the validation contract for every form) ────────────────────
 
@@ -157,84 +153,6 @@ export async function deletePlanAction(
       error:
         "Could not delete the plan. Plans that are in use by a subscription cannot be removed.",
     };
-  }
-  revalidatePath("/", "layout");
-  return { ok: true };
-}
-
-// ── Plan features ───────────────────────────────────────────────────────────
-
-const PlanFeatureSchema = z.object({
-  plan: z.string().optional(),
-  nanoid: z.string().optional(),
-  feature: z.string().trim().min(1, "Feature text is required.").max(60),
-  description: z.string().trim().default(""),
-});
-
-export async function upsertPlanFeatureAction(
-  _prev: ActionState,
-  formData: FormData,
-): Promise<ActionState> {
-  const parsed = PlanFeatureSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) {
-    const { fieldErrors } = flattenError(parsed.error);
-    return {
-      status: "error",
-      message: "Please fix the highlighted fields.",
-      fieldErrors,
-    };
-  }
-
-  const { plan, nanoid, feature, description } = parsed.data;
-
-  if (nanoid) {
-    try {
-      await updatePlanFeature(nanoid, {
-        feature,
-        description: description || undefined,
-      });
-    } catch (error) {
-      console.error("upsertPlanFeatureAction (update) failed:", error);
-      return {
-        status: "error",
-        message:
-          "Could not save the feature. This plan may already have a feature with that text.",
-      };
-    }
-    revalidatePath("/", "layout");
-    return { status: "success", message: `Feature "${feature}" updated.` };
-  }
-
-  if (!plan) {
-    return { status: "error", message: "Missing plan reference." };
-  }
-
-  try {
-    await createPlanFeature({
-      plan,
-      feature,
-      description: description || undefined,
-    });
-  } catch (error) {
-    console.error("upsertPlanFeatureAction (create) failed:", error);
-    return {
-      status: "error",
-      message:
-        "Could not add the feature. This plan may already have a feature with that text.",
-    };
-  }
-  revalidatePath("/", "layout");
-  return { status: "success", message: `Feature "${feature}" added.` };
-}
-
-export async function deletePlanFeatureAction(
-  nanoid: string,
-): Promise<PlanActionResult> {
-  try {
-    await deletePlanFeature(nanoid);
-  } catch (error) {
-    console.error("deletePlanFeatureAction failed:", error);
-    return { ok: false, error: "Could not remove the feature." };
   }
   revalidatePath("/", "layout");
   return { ok: true };

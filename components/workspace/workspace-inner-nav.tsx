@@ -30,6 +30,8 @@ interface WorkspaceInnerNavProps {
   items?: InnerNavItem[];
   /** Right-aligned slot for desktop. Hide on mobile from the caller. */
   trailing?: React.ReactNode;
+  /** Hide the brand/home link (used when the section has its own home item). */
+  hideBrand?: boolean;
 }
 
 export function WorkspaceInnerNav({
@@ -39,6 +41,7 @@ export function WorkspaceInnerNav({
   groups,
   items,
   trailing,
+  hideBrand = false,
 }: WorkspaceInnerNavProps) {
   const pathname = usePathname();
   const [openGroup, setOpenGroup] = useState<string | null>(null);
@@ -81,13 +84,15 @@ export function WorkspaceInnerNav({
       )}
 
       <nav className="sticky -top-4 z-20 flex flex-wrap items-center gap-2 border-b border-slate-200 bg-slate-50/95 px-4 py-2 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 md:-top-6 md:px-6">
-        <Link
-          href={basePath}
-          className="flex shrink-0 items-center gap-2 pr-1 text-sm font-bold tracking-tight text-slate-900 hover:text-indigo-600 dark:text-slate-100 dark:hover:text-indigo-400"
-        >
-          <BrandIcon className="h-4 w-4 text-indigo-500" />
-          {brandLabel}
-        </Link>
+        {hideBrand ? null : (
+          <Link
+            href={basePath}
+            className="flex shrink-0 items-center gap-2 pr-1 text-sm font-bold tracking-tight text-slate-900 hover:text-indigo-600 dark:text-slate-100 dark:hover:text-indigo-400"
+          >
+            <BrandIcon className="h-4 w-4 text-indigo-500" />
+            {brandLabel}
+          </Link>
+        )}
 
         <div className="hidden flex-1 flex-wrap items-center gap-1 md:flex" aria-label={brandLabel}>
           {flatItems.map((item) => {

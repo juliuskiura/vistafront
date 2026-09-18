@@ -16,17 +16,19 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/lib/context";
 import type { PlanFeature, RegistryFeature } from "@/lib/api";
-import { upsertPlanFeatureAction } from "../actions";
+import { addPlanFeaturesAction, upsertPlanFeatureAction } from "../feature-actions";
 import {
   initialActionState,
   type ActionState,
 } from "../action-state";
-import { FeaturePicker } from "./feature-picker";
+import { FeatureCheckList } from "./feature-check-list";
 
 interface Props {
   mode: "create" | "edit";
   planNanoid: string;
   feature: PlanFeature | null;
+  /** Feature keys already assigned to this plan (shown with a checkmark). */
+  addedKeys: string[];
   featureOptions: RegistryFeature[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -36,6 +38,7 @@ export function FeatureDialog({
   mode,
   planNanoid,
   feature,
+  addedKeys,
   featureOptions,
   open,
   onOpenChange,
@@ -43,12 +46,18 @@ export function FeatureDialog({
   const router = useRouter();
   const toast = useToast();
   const editing = mode === "edit" && feature !== null;
+
+  // Create mode submits every checked feature as one bulk payload; edit mode
+  // updates a single existing row.
+  const action = editing ? upsertPlanFeatureAction : addPlanFeaturesAction;
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
-    upsertPlanFeatureAction,
+    action,
     initialActionState,
   );
 
-  const [featureKey, setFeatureKey] = useState(feature?.feature ?? "");
+  const [selected, setSelected] = useState<string[]>(
+    editing ? [feature!.feature] : [],
+  );
   const [description, setDescription] = useState(feature?.description ?? "");
 
   const handledState = useRef<ActionState>(initialActionState);
@@ -71,25 +80,31 @@ export function FeatureDialog({
       ? state.message
       : null;
 
-  // Selecting a registry feature seeds the description from the registry when
-  // the admin hasn't written their own override yet.
-  const handleSelect = (key: string) => {
-    setFeatureKey(key);
-    setDescription((prev) => {
-      if (prev.trim()) return prev;
-      return featureOptions.find((o) => o.key === key)?.description ?? "";
-    });
+  // When editing, the row being changed stays editable; every other key that
+  // is already on the plan renders read-only (checkmark, no checkbox).
+  const lockedKeys = editing
+    ? addedKeys.filter((k) => k !== feature!.feature)
+    : addedKeys;
+
+  const toggle = (key: string) => {
+    if (editing) {
+      setSelected(selected.includes(key) ? [] : [key]);
+    } else {
+      setSelected((prev) =>
+        prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
+      );
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent onOpenAutoFocus={(e) => e.preventDefault()}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto" onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader>
-          <DialogTitle>{editing ? "Edit feature" : "Add feature"}</DialogTitle>
+          <DialogTitle>{editing ? "Edit feature" : "Add features"}</DialogTitle>
           <DialogDescription>
             {editing
               ? "Change which registered feature this plan grants."
-              : "Pick a registered feature. Customers see its label and description; the key is what the plan stores."}
+              : "Check the features to add. Features already on the plan show a checkmark and cannot be selected again."}
           </DialogDescription>
         </DialogHeader>
 
@@ -104,46 +119,49 @@ export function FeatureDialog({
           ) : (
             <input type="hidden" name="plan" value={planNanoid} />
           )}
-          <input type="hidden" name="feature" value={featureKey} />
 
           <div className="space-y-2">
-            <Label htmlFor="feature-picker">Feature</Label>
-            <FeaturePicker
-              id="feature-picker"
-              value={featureKey}
-              onChange={handleSelect}
+            <Label>Feature</Label>
+            <FeatureCheckList
               options={featureOptions}
+              addedKeys={lockedKeys}
+              selected={selected}
+              onToggle={toggle}
               invalid={!!errors.feature}
             />
             {errors.feature?.[0] ? (
               <p className="text-xs text-destructive">{errors.feature[0]}</p>
-            ) : (
+            ) : editing ? (
               <p className="text-xs text-muted-foreground">
                 The selected key is saved as the plan&apos;s feature.
               </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="description">
-              Description{" "}
-              <span className="font-normal text-muted-foreground">(optional)</span>
-            </Label>
-            <Textarea
-              id="description"
-              name="description"
-              placeholder="Explain what the customer gets"
-              rows={3}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              aria-invalid={!!errors.description}
-            />
-            {errors.description?.[0] ? (
-              <p className="text-xs text-destructive">
-                {errors.description[0]}
-              </p>
             ) : null}
           </div>
+
+          {editing ? (
+            <div className="space-y-2">
+              <Label htmlFor="description">
+                Description{" "}
+                <span className="font-normal text-muted-foreground">
+                  (optional)
+                </span>
+              </Label>
+              <Textarea
+                id="description"
+                name="description"
+                placeholder="Explain what the customer gets"
+                rows={3}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                aria-invalid={!!errors.description}
+              />
+              {errors.description?.[0] ? (
+                <p className="text-xs text-destructive">
+                  {errors.description[0]}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
 
           {formError ? (
             <div
@@ -163,8 +181,17 @@ export function FeatureDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={pending || !featureKey}>
-              {pending ? "Saving…" : editing ? "Save changes" : "Add feature"}
+            <Button
+              type="submit"
+              disabled={pending || selected.length === 0}
+            >
+              {pending
+                ? "Saving…"
+                : editing
+                  ? "Save changes"
+                  : selected.length > 1
+                    ? `Add ${selected.length} features`
+                    : "Add feature"}
             </Button>
           </DialogFooter>
         </form>

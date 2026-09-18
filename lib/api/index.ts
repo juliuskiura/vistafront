@@ -61,6 +61,7 @@ export {
 export {
   createPlan,
   createPlanFeature,
+  createPlanFeatures,
   createSubscription,
   deletePlan,
   deletePlanFeature,

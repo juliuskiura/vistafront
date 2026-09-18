@@ -3,17 +3,13 @@
 import { useActionState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/lib/context";
 import type { SubsPlan } from "@/lib/api";
 import {
@@ -24,6 +20,7 @@ import {
   initialActionState,
   type ActionState,
 } from "../action-state";
+import { PlanFields } from "./plan-fields";
 
 interface Props {
   mode: "create" | "edit";
@@ -67,7 +64,7 @@ export function PlanFormDialog({
         label: plan.label,
         description: plan.description ?? "",
         order: plan.order ?? 0,
-        price: plan.price ?? "",
+        price: plan.price != null ? String(plan.price) : "",
         is_active: plan.is_active,
       }
     : {
@@ -106,119 +103,20 @@ export function PlanFormDialog({
           noValidate
           key={editing ? plan?.nanoid : "create"}
         >
-          {editing ? (
-            <input type="hidden" name="nanoid" value={plan!.nanoid} />
-          ) : null}
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="name">Plan name</Label>
-              <Input
-                id="name"
-                name="name"
-                placeholder="e.g. Growth"
-                defaultValue={defaults.name}
-                aria-invalid={!!errors.name}
-                autoFocus={!editing}
-              />
-              {errors.name?.[0] ? (
-                <p className="text-xs text-destructive">{errors.name[0]}</p>
-              ) : null}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="label">Label</Label>
-              <Input
-                id="label"
-                name="label"
-                placeholder="e.g. For growing teams"
-                defaultValue={defaults.label}
-                aria-invalid={!!errors.label}
-              />
-              {errors.label?.[0] ? (
-                <p className="text-xs text-destructive">{errors.label[0]}</p>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Input
-              id="description"
-              name="description"
-              placeholder="Short summary shown on the plan card"
-              defaultValue={defaults.description}
-            />
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="order">Display order</Label>
-              <Input
-                id="order"
-                name="order"
-                type="number"
-                min={0}
-                inputMode="numeric"
-                defaultValue={defaults.order}
-                aria-invalid={!!errors.order}
-              />
-              {errors.order?.[0] ? (
-                <p className="text-xs text-destructive">{errors.order[0]}</p>
-              ) : null}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="price">Price (Ksh / month)</Label>
-              <Input
-                id="price"
-                name="price"
-                type="text"
-                inputMode="decimal"
-                placeholder="e.g. 2500 — empty for custom"
-                defaultValue={defaults.price}
-                aria-invalid={!!errors.price}
-              />
-              {errors.price?.[0] ? (
-                <p className="text-xs text-destructive">{errors.price[0]}</p>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <label className="flex items-center gap-3">
-              <input type="hidden" name="is_active" value="off" />
-              <input
-                type="checkbox"
-                name="is_active"
-                value="on"
-                defaultChecked={defaults.is_active}
-                className="size-4 rounded border-input"
-              />
-              <span className="text-sm font-medium">Active (visible to customers)</span>
-            </label>
-          </div>
-
-          {formError ? (
-            <div
-              role="alert"
-              className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive"
-            >
-              {formError}
-            </div>
-          ) : null}
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={pending}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Saving…" : editing ? "Save changes" : "Create plan"}
-            </Button>
-          </DialogFooter>
+          <PlanFields
+            editing={editing}
+            defaults={defaults}
+            errors={errors}
+            formError={formError}
+            pending={pending}
+            submitLabel={editing ? "Save changes" : "Create plan"}
+            submitPendingLabel="Saving…"
+            onCancel={() => onOpenChange(false)}
+          >
+            {editing ? (
+              <input type="hidden" name="nanoid" value={plan!.nanoid} />
+            ) : null}
+          </PlanFields>
         </form>
       </DialogContent>
     </Dialog>

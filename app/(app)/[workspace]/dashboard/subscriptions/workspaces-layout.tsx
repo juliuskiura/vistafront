@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Shield,
   ShieldPlus,
+  TableProperties,
 } from "lucide-react";
 import {
   WorkspaceInnerNav,
@@ -17,8 +18,8 @@ import { Banner } from "@/components/banner";
 
 const NAV_ITEMS: InnerNavItem[] = [
   { label: "Overview", href: "", end: true, icon: LayoutDashboard },
+  { label: "Subscriptions", href: "/subscriptions", icon: TableProperties },
   { label: "Plans", href: "/plans", icon: Shield },
-  { label: "Organizations", href: "/organizations", icon: KeyRound },
 ];
 
 interface SubscriptionsShellLayoutProps {
@@ -41,11 +42,11 @@ export function SubscriptionsShellLayout({
           title="Subscriptions Console"
           description="Manage your workspace subscription plans and organization memberships."
           actions={[
-            { label: "New Plan", icon: ShieldPlus, href: `${basePath}/plans` },
+            { label: "New Plan", icon: ShieldPlus, href: `${basePath}/plans/new` },
             {
-              label: "View Organizations",
+              label: "View Subscriptions",
               icon: KeyRound,
-              href: `${basePath}/organizations`,
+              href: `${basePath}/subscriptions`,
               variant: "secondary",
             },
           ]}
@@ -62,14 +63,17 @@ export function SubscriptionsShellLayout({
         brandLabel="Subscriptions"
         brandIcon={Building2}
         items={NAV_ITEMS}
+        hideBrand
         trailing={
-          <Link
-            href={`${basePath}/plans`}
-            className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-gradient-to-r from-primary-600 to-secondary-600 px-2.5 py-1.5 text-xs font-bold text-white shadow-sm transition-all hover:from-primary-500 hover:to-secondary-500 md:px-3"
-          >
-            <ShieldPlus className="h-4 w-4" />
-            New Plan
-          </Link>
+          pathname === `${basePath}/plans/new` ? null : (
+            <Link
+              href={`${basePath}/plans/new`}
+              className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-gradient-to-r from-primary-600 to-secondary-600 px-2.5 py-1.5 text-xs font-bold text-white shadow-sm transition-all hover:from-primary-500 hover:to-secondary-500 md:px-3"
+            >
+              <ShieldPlus className="h-4 w-4" />
+              New Plan
+            </Link>
+          )
         }
       />
 

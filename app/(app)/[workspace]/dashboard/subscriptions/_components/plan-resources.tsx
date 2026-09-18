@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/lib/context";
 import type { PlanFeature, RegistryFeature, SubsPlan } from "@/lib/api";
-import { deletePlanFeatureAction } from "../actions";
+import { deletePlanFeatureAction } from "../feature-actions";
 import { FeatureDialog } from "./feature-dialog";
 
 interface Props {
@@ -97,6 +97,7 @@ export function PlanResources({ plan, featureOptions }: Props) {
           mode={dialog.mode}
           planNanoid={plan.nanoid}
           feature={dialog.feature}
+          addedKeys={features.map((f) => f.feature)}
           featureOptions={featureOptions}
           open
           onOpenChange={(open) => {

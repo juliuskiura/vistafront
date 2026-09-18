@@ -187,6 +187,21 @@ export async function createPlanFeature(
 }
 
 /**
+ * Create many features on a plan at once.
+ *
+ * POSTs a JSON array to the same endpoint; the backend accepts either a
+ * single object or a list and bulk-creates one `PlanFeature` row per entry.
+ */
+export async function createPlanFeatures(
+  body: PlanFeatureFormInput[],
+): Promise<PlanFeature[]> {
+  return serverMutate<PlanFeature[]>("/apis/subscriptions/features/", {
+    method: "POST",
+    body,
+  });
+}
+
+/**
  * Update a feature by nanoid
  */
 export async function updatePlanFeature(
