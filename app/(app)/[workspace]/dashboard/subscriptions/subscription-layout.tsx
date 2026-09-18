@@ -50,12 +50,7 @@ export function SubscriptionsShellLayout({
               variant: "secondary",
             },
           ]}
-        >
-          <div className="absolute -left-16 -top-16 h-64 w-64 rounded-full bg-[#4d7fff]/60 blur-3xl" />
-          <div className="absolute right-0 top-1/3 h-72 w-72 rounded-full bg-[#7a5cff]/40 blur-3xl" />
-          <div className="absolute -bottom-20 left-1/4 h-72 w-72 rounded-full bg-[#00e5ff]/40 blur-3xl" />
-          <div className="absolute -right-8 -bottom-8 h-56 w-56 rounded-full bg-[#19e664]/30 blur-3xl" />
-        </Banner>
+        />
       )}
 
       <WorkspaceInnerNav

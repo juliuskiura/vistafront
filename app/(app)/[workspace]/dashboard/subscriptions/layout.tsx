@@ -1,5 +1,5 @@
 import { requireWorkspace } from "@/lib/auth/server";
-import { SubscriptionsShellLayout } from "./workspaces-layout";
+import { SubscriptionsShellLayout } from "./subscription-layout";
 
 export default async function SubscriptionsLayout({
   children,

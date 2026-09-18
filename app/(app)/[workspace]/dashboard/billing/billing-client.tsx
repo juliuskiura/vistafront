@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Banner } from "@/components/banner";
 import type {
   Invoice,
   InvoiceExtension,
@@ -56,13 +57,10 @@ export function BillingClient({
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold">Billing</h1>
-        <p className="text-sm text-muted-foreground">
-          Manage how your organization pays, view invoices, and review payment
-          history.
-        </p>
-      </header>
+      <Banner
+        title="Billing"
+        description="Manage how your organization pays, view invoices, and review payment history."
+      />
 
       <div className="flex flex-wrap gap-1 border-b border-sidebar-divider">
         {TABS.map((t) => (

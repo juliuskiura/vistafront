@@ -29,7 +29,7 @@ export function AccountLayout({
   const basePath = `/${workspaceDomain}/dashboard/account`;
 
   return (
-    <div className="flex flex-col">
+    <div className="flex min-h-full flex-col">
       <Banner
         title="Account Settings"
         description="Manage your organization details, security preferences, and integrations."

@@ -21,6 +21,23 @@ interface BannerProps {
   descriptionClassName?: string;
 }
 
+const glowOrbs = [
+  "absolute -left-16 -top-16 h-64 w-64 rounded-full bg-[#4d7fff]/60 blur-3xl",
+  "absolute right-0 top-1/3 h-72 w-72 rounded-full bg-[#7a5cff]/40 blur-3xl",
+  "absolute -bottom-20 left-1/4 h-72 w-72 rounded-full bg-[#00e5ff]/40 blur-3xl",
+  "absolute -right-8 -bottom-8 h-56 w-56 rounded-full bg-[#19e664]/30 blur-3xl",
+];
+
+function BannerGlowOrbs() {
+  return (
+    <>
+      {glowOrbs.map((cls, i) => (
+        <div key={i} className={cls} />
+      ))}
+    </>
+  );
+}
+
 export function Banner({
   title,
   description,
@@ -36,6 +53,7 @@ export function Banner({
         className,
       )}
     >
+      <BannerGlowOrbs />
       {children && (
         <div className="pointer-events-none absolute inset-0">
           {children}

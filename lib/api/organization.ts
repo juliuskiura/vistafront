@@ -9,7 +9,7 @@ export async function getOrganization(
   workspace: string,
 ): Promise<ClientBusiness> {
   return serverFetch<ClientBusiness>(
-    `/apis/client-businesses/${nanoid}/`,
+    `/apis/workspaces/client-businesses/${nanoid}/`,
     { workspace },
   );
 }
