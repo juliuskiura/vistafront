@@ -1,16 +1,31 @@
 import Link from "next/link";
 
-import { getOrder, getPlan, getOrganization } from "@/lib/api";
+import {
+  getOrder,
+  getPlan,
+  getOrganization,
+  listPaymentMethods,
+} from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
 import { Banner } from "@/components/banner";
-import { CheckoutClient } from "./checkout-client";
+import { PaymentCheckoutClient } from "./payment-checkout-client";
 
-export default async function OrderPage({
+export default async function OrderConfirmPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ workspace: string; nanoid: string }>;
+  searchParams: Promise<{ items?: string }>;
 }) {
   const { workspace: slug, nanoid } = await params;
+  const sp = await searchParams;
+  const keptItemNanoids = sp.items
+    ? sp.items
+        .split(",")
+        .map((id) => id.trim())
+        .filter(Boolean)
+    : undefined;
+
   const active = await requireWorkspace(slug);
 
   const order = await getOrder(nanoid, {
@@ -62,17 +77,24 @@ export default async function OrderPage({
     throw new Error("Organization not found");
   }
 
+  const paymentMethods = await listPaymentMethods(
+    { workspace: active.domain },
+    active.client_business,
+  ).catch(() => []);
+
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="relative isolate flex min-h-full flex-col text-foreground selection:bg-primary/20 selection:text-primary transition-colors duration-300">
       <Banner
-        title="Review your order"
-        description={`Your ${plan.label} solution for ${active.name}. Knock out any line or tune its quantity, then continue to payment.`}
-      />
-      <CheckoutClient
+        title="Confirm your payment"
+        description={`Settle the ${plan.label} invoice for ${active.name} securely. Card, M-PESA, or PayPal.`}
+      />  
+      <PaymentCheckoutClient
         order={order}
         plan={plan}
-        workspaceDomain={active.domain}
+        paymentMethods={paymentMethods}
+        workspaceName={active.name}
         organization={org}
+        keptItemNanoids={keptItemNanoids}
       />
     </div>
   );

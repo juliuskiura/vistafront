@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ComponentType, type SVGProps } from "react";
 import { ChevronsLeft, ChevronsRight, Menu, X } from "lucide-react";
-import { ChatIcon } from "@/lib/icons";
+import { ChatIcon, ShoppingCart } from "@/lib/icons";
 import { ChatWidget } from "@/components/workspace/chat-widget";
 
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ import { resolveIcon } from "@/lib/nav-icons";
 import type { NavItem, Workspace } from "@/lib/api";
 import { WorkspaceSwitcher } from "@/components/workspace/workspace-switcher";
 import { UserAccountMenu } from "@/components/workspace/user-account-menu";
+import { ThemeToggle } from "@/components/workspace/theme-toggle";
 
 interface Props {
   workspace: Pick<Workspace, "nanoid" | "name" | "domain">;
@@ -321,6 +322,15 @@ export function WorkspaceShell({
           </Button>
           <h1 className="text-lg font-semibold">{pageTitle}</h1>
             <div className="ml-auto flex items-center gap-2">
+            <ThemeToggle />
+            <Link
+              href={`/${workspace.domain}/dashboard/orders`}
+              title="Your orders"
+              aria-label="Your orders"
+              className="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-input/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+            >
+              <ShoppingCart className="size-4" />
+            </Link>
             {user.isAdmin ? (
               <Link
                 href={`/${workspace.domain}/dashboard/livechat`}

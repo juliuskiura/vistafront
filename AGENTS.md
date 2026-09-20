@@ -680,6 +680,63 @@ const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 Allowed alternatives if `ConfirmDialog` does not fit the use case: use the underlying
 `Dialog` primitives (radix `Dialog`, `AlertDialog`, etc.) — the point is a styled,
 non-blocking confirmation, not the native browser dialog.
+
+### 11. Main pages always wear a Banner header
+
+Every main page under `app/(app)/[workspace]/dashboard/<feature>/page.tsx` (and its
+feature layouts) MUST render the shared `Banner` component (`@/components/banner`)
+as its **first element, full-bleed** — no wrapper container, no `max-w` constraint,
+no padding around the banner. Follow the reference implementation in
+`app/(app)/[workspace]/dashboard/account/account-layout.tsx`:
+
+```tsx
+return (
+  <div className="flex min-h-full flex-col">
+    <Banner title="..." description="..." />
+    <div className="mt-6 flex-1">{/* page content */}</div>
+  </div>
+);
+```
+
+- The `Banner` sits directly inside the `flex min-h-full flex-col` wrapper; its
+  internal negative margins bleed it edge-to-edge against the shell `<main>`
+  padding. Do **not** wrap it in `mx-auto max-w-*` — that reintroduces side whitespace.
+- When a user asks for a "header", implement it as this same `Banner` pattern from
+  `/dashboard/account`: gradient `from-primary-600 to-secondary-600` strip with glow
+  orbs, `title` + `description`, and optional `actions` (e.g. a back link) in the
+  top-right of the banner — never a bespoke header bar.
+- Dates shown on these pages use the medium date format, "Sep 20, 2026"
+  (abbreviated month, day, year) via `formatMediumDate` in `lib/dates.ts` —
+  not ISO `YYYY-MM-DD` strings and not `new Date(x).toISOString().split("T")[0]`.
+---
+
+### 12. Always format dates with the medium date format
+
+Every date rendered in the UI must use the medium date format — "Sep 20, 2026"
+(abbreviated month, day, year) — via the shared helper
+`formatMediumDate(value)` in `lib/dates.ts`. This applies everywhere: list rows,
+detail pages, invoices, billing, tables, tooltips, and server components.
+
+```tsx
+// ✅ CORRECT — shared medium-date helper, handles ISO timestamps AND
+// date-only "YYYY-MM-DD" values without timezone drift
+import { formatMediumDate } from "@/lib/dates";
+<p>{formatMediumDate(order.next_billing_date)}</p>
+
+// ❌ FORBIDDEN — raw ISO output or ad-hoc locale calls
+<p>{order.created_at.split("T")[0]}</p>
+<p>{new Date(x).toLocaleDateString()}</p>
+<p>{new Date(x).toISOString().slice(0, 10)}</p>
+```
+
+- The helper is TZ-safe: date-only `YYYY-MM-DD` values parse as local noon so they
+  never shift a day in negative-UTC-offset timezones.
+- Do **not** redefine the format inline with `toLocaleDateString`/`Intl.DateTimeFormat`
+  in a component. There is one source of truth: `lib/dates.ts`. If an existing
+  helper (e.g. billing's `formatDate`) produces this same format, it delegates to
+  `formatMediumDate` — never reimplement it.
+- Only non-rendered values may keep machine formats: `<input type="date">` values,
+  URLs, query params, and payloads sent to the backend.
 ---
 
 ## Verification Checklist
