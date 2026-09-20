@@ -46,7 +46,7 @@ export async function getCurrentSubscription({
 }: {
   workspace: string;
 }): Promise<CurrentSubscription | null> {
-  return serverFetch<CurrentSubscription>("/apis/subscription/current/", {
+  return serverFetch<CurrentSubscription>("/apis/billing/subscription/current/", {
     workspace,
   });
 }

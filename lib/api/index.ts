@@ -59,6 +59,12 @@ export {
 } from "./billing";
 
 export {
+  createOrder,
+  getOrder,
+  listOrders,
+} from "./orders";
+
+export {
   createPlan,
   createPlanFeature,
   createPlanFeatures,

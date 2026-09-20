@@ -10,7 +10,7 @@ import { serverFetch, serverMutate } from "./server-fetch";
 import type { RequestOptions } from "./server-fetch-types";
 
 export async function listInvoices({ workspace }: { workspace: string }): Promise<Invoice[]> {
-  const payload = await serverFetch<Paginated<Invoice> | Invoice[]>("/apis/invoices/", { workspace });
+  const payload = await serverFetch<Paginated<Invoice> | Invoice[]>("/apis/billing/invoices/", { workspace });
   return Array.isArray(payload) ? payload : payload.results ?? [];
 }
 
@@ -18,7 +18,7 @@ export async function createInvoice(
   body: InvoiceInput,
   { workspace }: { workspace: string },
 ): Promise<Invoice> {
-  return serverMutate<Invoice>("/apis/invoices/create/", {
+  return serverMutate<Invoice>("/apis/billing/invoices/create/", {
     method: "POST",
     body,
     workspace,
@@ -31,7 +31,7 @@ export async function extendInvoice(
   { workspace }: { workspace: string },
 ): Promise<InvoiceExtensionForm> {
   return serverMutate<InvoiceExtensionForm>(
-    `/apis/invoices/${invoiceNanoid}/extend/`,
+    `/apis/billing/invoices/${invoiceNanoid}/extend/`,
     {
       method: "POST",
       body,
@@ -40,7 +40,7 @@ export async function extendInvoice(
   );
 }
 export async function listPayments({ workspace }: { workspace: string }): Promise<Payment[]> {
-  const payload = await serverFetch<Paginated<Payment> | Payment[]>("/apis/payments/", { workspace });
+  const payload = await serverFetch<Paginated<Payment> | Payment[]>("/apis/billing/payments/", { workspace });
   return Array.isArray(payload) ? payload : payload.results ?? [];
 }
 export async function listPaymentMethods(
@@ -49,7 +49,7 @@ export async function listPaymentMethods(
 ): Promise<PaymentMethod[]> {
   const qs = clientBusiness ? `?client_business=${encodeURIComponent(clientBusiness)}` : "";
   const payload = await serverFetch<Paginated<PaymentMethod> | PaymentMethod[]>(
-    `/apis/payment-methods/${qs}`,
+    `/apis/billing/payment-methods/${qs}`,
     { workspace },
   );
   return Array.isArray(payload) ? payload : payload.results ?? [];

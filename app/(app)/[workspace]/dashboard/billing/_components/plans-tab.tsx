@@ -8,12 +8,14 @@ export function PlansTab({
   subscription,
   workspaceName,
   workspaceDomain,
+  clientBusinessNanoid,
   referralCode,
 }: {
   plans: SubsPlan[];
   subscription: CurrentSubscription | null;
   workspaceName: string;
   workspaceDomain: string;
+  clientBusinessNanoid: string;
   referralCode?: string;
 }) {
   // Find trial and paid plans from the plans array
@@ -61,6 +63,7 @@ export function PlansTab({
             isCurrent={subscription?.plan_slug === plan.slug}
             subscription={subscription}
             workspaceDomain={workspaceDomain}
+            clientBusinessNanoid={clientBusinessNanoid}
             referralCode={referralCode}
           />
         ))}

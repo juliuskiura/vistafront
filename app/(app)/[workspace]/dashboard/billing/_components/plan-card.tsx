@@ -1,16 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Check, Clock, Users } from '@/lib/icons';
 import { VSButton } from "@/components/shared/components/customUi/VSButton";
 import type { CurrentSubscription, SubsPlan } from "@/lib/api";
 import { formatDate, trialDaysLeft } from "./dates";
 import { ReferralModal } from "./referral-modal";
+import { choosePaidPlan } from "@/app/(app)/[workspace]/dashboard/orders/actions";
 
 function PlanFeatures({ plan }: { plan: SubsPlan }) {
   const features = plan.features ?? [];
-  console.log('plan: ', plan)
   return (
     <ul className="space-y-3.5 text-sm text-slate-700 mb-8">
       {features.map((feature) => (
@@ -38,6 +38,7 @@ export function PlanCard({
   isCurrent,
   subscription,
   workspaceDomain,
+  clientBusinessNanoid,
   referralCode,
 }: {
   plan: SubsPlan;
@@ -45,11 +46,36 @@ export function PlanCard({
   isCurrent: boolean;
   subscription: CurrentSubscription | null;
   workspaceDomain: string;
+  clientBusinessNanoid: string;
   referralCode?: string;
 }) {
   const [referralOpen, setReferralOpen] = useState(false);
+  const [choosing, setChoosing] = useState(false);
+  const [chooseError, setChooseError] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
   const trialDays = trialDaysLeft(subscription?.current_period_end);
   const periodEnd = subscription?.current_period_end;
+
+  function handleChoosePaidPlan() {
+    setChooseError(null);
+    setChoosing(true);
+    startTransition(async () => {
+      try {
+        await choosePaidPlan({
+          clientBusiness: clientBusinessNanoid,
+          planNanoid: plan.nanoid,
+          workspaceDomain,
+        });
+      } catch (error) {
+        setChoosing(false);
+        setChooseError(
+          error instanceof Error && error.message
+            ? error.message
+            : "We could not create your order. Please try again.",
+        );
+      }
+    });
+  }
 
   const cardClass = isTrial
     ? `bg-white border rounded-2xl p-8 flex flex-col justify-between transition-all duration-200 ${
@@ -145,27 +171,36 @@ export function PlanCard({
             referralCode={referralCode}
           />
         </>
-      ) : (
+      ) : isCurrent ? (
         <VSButton
-          id="btn-choose-paid"
+          id="btn-manage-billing"
           asChild
           variant="primary"
           appearance="solid"
           size="lg"
           className="w-full"
         >
-          {isCurrent ? (
-            <Link href={`/${workspaceDomain}/dashboard/billing`}>
-              Manage Billing Details
-            </Link>
-          ) : (
-            <Link
-              href={`/${workspaceDomain}/dashboard/billing/plans/${plan.nanoid}`}
-            >
-              Choose Paid Plan →
-            </Link>
-          )}
+          <Link href={`/${workspaceDomain}/dashboard/billing`}>
+            Manage Billing Details
+          </Link>
         </VSButton>
+      ) : (
+        <div className="space-y-2">
+          <VSButton
+            id="btn-choose-paid"
+            variant="primary"
+            appearance="solid"
+            size="lg"
+            className="w-full"
+            disabled={choosing}
+            onClick={handleChoosePaidPlan}
+          >
+            {choosing ? "Creating your order…" : "Choose Paid Plan →"}
+          </VSButton>
+          {chooseError && (
+            <p className="text-center text-xs text-red-600">{chooseError}</p>
+          )}
+        </div>
       )}
     </div>
   );

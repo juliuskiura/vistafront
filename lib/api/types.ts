@@ -38,6 +38,7 @@ export interface ClientBusiness {
   business_email: string;
   is_active: boolean;
   created_at: string;
+  workspace_count: number;
 }
 
 export interface CreateClientBusinessBody {
@@ -306,6 +307,50 @@ export interface PaymentMethod {
   is_active: boolean;
 }
 
+export type OrderStatus =
+  | "draft"
+  | "pending"
+  | "confirmed"
+  | "cancelled"
+  | "expired";
+
+export interface OrderItem {
+  nanoid: string;
+  order: string;
+  /** Flattened ``product_ref`` snapshot: ``{type, id, nanoid}``. */
+  product?: { type: string; id: number; nanoid: string | null };
+  description: string;
+  quantity: number;
+  unit_price: string;
+  amount: string;
+  created_at: string;
+}
+
+export interface Order {
+  refid: string;
+  nanoid: string;
+  client_business: { nanoid: string; name: string };
+  status: OrderStatus;
+  currency: string;
+  issued_at: string | null;
+  expires_at: string | null;
+  confirmed_at: string | null;
+  cancelled_at: string | null;
+  created_at: string;
+  updated_at: string;
+  total: number | string;
+  /** Next monthly billing date, ``YYYY-MM-DD`` (computed server-side). */
+  next_billing_date: string | null;
+  items: OrderItem[];
+}
+
+export interface OrderInput {
+  client_business: string;
+  plan: string;
+  status?: OrderStatus;
+  currency?: string;
+}
+
 
 
 export interface PlanApp {
@@ -319,7 +364,7 @@ export type SubscriptionStatus = "active" | "past_due" | "cancelled";
 
 /**
  * The active workspace's own subscription, as returned by the workspace-scoped
- * `/apis/subscription/current/` endpoint (customer-facing billing).
+ * `/apis/billing/subscription/current/` endpoint (customer-facing billing).
  */
 export interface CurrentSubscription {
   id: number;

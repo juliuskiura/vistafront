@@ -31,6 +31,7 @@ export default async function BillingPage({
       subscription={subscription}
       workspaceName={active.name}
       workspaceDomain={active.domain}
+      clientBusinessNanoid={active.client_business}
     />
   );
 }

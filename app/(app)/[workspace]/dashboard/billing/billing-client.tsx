@@ -43,6 +43,7 @@ export function BillingClient({
   subscription,
   workspaceName,
   workspaceDomain,
+  clientBusinessNanoid,
   referralCode,
 }: {
   invoices: Invoice[];
@@ -51,6 +52,7 @@ export function BillingClient({
   subscription: CurrentSubscription | null;
   workspaceName: string;
   workspaceDomain: string;
+  clientBusinessNanoid: string;
   referralCode?: string;
 }) {
   const [tab, setTab] = useState<Tab>("plans");
@@ -92,6 +94,7 @@ export function BillingClient({
             subscription={subscription}
             workspaceName={workspaceName}
             workspaceDomain={workspaceDomain}
+            clientBusinessNanoid={clientBusinessNanoid}
             referralCode={referralCode}
           />
         )}

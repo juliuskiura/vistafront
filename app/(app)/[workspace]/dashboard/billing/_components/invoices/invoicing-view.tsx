@@ -23,6 +23,9 @@ interface InvoiceData {
   currency: string;
   periodStart: string;
   periodEnd: string;
+  /** Next monthly billing date, ``YYYY-MM-DD``. Rendered by the backend.
+   * Omit to hide the "Next billing date" banner. */
+  nextBillingDate?: string;
   items: Array<{
     /** For the plan row this is the plan label; for feature rows, `PlanFeature.label`. */
     description: string;
@@ -40,9 +43,11 @@ interface InvoiceData {
 interface InvoiceViewProps {
   invoice: InvoiceData;
   workspaceDomain: string;
+  workspaceCount: number;
+  organizationName: string;
 }
 
-export default function InvoiceView({ invoice, workspaceDomain }: InvoiceViewProps) {
+export default function InvoiceView({ invoice, workspaceDomain, workspaceCount, organizationName }: InvoiceViewProps) {
   const [billingCycle, setBillingCycle] = useState('monthly');
   const [isProcessing, setIsProcessing] = useState(false);
   const [successModal, setSuccessModal] = useState(false);
@@ -185,24 +190,24 @@ export default function InvoiceView({ invoice, workspaceDomain }: InvoiceViewPro
                       <Layers className="w-4 h-4 text-primary-500" />
                       Workspaces
                     </span>
-                    <span className="text-slate-900">2 of 5 active</span>
+                    <span className="text-slate-900">({workspaceCount} workspace{workspaceCount !== 1 ? 's' : ''})</span>
                   </div>
                   <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden p-0.5">
-                    <div className="bg-gradient-to-r from-primary-500 to-primary-600 h-full rounded-full transition-all duration-500" style={{ width: '40%' }}></div>
+                    <div className="bg-gradient-to-r from-primary-500 to-primary-600 h-full rounded-full transition-all duration-500" style={{ width: '100%' }}></div>
                   </div>
                 </div>
 
-                {/* Storage Library Meter */}
+                {/* Organization Meter */}
                 <div>
                   <div className="flex justify-between text-xs font-semibold text-slate-700 mb-2">
                     <span className="flex items-center gap-1.5 text-slate-600">
                       <Database className="w-4 h-4 text-secondary-500" />
-                      Storage Library
+                      Organization
                     </span>
-                    <span className="text-slate-900">14 GB of 50 GB</span>
+                    <span className="text-slate-900">{organizationName}</span>
                   </div>
                   <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden p-0.5">
-                    <div className="bg-gradient-to-r from-secondary-500 to-primary-500 h-full rounded-full transition-all duration-500" style={{ width: '28%' }}></div>
+                    <div className="bg-gradient-to-r from-secondary-500 to-primary-500 h-full rounded-full transition-all duration-500" style={{ width: '100%' }}></div>
                   </div>
                 </div>
 
@@ -233,12 +238,14 @@ export default function InvoiceView({ invoice, workspaceDomain }: InvoiceViewPro
               </div>
 
               {/* Next billing date banner */}
-              <div className="bg-amber-50/80 border border-amber-200/60 rounded-2xl p-3.5 mb-6 flex items-center justify-between text-xs">
-                <span className="text-slate-600 font-medium">Next billing date:</span>
-                <span className="font-bold bg-amber-200/70 text-slate-800 px-2.5 py-1 rounded-lg">
-                  Oct 8, 2026
-                </span>
-              </div>
+              {invoice.nextBillingDate && (
+                <div className="bg-amber-50/80 border border-amber-200/60 rounded-2xl p-3.5 mb-6 flex items-center justify-between text-xs">
+                  <span className="text-slate-600 font-medium">Next billing date:</span>
+                  <span className="font-bold bg-amber-200/70 text-slate-800 px-2.5 py-1 rounded-lg">
+                    {formatDate(invoice.nextBillingDate)}
+                  </span>
+                </div>
+              )}
 
               {/* Cost breakdown list */}
               <div className="space-y-3.5 text-xs md:text-sm mb-6">
