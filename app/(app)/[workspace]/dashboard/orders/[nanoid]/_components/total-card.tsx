@@ -1,21 +1,21 @@
 import { HelpCircle, Lock, PackageCheck, ShieldCheck } from "@/lib/icons";
 import { Card } from "@/components/ui/card";
-import { formatPrice } from "../confirm/_components/order-summary";
+import { formatPrice } from "./format";
 
 const fmt = (n: number) => formatPrice(n, "KES");
 
 export function TotalCard({
-  keptCount,
-  knockedCount,
+  itemCount,
   totalDue,
-  onContinue,
+  confirming,
+  onConfirm,
   organizationName,
   planLabel,
 }: {
-  keptCount: number;
-  knockedCount: number;
+  itemCount: number;
   totalDue: number;
-  onContinue: () => void;
+  confirming: boolean;
+  onConfirm: () => void;
   organizationName: string;
   planLabel: string;
 }) {
@@ -34,19 +34,7 @@ export function TotalCard({
           <div className="flex items-center justify-between text-muted-foreground">
             <dt>On this order</dt>
             <dd className="font-semibold text-foreground">
-              {keptCount} {plural(keptCount)}
-            </dd>
-          </div>
-          <div className="flex items-center justify-between text-muted-foreground">
-            <dt>Knocked out</dt>
-            <dd
-              className={`font-semibold ${
-                knockedCount > 0
-                  ? "text-amber-600 dark:text-amber-400"
-                  : "text-muted-foreground"
-              }`}
-            >
-              {knockedCount}
+              {itemCount} {plural(itemCount)}
             </dd>
           </div>
           <div className="flex items-center justify-between text-muted-foreground">
@@ -71,23 +59,24 @@ export function TotalCard({
 
         <button
           type="button"
-          onClick={onContinue}
-          disabled={nothingToPay}
+          onClick={onConfirm}
+          disabled={nothingToPay || confirming}
           className={`mt-5 w-full rounded-lg px-5 py-3 text-sm font-semibold transition-all ${
-            nothingToPay
+            nothingToPay || confirming
               ? "cursor-not-allowed bg-muted text-muted-foreground"
               : "bg-gradient-to-r from-primary-600 to-secondary-600 text-white shadow-sm hover:opacity-95 active:scale-[0.99]"
           }`}
         >
-          {nothingToPay
-            ? "Nothing to pay"
-            : `Confirm & Pay ${fmt(totalDue)}`}
+          {confirming
+            ? "Creating your invoice…"
+            : nothingToPay
+              ? "Nothing to pay"
+              : `Confirm & Pay ${fmt(totalDue)}`}
         </button>
 
         {nothingToPay && (
           <p className="mt-3 text-center text-[11px] leading-relaxed text-muted-foreground">
-            You knocked out every billable line. Restore one to continue to
-            payment.
+            This order has no billable lines. Remove nothing else and try again.
           </p>
         )}
       </Card>
@@ -96,7 +85,7 @@ export function TotalCard({
         <div className="flex items-center gap-3">
           <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-500" />
           <span>
-            Knocking a line out only applies to this checkout. Your{" "}
+            Confirming creates the invoice for the lines on this order. Your{" "}
             <span className="font-semibold text-foreground">{planLabel}</span>{" "}
             plan keeps its included capabilities.
           </span>

@@ -4,20 +4,19 @@ import { useState } from "react";
 
 import type { OrderItem, SubsPlan } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { Fab } from "@/components/ui/fab";
 import { resolveCapabilityStyle } from "@/lib/icon-maps";
 import {
   Check,
   ChevronDown,
   ChevronUp,
+  Loader,
   Minus,
   Plus,
-  RotateCcw,
   Sparkles,
   X,
   Zap,
 } from "@/lib/icons";
-import { formatPrice } from "../confirm/_components/order-summary";
+import { formatPrice } from "./format";
 import { MAX_QTY, MIN_QTY } from "./constants";
 
 const fmt = (n: number) => formatPrice(n, "KES");
@@ -112,19 +111,19 @@ export function BillableItem({
   item,
   plan,
   quantity,
-  included,
   busy,
+  removing,
   qtyError,
-  onToggle,
+  onRemove,
   onQuantityChange,
 }: {
   item: OrderItem;
   plan?: SubsPlan;
   quantity: number;
-  included: boolean;
   busy: boolean;
+  removing?: boolean;
   qtyError?: string | null;
-  onToggle: () => void;
+  onRemove: () => void;
   onQuantityChange: (quantity: number) => void;
 }) {
   const unit = Number(item.unit_price ?? 0);
@@ -137,12 +136,7 @@ export function BillableItem({
         : null) ?? "Add-on line";
 
   return (
-    <div
-      className={cn(
-        "rounded-xl border bg-card transition-all",
-        included ? "border-border" : "border-dashed border-border/60 opacity-70",
-      )}
-    >
+    <div className="rounded-xl border border-border bg-card transition-all">
       <div className="p-4 md:p-5">
         <div className="flex gap-4">
           <PlanThumb />
@@ -159,18 +153,22 @@ export function BillableItem({
                   </p>
                 )}
               </div>
-              <Fab
-                size="sm"
-                variant={included ? "destructive" : "outline-primary"}
-                onClick={onToggle}
-                aria-label={
-                  included
-                    ? `Remove ${item.description} from this order`
-                    : `Restore ${item.description}`
-                }
+              <button
+                type="button"
+                onClick={onRemove}
+                disabled={removing || busy}
+                aria-label={`Remove ${item.description} from this order`}
+                className={cn(
+                  "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-colors",
+                  "border-border/70 text-muted-foreground hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive",
+                )}
               >
-                {included ? <X /> : <RotateCcw />}
-              </Fab>
+                {removing ? (
+                  <Loader className="h-4 w-4 animate-spin" />
+                ) : (
+                  <X className="h-4 w-4" />
+                )}
+              </button>
             </div>
 
             {isPlan && plan && (plan.features?.length ?? 0) > 0 && (
@@ -180,46 +178,35 @@ export function BillableItem({
         </div>
 
         <div className="mt-4 flex items-center justify-between gap-4 border-t border-border/60 pt-3">
-          {included ? (
-            <div className="inline-flex items-center rounded-full border border-border bg-muted/40 p-0.5">
-              <button
-                type="button"
-                onClick={() =>
-                  onQuantityChange(Math.max(MIN_QTY, currentQty - 1))
-                }
-                disabled={busy || currentQty <= MIN_QTY}
-                aria-label="Decrease quantity"
-                className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary disabled:opacity-40 disabled:hover:bg-transparent"
-              >
-                <Minus className="h-3.5 w-3.5" />
-              </button>
-              <span className="min-w-9 text-center text-sm font-bold text-foreground">
-                {currentQty}
-              </span>
-              <button
-                type="button"
-                onClick={() =>
-                  onQuantityChange(Math.min(MAX_QTY, currentQty + 1))
-                }
-                disabled={busy || currentQty >= MAX_QTY}
-                aria-label="Increase quantity"
-                className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary disabled:opacity-40 disabled:hover:bg-transparent"
-              >
-                <Plus className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          ) : (
-            <span className="rounded-full bg-amber-500/15 px-2.5 py-1 text-[10px] font-semibold uppercase text-amber-600 dark:text-amber-400">
-              Knocked out
+          <div className="inline-flex items-center rounded-full border border-border bg-muted/40 p-0.5">
+            <button
+              type="button"
+              onClick={() =>
+                onQuantityChange(Math.max(MIN_QTY, currentQty - 1))
+              }
+              disabled={busy || currentQty <= MIN_QTY}
+              aria-label="Decrease quantity"
+              className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary disabled:opacity-40 disabled:hover:bg-transparent"
+            >
+              <Minus className="h-3.5 w-3.5" />
+            </button>
+            <span className="min-w-9 text-center text-sm font-bold text-foreground">
+              {currentQty}
             </span>
-          )}
+            <button
+              type="button"
+              onClick={() =>
+                onQuantityChange(Math.min(MAX_QTY, currentQty + 1))
+              }
+              disabled={busy || currentQty >= MAX_QTY}
+              aria-label="Increase quantity"
+              className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary disabled:opacity-40 disabled:hover:bg-transparent"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+          </div>
 
-          <div
-            className={cn(
-              "flex shrink-0 flex-col items-end",
-              !included && "opacity-70",
-            )}
-          >
+          <div className="flex shrink-0 flex-col items-end">
             <span className="font-display text-lg font-extrabold text-foreground">
               {fmt(unit * currentQty)}
             </span>

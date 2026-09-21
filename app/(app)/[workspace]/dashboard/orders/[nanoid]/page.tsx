@@ -66,7 +66,7 @@ export default async function OrderPage({
     <div className="flex min-h-full flex-col">
       <Banner
         title="Review your order"
-        description={`Your ${plan.label} solution for ${active.name}. Knock out any line or tune its quantity, then continue to payment.`}
+        description={`Your ${plan.label} solution for ${active.name}. Tune each line's quantity or remove it, then confirm and pay.`}
       />
       <CheckoutClient
         order={order}

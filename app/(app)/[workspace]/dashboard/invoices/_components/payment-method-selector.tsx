@@ -86,7 +86,7 @@ export function PaymentMethodSelector({
                   : "glass-surface hover:border-primary/40 hover:-translate-y-0.5 opacity-85 hover:opacity-100"
               }`}
             >
-              <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none" />
+              <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/40 to-transparent pointer-events-none" />
 
               <div className="flex items-center justify-between mb-3 w-full">
                 <div className="flex items-center gap-2">
@@ -105,7 +105,7 @@ export function PaymentMethodSelector({
                   }`}
                 >
                   {isSelected && (
-                    <Check className="w-3 h-3 stroke-[3] checkout-fade-slide" />
+                    <Check className="w-3 h-3 stroke-3 checkout-fade-slide" />
                   )}
                 </div>
               </div>

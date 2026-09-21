@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Download, FileText, CheckCircle } from '@/lib/icons';
+import { Download, FileText, CheckCircle } from "@/lib/icons";
+import { formatMediumDate } from "@/lib/dates";
 
 interface InvoiceData {
   id: string;
@@ -35,14 +36,7 @@ interface InvoiceDisplayProps {
 }
 
 export function InvoiceDisplay({ invoice, workspaceDomain }: InvoiceDisplayProps) {
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
+  const formatDate = (dateString: string) => formatMediumDate(dateString);
 
   const formatAmount = (amount: number) => {
     return new Intl.NumberFormat('en-KE', {
@@ -80,16 +74,15 @@ export function InvoiceDisplay({ invoice, workspaceDomain }: InvoiceDisplayProps
   return (
     <div className="space-y-8 pt-6">
 
-      {/* Invoice Header */}
+      {/* Invoice Header (title/date live in the page Banner) */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
             <FileText className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-bold">Invoice {invoice.invoiceNumber}</h1>
+            <p className="text-sm text-muted-foreground">
+              Issued on {formatDate(invoice.issuedDate)} • Due on {formatDate(invoice.dueDate)}
+            </p>
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Issued on {formatDate(invoice.issuedDate)} • Due on {formatDate(invoice.dueDate)}
-          </p>
         </div>
         
         <div className="flex flex-col items-end gap-2">
@@ -191,16 +184,10 @@ export function InvoiceDisplay({ invoice, workspaceDomain }: InvoiceDisplayProps
             <span className="text-muted-foreground">Subtotal</span>
             <span className="font-medium">{formatAmount(invoice.totalAmount)}</span>
           </div>
-          {(invoice.status === 'paid' || invoice.status === 'pending') && (
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">VAT (16%)</span>
-              <span className="font-medium">Ksh {(invoice.totalAmount * 0.16).toLocaleString()}</span>
-            </div>
-          )}
-          
+
           <div className="flex justify-between text-base font-bold pt-2 border-t border-border/60">
             <span>Total Due</span>
-            <span className="text-primary">Ksh {invoice.totalAmount.toLocaleString()}</span>
+            <span className="text-primary">{formatAmount(invoice.totalAmount)}</span>
           </div>
         </div>
       </div>

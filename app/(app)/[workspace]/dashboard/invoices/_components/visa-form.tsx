@@ -11,6 +11,7 @@ interface VisaFormProps {
   onSubmit: (e: React.FormEvent) => void;
   isProcessing: boolean;
   amountFormatted: string;
+  invoiceNumber: string;
 }
 
 export function VisaForm({
@@ -19,6 +20,7 @@ export function VisaForm({
   onSubmit,
   isProcessing,
   amountFormatted,
+  invoiceNumber,
 }: VisaFormProps) {
   const [showCvvHint, setShowCvvHint] = useState(false);
 
@@ -233,6 +235,22 @@ export function VisaForm({
             </span>
           </label>
         </div>
+      </div>
+
+      <div>
+        <label
+          htmlFor="visa-invoice-input"
+          className="block text-xs font-semibold text-foreground/90 mb-1.5 uppercase tracking-wider"
+        >
+          Invoice Number
+        </label>
+        <input
+          id="visa-invoice-input"
+          type="text"
+          readOnly
+          value={invoiceNumber}
+          className="glass-input w-full px-4 py-3 rounded-xl font-mono text-xs opacity-80 cursor-not-allowed bg-card/40"
+        />
       </div>
 
       <div className="glass-surface p-3 rounded-xl flex items-center gap-3 text-xs text-muted-foreground">

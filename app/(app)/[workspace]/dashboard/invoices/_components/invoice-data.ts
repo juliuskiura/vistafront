@@ -44,12 +44,12 @@ export interface InvoiceData {
   items: InvoiceItem[];
 }
 
-/** Build the invoice the order page and its confirmation page both render.
+/** Build the invoice for the invoice detail page.
  *
- * ``keptItemNanoids`` (optional) restricts the billable rows to a subset of the
- * order's items — the checkout page lets the user "knock out" chargeable lines
- * before paying, and the total is recomputed from whatever remains. When
- * ``null`` every order item is billed exactly as the backend priced it.
+ * The whole order is billed: the checkout has already removed unwanted lines,
+ * so every remaining item is rendered as a charge exactly as the backend
+ * priced it. ``keptItemNanoids`` may restrict the billable rows further for
+ * callers that need a subset view; when ``null`` every order item is billed.
  */
 export function buildInvoiceData(
   order: Order,

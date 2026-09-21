@@ -52,10 +52,15 @@ export {
 
 export {
   listInvoices,
+  getInvoice,
   createInvoice,
+  createInvoiceFromOrder,
   extendInvoice,
   listPayments,
   listPaymentMethods,
+  getPaypalQuote,
+  createPaypalCheckout,
+  capturePaypalOrder,
 } from "./billing";
 
 export {

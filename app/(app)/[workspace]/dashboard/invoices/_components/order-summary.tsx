@@ -1,20 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { Award, Check, Lock, ShieldCheck, Tag } from "@/lib/icons";
+import { Award, Check, Lock, Tag } from "@/lib/icons";
 import type { CheckoutCurrency, OrderLine } from "./types";
 
-export const KES_PER_USD = 130;
 export const EUR_PER_USD = 0.92;
 
-export function formatPrice(kes: number, currency: CheckoutCurrency): string {
+export function formatPrice(
+  kes: number,
+  currency: CheckoutCurrency,
+  usdPerKes: number = 1 / 130,
+): string {
   if (currency === "KES") {
     return `KES ${kes.toLocaleString()}`;
   }
   if (currency === "EUR") {
-    return `€${((kes / KES_PER_USD) * EUR_PER_USD).toFixed(2)}`;
+    return `€${(kes * usdPerKes * EUR_PER_USD).toFixed(2)}`;
   }
-  return `$${(kes / KES_PER_USD).toFixed(2)}`;
+  return `$${(kes * usdPerKes).toFixed(2)}`;
 }
 
 interface OrderSummaryProps {
@@ -23,6 +26,8 @@ interface OrderSummaryProps {
   includedCount: number;
   baseKES: number;
   currency: CheckoutCurrency;
+  /** Backend FX factor (USD per KES, markup included); display only. */
+  usdPerKes?: number | null;
   onCurrencyChange: (curr: CheckoutCurrency) => void;
   discountPercent: number;
   onApplyPromo: (code: string) => boolean;
@@ -35,6 +40,7 @@ export function OrderSummary({
   includedCount,
   baseKES,
   currency,
+  usdPerKes,
   onCurrencyChange,
   discountPercent,
   onApplyPromo,
@@ -44,6 +50,7 @@ export function OrderSummary({
   const [promoError, setPromoError] = useState("");
   const [isPromoOpen, setIsPromoOpen] = useState(false);
 
+  const fxRate = usdPerKes ?? 1 / 130;
   const discountedKES = baseKES * (1 - discountPercent / 100);
 
   const handleApplyPromo = (e: React.FormEvent) => {
@@ -100,12 +107,12 @@ export function OrderSummary({
               {(line.detail || (line.quantity ?? 1) > 1) && (
                 <div className="text-[11px] text-muted-foreground">
                   {line.detail ??
-                    `${line.quantity} × ${formatPrice(line.total / (line.quantity ?? 1), "KES")}`}
+                    `${line.quantity} × ${formatPrice(line.total / (line.quantity ?? 1), "KES", fxRate)}`}
                 </div>
               )}
             </div>
             <span className="font-mono font-medium text-foreground shrink-0">
-              {formatPrice(line.total, currency)}
+              {formatPrice(line.total, currency, fxRate)}
             </span>
           </div>
         ))}
@@ -128,7 +135,7 @@ export function OrderSummary({
               {discountPercent}%)
             </span>
             <span className="font-mono">
-              -{formatPrice(baseKES * (discountPercent / 100), currency)}
+              -{formatPrice(baseKES * (discountPercent / 100), currency, fxRate)}
             </span>
           </div>
         )}
@@ -197,7 +204,7 @@ export function OrderSummary({
           </div>
           <div className="text-right">
             <div className="font-display font-extrabold text-2xl text-primary dark:text-primary-400 tracking-tight">
-              {formatPrice(discountedKES, currency)}
+              {formatPrice(discountedKES, currency, fxRate)}
             </div>
             {currency !== "KES" && (
               <div className="text-[11px] text-muted-foreground font-mono">

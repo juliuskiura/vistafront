@@ -282,8 +282,13 @@ export interface Invoice {
   due_at: string | null;
   paid_at: string | null;
   grace_period_days: number;
+  /** Owning organization brief `{ nanoid, name }` (backend-brief shape). */
+  client_business?: { nanoid: string; name: string };
+  /** The order this invoice bills, by nanoid, when it exists. */
+  order?: string | null;
   extensions?: InvoiceExtension[];
   line_items?: InvoiceLineItem[];
+  created_at?: string;
 }
 
 export interface Payment {
@@ -305,6 +310,24 @@ export interface PaymentMethod {
   brand: string;
   is_default: boolean;
   is_active: boolean;
+}
+
+/** Backend-computed PayPal quote for an invoice (marked-up USD amount). */
+export interface PaypalQuote {
+  amount_kes: string;
+  amount_usd: string;
+  rate: string;
+  rate_date: string;
+}
+
+/** Response from creating a PayPal order — the buy URL to redirect to. */
+export interface PaypalOrder {
+  payment_nanoid: string;
+  order_id: string;
+  approve_url: string;
+  status: string;
+  amount: string;
+  currency: string;
 }
 
 export type OrderStatus =

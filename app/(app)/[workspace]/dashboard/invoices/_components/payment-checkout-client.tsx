@@ -8,10 +8,11 @@ import {
   type Order,
   type PaymentMethod,
   type SubsPlan,
+  type PaypalQuote,
 } from "@/lib/api";
-import { buildInvoiceData } from "../invoice-data";
+import { buildInvoiceData } from "./invoice-data";
 import { formatMediumDate } from "@/lib/dates";
-import { PaymentMethodSelector } from "./_components/payment-method-selector";
+import { PaymentMethodSelector } from "./payment-method-selector";
 import {
   type CardFormData,
   type CheckoutCurrency,
@@ -19,12 +20,13 @@ import {
   type PaymentMethodId,
   type PaypalFormData,
   type TransactionReceipt,
-} from "./_components/types";
-import { formatPrice, KES_PER_USD, OrderSummary } from "./_components/order-summary";
-import { MpesaForm } from "./_components/mpesa-form";
-import { VisaForm } from "./_components/visa-form";
-import { PaypalForm } from "./_components/paypal-form";
-import { PaymentSuccessModal } from "./_components/payment-success-modal";
+} from "./types";
+import { formatPrice, OrderSummary } from "./order-summary";
+import { MpesaForm } from "./mpesa-form";
+import { VisaForm } from "./visa-form";
+import { PaypalForm } from "./paypal-form";
+import { PaymentSuccessModal } from "./payment-success-modal";
+import { startPaypalCheckout } from "../[nanoid]/actions";
 
 function toPlus254(raw: string): string {
   const digits = raw.replace(/\D/g, "");
@@ -34,6 +36,16 @@ function toPlus254(raw: string): string {
 }
 
 interface PaymentCheckoutClientProps {
+  invoiceNumber: string;
+  /** Backend invoice nanoid — the object PayPal charges and captures. */
+  invoiceNanoid: string;
+  /** Authoritative KES total straight from the backend invoice. */
+  invoiceTotal: number;
+  invoiceCurrency: string;
+  /** Backend-computed (marked-up) USD quote; null if the quote failed. */
+  paypalQuote: PaypalQuote | null;
+  /** Tenant workspace slug scoping every backend call. */
+  workspace: string;
   order: Order;
   plan: SubsPlan;
   paymentMethods: PaymentMethod[];
@@ -44,6 +56,12 @@ interface PaymentCheckoutClientProps {
 }
 
 export function PaymentCheckoutClient({
+  invoiceNumber,
+  invoiceNanoid,
+  invoiceTotal,
+  invoiceCurrency,
+  paypalQuote,
+  workspace,
   order,
   plan,
   paymentMethods,
@@ -52,9 +70,12 @@ export function PaymentCheckoutClient({
   keptItemNanoids,
 }: PaymentCheckoutClientProps) {
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethodId>("mpesa");
-  const [currency, setCurrency] = useState<CheckoutCurrency>("KES");
+  const [currency, setCurrency] = useState<CheckoutCurrency>(
+    invoiceCurrency?.toUpperCase() === "USD" ? "USD" : "KES",
+  );
   const [isProcessing, setIsProcessing] = useState(false);
   const [receipt, setReceipt] = useState<TransactionReceipt | null>(null);
+  const [paypalError, setPaypalError] = useState("");
 
   const [discountPercent, setDiscountPercent] = useState(0);
   const [activePromo, setActivePromo] = useState("");
@@ -63,8 +84,10 @@ export function PaymentCheckoutClient({
     () => buildInvoiceData(order, plan, keptItemNanoids),
     [order, plan, keptItemNanoids],
   );
-  const baseKES = invoiceData.totalAmount;
-  const invoiceNumber = invoiceData.invoiceNumber;
+  // The backend invoice total is authoritative; the order-derived data is only
+  // used for line-item display.
+  const baseKES = invoiceTotal;
+  const invoiceLabel = invoiceNumber || invoiceData.invoiceNumber;
   const defaultPhone = useMemo(() => {
     const fallback =
       paymentMethods.find((m) => m.is_default) ??
@@ -72,7 +95,7 @@ export function PaymentCheckoutClient({
       null;
     return fallback?.phone ? toPlus254(fallback.phone) : "";
   }, [paymentMethods]);
-  const accountReference = invoiceNumber;
+  const accountReference = invoiceLabel;
 
   const [cardData, setCardData] = useState<CardFormData>({
     cardNumber: "",
@@ -94,6 +117,16 @@ export function PaymentCheckoutClient({
     usePayIn4: false,
     rememberAccount: false,
   });
+
+  // Effective USD-per-KES factor from the backend quote (already includes the
+  // day's markup). Used only for display; the actual charge is computed on the
+  // backend and never on this page.
+  const usdPerKes = useMemo(() => {
+    if (!paypalQuote) return null;
+    const usd = Number(paypalQuote.amount_usd);
+    const kes = Number(paypalQuote.amount_kes);
+    return kes > 0 && usd > 0 ? usd / kes : null;
+  }, [paypalQuote]);
 
   const orderLines = useMemo(
     () =>
@@ -117,10 +150,12 @@ export function PaymentCheckoutClient({
 
   const discountedKES = baseKES * (1 - discountPercent / 100);
   const amountKES = `KES ${Math.round(discountedKES).toLocaleString()}`;
-  const amountUSD = discountedKES / KES_PER_USD;
+  const amountUSD =
+    usdPerKes !== null ? discountedKES * usdPerKes : discountedKES / 130;
 
   const handleSelectMethod = (method: PaymentMethodId) => {
     setSelectedMethod(method);
+    setPaypalError("");
     if (method === "mpesa" && currency === "USD") {
       setCurrency("KES");
     } else if (method !== "mpesa" && currency === "KES") {
@@ -143,8 +178,34 @@ export function PaymentCheckoutClient({
     return false;
   };
 
-  const handlePaymentSubmit = (e: React.FormEvent) => {
+  const handlePaymentSubmit = async (e: React.FormEvent) => {
     if (e && e.preventDefault) e.preventDefault();
+
+    if (selectedMethod === "paypal") {
+      setPaypalError("");
+      setIsProcessing(true);
+      try {
+        const result = await startPaypalCheckout({
+          invoiceNanoid,
+          workspace,
+        });
+        if (!result.ok) {
+          setPaypalError(result.message || "PayPal checkout failed.");
+          setIsProcessing(false);
+        }
+        // On success the server action redirects the buyer to PayPal's
+        // approve URL; this function does not return.
+      } catch (error) {
+        setPaypalError(
+          error instanceof Error && error.message
+            ? error.message
+            : "Could not reach PayPal. Please try again.",
+        );
+        setIsProcessing(false);
+      }
+      return;
+    }
+
     setIsProcessing(true);
 
     setTimeout(() => {
@@ -230,6 +291,7 @@ export function PaymentCheckoutClient({
                     onSubmit={handlePaymentSubmit}
                     isProcessing={isProcessing}
                     amountFormatted={formatPrice(discountedKES, currency)}
+                    invoiceNumber={invoiceLabel}
                   />
                 )}
 
@@ -240,6 +302,7 @@ export function PaymentCheckoutClient({
                     onSubmit={handlePaymentSubmit}
                     isProcessing={isProcessing}
                     amountKES={amountKES}
+                    invoiceNumber={invoiceLabel}
                   />
                 )}
 
@@ -250,6 +313,8 @@ export function PaymentCheckoutClient({
                     onSubmit={handlePaymentSubmit}
                     isProcessing={isProcessing}
                     amountUSD={amountUSD}
+                    invoiceNumber={invoiceLabel}
+                    errorMessage={paypalError}
                   />
                 )}
               </div>
@@ -258,11 +323,12 @@ export function PaymentCheckoutClient({
 
           <aside className="lg:col-span-5 space-y-5 lg:sticky lg:top-24">
             <OrderSummary
-              invoiceNumber={invoiceNumber}
+              invoiceNumber={invoiceLabel}
               lines={orderLines}
               includedCount={includedCount}
               baseKES={baseKES}
               currency={currency}
+              usdPerKes={usdPerKes}
               onCurrencyChange={setCurrency}
               discountPercent={discountPercent}
               onApplyPromo={handleApplyPromo}

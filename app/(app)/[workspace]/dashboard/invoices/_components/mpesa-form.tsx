@@ -19,6 +19,7 @@ interface MpesaFormProps {
   onSubmit: (e: React.FormEvent) => void;
   isProcessing: boolean;
   amountKES: string;
+  invoiceNumber: string;
 }
 
 type StkPhase = "idle" | "prompted" | "approved";
@@ -29,6 +30,7 @@ export function MpesaForm({
   onSubmit,
   isProcessing,
   amountKES,
+  invoiceNumber,
 }: MpesaFormProps) {
   const [stkPhase, setStkPhase] = useState<StkPhase>("idle");
   const [countdown, setCountdown] = useState(45);
@@ -267,7 +269,7 @@ export function MpesaForm({
               id="mpesa-stk-btn"
               type="submit"
               disabled={isProcessing || formData.phoneNumber.length < 8}
-              className="w-full py-3.5 px-6 rounded-xl font-display font-semibold text-sm tracking-wide text-white bg-gradient-to-r from-emerald-600 via-emerald-500 to-emerald-600 hover:from-emerald-500 hover:to-emerald-500 active:scale-[0.99] transition-all duration-200 shadow-lg shadow-emerald-500/25 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2"
+              className="w-full py-3.5 px-6 rounded-xl font-display font-semibold text-sm tracking-wide text-white bg-linear-to-r from-emerald-600 via-emerald-500 to-emerald-600 hover:from-emerald-500 hover:to-emerald-500 active:scale-[0.99] transition-all duration-200 shadow-lg shadow-emerald-500/25 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2"
             >
               {isProcessing ? (
                 <>

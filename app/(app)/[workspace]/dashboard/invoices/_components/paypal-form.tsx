@@ -10,6 +10,8 @@ interface PaypalFormProps {
   onSubmit: (e: React.FormEvent) => void;
   isProcessing: boolean;
   amountUSD: number;
+  invoiceNumber: string;
+  errorMessage?: string;
 }
 
 export function PaypalForm({
@@ -18,6 +20,8 @@ export function PaypalForm({
   onSubmit,
   isProcessing,
   amountUSD,
+  invoiceNumber,
+  errorMessage,
 }: PaypalFormProps) {
   const installmentAmount = (amountUSD / 4).toFixed(2);
 
@@ -122,6 +126,22 @@ export function PaypalForm({
         </label>
       </div>
 
+      <div>
+        <label
+          htmlFor="paypal-invoice-input"
+          className="block text-xs font-semibold text-foreground/90 mb-1.5 uppercase tracking-wider"
+        >
+          Invoice Number
+        </label>
+        <input
+          id="paypal-invoice-input"
+          type="text"
+          readOnly
+          value={invoiceNumber}
+          className="glass-input w-full px-4 py-3 rounded-xl font-mono text-xs opacity-80 cursor-not-allowed bg-card/40"
+        />
+      </div>
+
       <div className="glass-surface p-3 rounded-xl flex items-center gap-3 text-xs text-muted-foreground">
         <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
           <ShieldCheck className="w-4 h-4" />
@@ -158,6 +178,12 @@ export function PaypalForm({
           </>
         )}
       </button>
+
+      {errorMessage && (
+        <p className="text-[11px] text-destructive font-medium">
+          {errorMessage}
+        </p>
+      )}
 
       <p className="text-[11px] text-muted-foreground flex items-center gap-1">
         <HelpCircle className="w-3 h-3" />

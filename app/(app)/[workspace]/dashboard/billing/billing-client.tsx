@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/banner";
 import type {
@@ -83,7 +84,7 @@ export function BillingClient({
 
       <div className="pt-4">
         {tab === "invoices" && (
-          <InvoicesTab invoices={invoices} />
+          <InvoicesTab invoices={invoices} workspaceDomain={workspaceDomain} />
         )}
         {tab === "payment-history" && (
           <PaymentHistoryTab payments={payments} />
@@ -103,7 +104,13 @@ export function BillingClient({
   );
 }
 
-function InvoicesTab({ invoices }: { invoices: Invoice[] }) {
+function InvoicesTab({
+  invoices,
+  workspaceDomain,
+}: {
+  invoices: Invoice[];
+  workspaceDomain: string;
+}) {
   if (invoices.length === 0) {
     return (
       <section className="space-y-4">
@@ -126,12 +133,15 @@ function InvoicesTab({ invoices }: { invoices: Invoice[] }) {
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="font-medium">
-                  {inv.number || inv.refid}{" "}
-                  <span className="text-muted-foreground">
-                    · {inv.total} {inv.currency}
-                  </span>
-                </p>
+                <Link
+                  href={`/${workspaceDomain}/dashboard/invoices/${inv.nanoid}`}
+                  className="font-medium transition-colors hover:text-primary"
+                >
+                  {inv.number || inv.refid}
+                </Link>{" "}
+                <span className="text-muted-foreground">
+                  · {inv.total} {inv.currency}
+                </span>
                 <p className="text-xs text-muted-foreground">
                   Due {formatDate(inv.due_at)}
                   {inv.extensions && inv.extensions.length > 0 && (
