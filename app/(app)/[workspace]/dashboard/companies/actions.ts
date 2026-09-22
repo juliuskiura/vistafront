@@ -12,12 +12,8 @@ import {
   type CreateTierClassificationInput,
 } from "@/lib/schemas";
 import {
-  initialCreateCompanyState,
-  initialCreateTierClassificationState,
   type CreateCompanyActionState,
 } from "./action-state";
-
-export { initialCreateCompanyState, initialCreateTierClassificationState };
 
 /**
  * Server Action: create a new company in the active workspace.

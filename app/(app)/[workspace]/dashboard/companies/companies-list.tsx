@@ -51,10 +51,10 @@ import type {
 import { CompaniesTable } from "@/app/(app)/[workspace]/dashboard/companies/companies-table";
 import {
   createCompanyAction,
-  initialCreateCompanyState,
   createTierClassificationAction,
 } from "@/app/(app)/[workspace]/dashboard/companies/actions";
 import {
+  initialCreateCompanyState,
   initialCreateTierClassificationState,
   type CreateCompanyActionState,
   type CreateTierClassificationActionState,

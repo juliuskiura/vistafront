@@ -4,13 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { createInvitation, revokeInvitation } from "@/lib/api";
 
-export interface InviteActionState {
-  status: "idle" | "success" | "error";
-  message?: string;
-  fieldErrors?: Record<string, string[]>;
-}
-
-export const initialInviteState: InviteActionState = { status: "idle" };
+import type { InviteActionState } from "./action-state";
 
 /**
  * Server Action: send an invite from the workspace settings page.

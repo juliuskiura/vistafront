@@ -16,11 +16,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/lib/context";
+import { sendInviteAction } from "@/app/(app)/[workspace]/dashboard/workspaces/actions";
 import {
   initialInviteState,
-  sendInviteAction,
   type InviteActionState,
-} from "@/app/(app)/[workspace]/dashboard/workspaces/actions";
+} from "@/app/(app)/[workspace]/dashboard/workspaces/action-state";
 
 interface Props {
   workspace: { nanoid: string; name: string };
