@@ -105,7 +105,10 @@ export function InvoiceReceiptView({
         </div>
 
         <dl className="mt-6 grid grid-cols-2 gap-4 border-t border-sidebar-divider pt-5 sm:grid-cols-4">
-          <Detail label="Issued" value={formatMediumDate(invoice.created_at ?? "")} />
+          <Detail
+            label="Issued"
+            value={formatMediumDate(invoice.issued_at ?? invoice.created_at ?? "")}
+          />
           <Detail
             label="Due"
             value={invoice.due_at ? formatMediumDate(invoice.due_at) : "—"}

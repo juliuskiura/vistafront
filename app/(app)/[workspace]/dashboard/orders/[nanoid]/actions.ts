@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { createInvoiceFromOrder, serverMutate, type OrderItem } from "@/lib/api";
+import { createInvoiceFromOrder, cancelOrder, serverMutate, type OrderItem } from "@/lib/api";
 import { MAX_QTY, MIN_QTY } from "./_components/constants";
 
 export interface QuantityActionResult {
@@ -109,4 +109,33 @@ export async function confirmOrder(input: {
     return { ok: false, message };
   }
   redirect(`/${input.workspace}/dashboard/invoices/${invoice.nanoid}`);
+}
+
+export interface CancelOrderResult {
+  ok: boolean;
+  message?: string;
+}
+
+/**
+ * Server Action: cancel a checkout the customer no longer wants.
+ *
+ * Runs the backend order lifecycle (``POST .../orders/<nanoid>/cancel/``:
+ * DRAFT/PENDING/CONFIRMED → CANCELLED, idempotent). On success the order page
+ * revalidates so it re-renders in its terminal cancelled state.
+ */
+export async function cancelOrderAction(input: {
+  orderNanoid: string;
+  workspace: string;
+}): Promise<CancelOrderResult> {
+  try {
+    await cancelOrder(input.orderNanoid, { workspace: input.workspace });
+  } catch (error) {
+    const message =
+      error instanceof Error && error.message
+        ? error.message
+        : "Could not cancel this order. Please try again.";
+    return { ok: false, message };
+  }
+  revalidatePath(`/${input.workspace}/dashboard/orders/${input.orderNanoid}`);
+  return { ok: true };
 }

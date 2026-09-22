@@ -3,7 +3,8 @@
 import { useMemo, useState, useTransition } from "react";
 
 import { type ClientBusiness, type Order, type SubsPlan } from "@/lib/api";
-import { confirmOrder, removeOrderItem, updateOrderItemQuantity } from "./actions";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { cancelOrderAction, confirmOrder, removeOrderItem, updateOrderItemQuantity } from "./actions";
 import { MIN_QTY, MAX_QTY } from "./_components/constants";
 import { ReviewPanel } from "./_components/review-panel";
 import { TotalCard } from "./_components/total-card";
@@ -31,6 +32,9 @@ export function CheckoutClient({
   const [qtyErrors, setQtyErrors] = useState<Record<string, string | null>>({});
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [isConfirming, startConfirm] = useTransition();
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   const totalDue = useMemo(() => {
     if (order.total != null && Number(order.total) > 0) {
@@ -95,6 +99,21 @@ export function CheckoutClient({
     });
   };
 
+  const handleCancel = async () => {
+    setCancelError(null);
+    setCancelling(true);
+    const result = await cancelOrderAction({
+      orderNanoid: order.nanoid,
+      workspace: workspaceDomain,
+    });
+    setCancelling(false);
+    if (!result.ok) {
+      setCancelError(
+        result.message ?? "Could not cancel this order. Please try again.",
+      );
+    }
+  };
+
   return (
     <div className="mx-auto w-full max-w-5xl py-6">
       {confirmError && (
@@ -126,8 +145,35 @@ export function CheckoutClient({
             organizationName={organization.legal_name}
             planLabel={plan.label}
           />
+
+          {cancelError && (
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+              {cancelError}
+            </div>
+          )}
+
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => setCancelDialogOpen(true)}
+              className="text-xs font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-destructive hover:underline"
+            >
+              Cancel this order instead
+            </button>
+          </div>
         </aside>
       </div>
+
+      <ConfirmDialog
+        open={cancelDialogOpen}
+        onOpenChange={setCancelDialogOpen}
+        title="Cancel this order?"
+        description="The checkout is discarded and the order moves to cancelled. You can pick a plan again later from the billing page."
+        confirmLabel="Cancel order"
+        variant="destructive"
+        confirming={cancelling}
+        onConfirm={handleCancel}
+      />
     </div>
   );
 }

@@ -67,6 +67,7 @@ export {
   createOrder,
   getOrder,
   listOrders,
+  cancelOrder,
 } from "./orders";
 
 export {

@@ -8,7 +8,6 @@ import {
   getPaypalQuote,
   listPaymentMethods,
   type Invoice,
-  type InvoiceStatus,
   type Order,
   type SubsPlan,
 } from "@/lib/api";
@@ -22,31 +21,44 @@ import {
 } from "../_components/invoice-data";
 import { PaymentCheckoutClient } from "../_components/payment-checkout-client";
 import { InvoiceReceiptView } from "../_components/invoice-receipt";
+import { InvoiceStatusView } from "../_components/invoice-status-view";
 
-const DISPLAY_STATUS: Record<InvoiceStatus, InvoiceData["status"]> = {
-  paid: "paid",
-  open: "pending",
-  draft: "pending",
-  void: "pending",
-  uncollectible: "overdue",
-};
-
-/** Map a backend invoice onto the client invoice shape the UI renders. */
+/** Map an open backend invoice onto the client shape the checkout renders. */
 function toInvoiceData(
   invoice: Invoice,
   order: Order,
   plan: SubsPlan,
 ): InvoiceData {
   const base = buildInvoiceData(order, plan);
+  // The backend snapshot rows are authoritative; the order/plan are only a
+  // fallback when the invoice carries no items of its own yet.
+  const snapshot = (invoice.items ?? []).filter(
+    (item) => Number(item.amount ?? 0) > 0,
+  );
+  const chargeItems =
+    snapshot.length > 0
+      ? snapshot.map((item) => ({
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: Number(item.unit_price ?? 0),
+          total: Number(item.amount ?? 0),
+          code: item.nanoid,
+        }))
+      : base.items.filter((item) => item.total > 0);
   return {
     ...base,
     id: invoice.nanoid,
     invoiceNumber: invoice.number || invoice.refid || base.invoiceNumber,
-    issuedDate: (invoice.created_at ?? base.issuedDate).split("T")[0],
+    issuedDate: (invoice.issued_at ?? invoice.created_at ?? base.issuedDate)
+      .split("T")[0],
     dueDate: invoice.due_at ? invoice.due_at.split("T")[0] : base.dueDate,
-    status: DISPLAY_STATUS[invoice.status] ?? "pending",
+    status: "pending",
     totalAmount: Number(invoice.total),
     currency: displayCurrency(invoice.currency),
+    items: [
+      ...chargeItems,
+      ...base.items.filter((item) => item.total === 0),
+    ],
   };
 }
 
@@ -71,11 +83,10 @@ function NotFound({ workspaceDomain }: { workspaceDomain: string }) {
  * Invoice detail page — the rendered invoice every order checkout lands on
  * after "Confirm & Pay" (`/dashboard/invoices/{invoice.nanoid}`, path-only).
  *
- * A **paid** invoice renders a settled receipt (totals, payment dates, linked
- * PDF) with no payment UI. An **open** invoice reconstructs its line items
- * from the linked order (which the customer already edited by removing lines
- * before confirming) while the totals come from the backend invoice, which is
- * authoritative, and drops the buyer into the payment checkout.
+ * The page follows the invoice lifecycle: a **paid** invoice renders a settled
+ * receipt (no payment UI); an **open** invoice drops the buyer into the
+ * payment checkout; **void** / **draft** / **uncollectible** invoices render a
+ * terminal status card with totals and dates but no way to pay.
  */
 export default async function InvoiceDetailPage({
   params,
@@ -112,6 +123,27 @@ export default async function InvoiceDetailPage({
             </div>
           )}
           <InvoiceReceiptView
+            invoice={invoice}
+            workspaceDomain={active.domain}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (
+    invoice.status === "void" ||
+    invoice.status === "draft" ||
+    invoice.status === "uncollectible"
+  ) {
+    return (
+      <div className="flex min-h-full flex-col">
+        <Banner
+          title={`Invoice ${invoice.number || invoice.refid}`}
+          description={statusDescription(invoice.status)}
+        />
+        <div className="mt-6 flex-1">
+          <InvoiceStatusView
             invoice={invoice}
             workspaceDomain={active.domain}
           />
@@ -204,4 +236,17 @@ export default async function InvoiceDetailPage({
       </div>
     </div>
   );
+}
+
+function statusDescription(status: Invoice["status"]): string {
+  switch (status) {
+    case "void":
+      return "This invoice was voided and is no longer payable.";
+    case "draft":
+      return "This invoice is still being prepared and is not yet payable.";
+    case "uncollectible":
+      return "This invoice could not be collected; no payment is being pursued.";
+    default:
+      return "";
+  }
 }

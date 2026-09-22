@@ -269,6 +269,29 @@ export interface InvoiceLineItem {
   amount: string;
 }
 
+/**
+ * One immutable snapshot row on an invoice — mirrors the backend
+ * ``InvoiceItemSerializer``. ``order_item`` is optional provenance (null for
+ * one-off/manual/proration lines); kind is one of
+ * subscription/one_off/proration/discount/tax/credit.
+ */
+export interface InvoiceItem {
+  nanoid: string;
+  order_item: string | null;
+  description: string;
+  quantity: number;
+  unit_price: string;
+  amount: string;
+  currency: string;
+  tax_rate: string;
+  tax_amount: string;
+  kind: string;
+  product_ref: Record<string, unknown>;
+  period_start: string | null;
+  period_end: string | null;
+  created_at: string;
+}
+
 export interface Invoice {
   refid: string;
   nanoid: string;
@@ -290,6 +313,8 @@ export interface Invoice {
   pdf_url?: string;
   extensions?: InvoiceExtension[];
   line_items?: InvoiceLineItem[];
+  /** Backend snapshot rows (authoritative line items) when the invoice issued. */
+  items?: InvoiceItem[];
   created_at?: string;
 }
 
@@ -367,6 +392,8 @@ export interface Order {
   /** Next monthly billing date, ``YYYY-MM-DD`` (computed server-side). */
   next_billing_date: string | null;
   items: OrderItem[];
+  /** Nanoid of this order's most recent non-void invoice, when one exists. */
+  invoice?: string | null;
 }
 
 export interface OrderInput {

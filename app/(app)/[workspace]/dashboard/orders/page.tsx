@@ -56,7 +56,8 @@ function OrderCard({
             <p className="mt-0.5 text-xs text-muted-foreground">
               {count} {count === 1 ? "item" : "items"} ·{" "}
               {displayCurrency(order.currency)}
-              {order.created_at && ` · issued ${formatMediumDate(order.created_at)}`}
+              {order.issued_at &&
+                ` · issued ${formatMediumDate(order.issued_at)}`}
             </p>
           </div>
         </div>

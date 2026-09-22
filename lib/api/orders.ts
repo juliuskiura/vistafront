@@ -43,3 +43,22 @@ export async function createOrder(
     workspace,
   });
 }
+
+/**
+ * Cancel an order the customer no longer wants to check out.
+ *
+ * ``POST /apis/billing/orders/<nanoid>/cancel/`` runs the order lifecycle
+ * (DRAFT/PENDING/CONFIRMED → CANCELLED, stamping ``cancelled_at``) and is
+ * idempotent — an already-cancelled order is accepted, which makes repeated
+ * clicks harmless.
+ */
+export async function cancelOrder(
+  nanoid: string,
+  { workspace }: { workspace: string },
+): Promise<Order> {
+  return serverMutate<Order>(`/apis/billing/orders/${nanoid}/cancel/`, {
+    method: "POST",
+    body: {},
+    workspace,
+  });
+}

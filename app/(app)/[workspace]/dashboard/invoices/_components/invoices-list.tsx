@@ -56,7 +56,8 @@ function InvoiceCard({
               </span>
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Issued {formatMediumDate(invoice.created_at ?? "")}
+              Issued{" "}
+              {formatMediumDate(invoice.issued_at ?? invoice.created_at ?? "")}
               {invoice.due_at && ` · due ${formatMediumDate(invoice.due_at)}`}
             </p>
           </div>
@@ -70,9 +71,13 @@ function InvoiceCard({
             <p className="text-[11px] text-muted-foreground">
               {isPaid
                 ? "Paid in full"
-                : invoice.paid_at
-                  ? `Paid ${formatMediumDate(invoice.paid_at)}`
-                  : "Awaiting payment"}
+                : invoice.status === "void"
+                  ? "Voided"
+                  : invoice.status === "draft"
+                    ? "Not payable yet"
+                    : invoice.paid_at
+                      ? `Paid ${formatMediumDate(invoice.paid_at)}`
+                      : "Awaiting payment"}
             </p>
           </div>
           <span className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground transition-colors group-hover:border-primary/40 group-hover:text-primary">
