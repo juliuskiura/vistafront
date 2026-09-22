@@ -1,14 +1,11 @@
 import {
-  listInvoices,
-  listPayments,
-  listPaymentMethods,
   listPlans,
   getCurrentSubscription,
 } from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
-import { BillingClient } from "./billing-client";
+import { PlansTab } from "./_components/plans-tab";
 
-export default async function BillingPage({
+export default async function PlansPage({
   params,
 }: {
   params: Promise<{ workspace: string }>;
@@ -16,22 +13,20 @@ export default async function BillingPage({
   const { workspace: slug } = await params;
   const active = await requireWorkspace(slug);
 
-  const [invoices, payments, plans, subscription] = await Promise.all([
-    listInvoices({ workspace: active.domain }).catch(() => []),
-    listPayments({ workspace: active.domain }).catch(() => []),
+  const [plans, subscription] = await Promise.all([
     listPlans().catch(() => []),
     getCurrentSubscription({ workspace: active.domain }).catch(() => null),
   ]);
 
   return (
-    <BillingClient
-      invoices={invoices}
-      payments={payments}
-      plans={plans}
-      subscription={subscription}
-      workspaceName={active.name}
-      workspaceDomain={active.domain}
-      clientBusinessNanoid={active.client_business}
-    />
+    <div className="mx-auto w-full max-w-5xl">
+      <PlansTab
+        plans={plans}
+        subscription={subscription}
+        workspaceName={active.name}
+        workspaceDomain={active.domain}
+        clientBusinessNanoid={active.client_business}
+      />
+    </div>
   );
 }

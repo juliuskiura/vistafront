@@ -21,6 +21,7 @@ import {
   type InvoiceData,
 } from "../_components/invoice-data";
 import { PaymentCheckoutClient } from "../_components/payment-checkout-client";
+import { InvoiceReceiptView } from "../_components/invoice-receipt";
 
 const DISPLAY_STATUS: Record<InvoiceStatus, InvoiceData["status"]> = {
   paid: "paid",
@@ -49,20 +50,39 @@ function toInvoiceData(
   };
 }
 
+function NotFound({ workspaceDomain }: { workspaceDomain: string }) {
+  return (
+    <div className="mx-auto max-w-2xl space-y-4 pt-10 text-center">
+      <h1 className="text-xl font-semibold">Invoice not found</h1>
+      <p className="text-sm text-muted-foreground">
+        This invoice is no longer available or the link is invalid.
+      </p>
+      <Link
+        href={`/${workspaceDomain}/dashboard/billing`}
+        className="inline-block text-sm font-medium text-primary hover:underline"
+      >
+        ← Back to Billing
+      </Link>
+    </div>
+  );
+}
+
 /**
  * Invoice detail page — the rendered invoice every order checkout lands on
  * after "Confirm & Pay" (`/dashboard/invoices/{invoice.nanoid}`, path-only).
  *
- * The line items are reconstructed from the linked order (which the customer
- * already edited by removing lines before confirming) while the totals come
- * from the backend invoice, which is authoritative.
+ * A **paid** invoice renders a settled receipt (totals, payment dates, linked
+ * PDF) with no payment UI. An **open** invoice reconstructs its line items
+ * from the linked order (which the customer already edited by removing lines
+ * before confirming) while the totals come from the backend invoice, which is
+ * authoritative, and drops the buyer into the payment checkout.
  */
 export default async function InvoiceDetailPage({
   params,
   searchParams,
 }: {
   params: Promise<{ workspace: string; nanoid: string }>;
-searchParams: Promise<{ paypal?: string }>;
+  searchParams: Promise<{ paypal?: string }>;
 }) {
   const { workspace: slug, nanoid } = await params;
   const { paypal: paypalReturn } = await searchParams;
@@ -74,18 +94,28 @@ searchParams: Promise<{ paypal?: string }>;
   }).catch(() => null);
 
   if (!invoice) {
+    return <NotFound workspaceDomain={active.domain} />;
+  }
+
+  if (invoice.status === "paid") {
     return (
-      <div className="mx-auto max-w-2xl space-y-4 pt-10 text-center">
-        <h1 className="text-xl font-semibold">Invoice not found</h1>
-        <p className="text-sm text-muted-foreground">
-          This invoice is no longer available or the link is invalid.
-        </p>
-        <Link
-          href={`/${active.domain}/dashboard/billing`}
-          className="inline-block text-sm font-medium text-primary hover:underline"
-        >
-          ← Back to Billing
-        </Link>
+      <div className="flex min-h-full flex-col">
+        <Banner
+          title={`Invoice ${invoice.number || invoice.refid}`}
+          description={`Paid in full on ${invoice.paid_at ? formatMediumDate(invoice.paid_at) : "settlement"}`}
+        />
+        <div className="mt-6 flex-1">
+          {paypalReturn === "approved" && (
+            <div className="mx-auto mb-4 max-w-3xl rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-700 dark:text-emerald-400">
+              Payment approved. Your invoice is now settled — a receipt has
+              been issued.
+            </div>
+          )}
+          <InvoiceReceiptView
+            invoice={invoice}
+            workspaceDomain={active.domain}
+          />
+        </div>
       </div>
     );
   }
@@ -103,7 +133,9 @@ searchParams: Promise<{ paypal?: string }>;
   if (!order || !plan) {
     return (
       <div className="mx-auto max-w-2xl space-y-4 pt-10 text-center">
-        <h1 className="text-xl font-semibold">Invoice {invoice.number || invoice.refid}</h1>
+        <h1 className="text-xl font-semibold">
+          Invoice {invoice.number || invoice.refid}
+        </h1>
         <p className="text-sm text-muted-foreground">
           The plan behind this invoice is no longer available.
         </p>
@@ -144,13 +176,13 @@ searchParams: Promise<{ paypal?: string }>;
       />
       <div className="mt-6 flex-1">
         {paypalReturn === "approved" && (
-          <div className="mx-auto max-w-5xl mb-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400 font-medium">
+          <div className="mx-auto mb-4 max-w-5xl rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-700 dark:text-emerald-400">
             Payment approved. Your invoice is now settled — a receipt has been
             issued.
           </div>
         )}
         {paypalReturn === "error" && (
-          <div className="mx-auto max-w-5xl mb-4 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive font-medium">
+          <div className="mx-auto mb-4 max-w-5xl rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
             PayPal could not complete the payment. Please try again or use
             another payment channel.
           </div>

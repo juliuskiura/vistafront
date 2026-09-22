@@ -286,6 +286,8 @@ export interface Invoice {
   client_business?: { nanoid: string; name: string };
   /** The order this invoice bills, by nanoid, when it exists. */
   order?: string | null;
+  /** Usable URL for the PDF receipt — backend re-signs it on each read. */
+  pdf_url?: string;
   extensions?: InvoiceExtension[];
   line_items?: InvoiceLineItem[];
   created_at?: string;
