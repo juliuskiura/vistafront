@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { getDeliverable, getProject, listDeliverables, listTasks, type Deliverable, type DeliverableSummary, type Project, type Task } from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
+import { requireFeature } from "@/lib/features/guard";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 
@@ -88,6 +89,7 @@ export default async function ProjectDetailPage({
 }) {
   const { workspace: slug, id } = await params;
   const active = await requireWorkspace(slug);
+  await requireFeature(active, "projectmanager.projects");
 
   let project: Project;
   try {

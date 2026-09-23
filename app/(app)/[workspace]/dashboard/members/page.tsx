@@ -3,6 +3,7 @@ import {
   type WorkspaceMember,
 } from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
+import { requireFeature } from "@/lib/features/guard";
 import { MembersView } from "@/app/(app)/[workspace]/dashboard/members/members-view";
 
 /**
@@ -19,6 +20,7 @@ export default async function MembersPage({
 }) {
   const { workspace: slug } = await params;
   const active = await requireWorkspace(slug);
+  await requireFeature(active, "workspaces.membership");
 
   const members: WorkspaceMember[] = await listWorkspaceMembers(
     active.nanoid,

@@ -1,4 +1,5 @@
 import { requireWorkspace } from "@/lib/auth/server";
+import { requireFeature } from "@/lib/features/guard";
 import { getPost, listPostComments, listMetrics } from "@/lib/api";
 import { PostDetailClient } from "./post-detail-client";
 
@@ -9,6 +10,7 @@ export default async function PostDetailPage({
 }) {
   const { workspace: slug, postId } = await params;
   const active = await requireWorkspace(slug);
+  await requireFeature(active, "socialmanager.posts");
   const ws = active.domain;
 
   const [post, comments, metrics] = await Promise.all([

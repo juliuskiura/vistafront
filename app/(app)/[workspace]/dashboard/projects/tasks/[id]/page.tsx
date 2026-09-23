@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { getTask, type Task } from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
+import { requireFeature } from "@/lib/features/guard";
 import { Card } from "@/components/ui/card";
 
 function formatDate(value: string | null): string {
@@ -32,6 +33,7 @@ export default async function TaskDetailPage({
 }) {
   const { workspace: slug, id } = await params;
   const active = await requireWorkspace(slug);
+  await requireFeature(active, "projectmanager.tasks");
 
   let task: Task;
   try {

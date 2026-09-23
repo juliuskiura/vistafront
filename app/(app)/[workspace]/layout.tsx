@@ -1,4 +1,9 @@
-import { listWorkspaces, getNavigationSidebar, listRooms } from "@/lib/api";
+import {
+  listWorkspaces,
+  getNavigationSidebar,
+  getSubscriptionState,
+  listRooms,
+} from "@/lib/api";
 import { requireAuth, requireWorkspace } from "@/lib/auth/server";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
 
@@ -10,6 +15,11 @@ import { WorkspaceShell } from "@/components/workspace/workspace-shell";
  * redirected to `/restricted` before any HTML is sent. The shell is then
  * rendered as a Client Component so the sidebar and workspace switcher
  * can react to navigation without a full page reload.
+ *
+ * The subscription capability contract and the navigation sidebar are
+ * fetched in parallel and handed to the shell; the shell exposes the
+ * contract to the client tree via `SubscriptionProvider` and every nested
+ * page guard shares the one cached fetch (`requireFeature`).
  */
 export default async function WorkspaceLayout({
   children,
@@ -22,8 +32,13 @@ export default async function WorkspaceLayout({
   const user = await requireAuth();
   const allWorkspaces = await listWorkspaces().catch(() => []);
   const active = await requireWorkspace(slug, allWorkspaces);
-  const [nav, rooms] = await Promise.all([
+  const [nav, subscription, rooms] = await Promise.all([
     getNavigationSidebar().catch(() => []),
+    getSubscriptionState({ workspace: active.nanoid }).catch(() => ({
+      subscription: null,
+      features: [],
+      exempt: false,
+    })),
     user.is_admin ? listRooms(active.domain, "all").catch(() => []) : Promise.resolve([]),
   ]);
 
@@ -36,6 +51,7 @@ export default async function WorkspaceLayout({
         domain: ws.domain,
       }))}
       nav={nav}
+      subscription={subscription}
       user={{
         firstName: user.first_name,
         lastName: user.last_name,

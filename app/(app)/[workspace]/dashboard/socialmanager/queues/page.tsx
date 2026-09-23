@@ -1,4 +1,5 @@
 import { requireWorkspace } from "@/lib/auth/server";
+import { requireFeature } from "@/lib/features/guard";
 import { listQueues, listQueueItems } from "@/lib/api";
 import { QueueClient } from "./queue-client";
 
@@ -14,6 +15,7 @@ export default async function QueuePage({
 }) {
   const { workspace: slug } = await params;
   const active = await requireWorkspace(slug);
+  await requireFeature(active, "socialmanager.scheduling");
   const ws = active.domain;
 
   const queues = await listQueues(ws).catch(() => []);

@@ -1,4 +1,5 @@
 import { requireWorkspace } from "@/lib/auth/server";
+import { requireFeature } from "@/lib/features/guard";
 import { getCollections } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +12,7 @@ export default async function MediaCollectionsPage({
 }) {
   const { workspace: slug } = await params;
   const active = await requireWorkspace(slug);
+  await requireFeature(active, "media_libary.collections");
   const collections = await getCollections(active.domain).catch(() => []);
 
   return (

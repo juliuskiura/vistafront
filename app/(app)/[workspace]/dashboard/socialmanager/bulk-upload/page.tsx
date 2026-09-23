@@ -1,4 +1,5 @@
 import { requireWorkspace } from "@/lib/auth/server";
+import { requireFeature } from "@/lib/features/guard";
 import { listPages, listCampaigns } from "@/lib/api";
 import { BulkUploadClient } from "./bulk-upload-client";
 
@@ -14,6 +15,7 @@ export default async function BulkUploadPage({
 }) {
   const { workspace: slug } = await params;
   const active = await requireWorkspace(slug);
+  await requireFeature(active, "socialmanager.posts");
   const ws = active.domain;
 
   const [pages, campaigns] = await Promise.all([

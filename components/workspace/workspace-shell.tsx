@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState, type ComponentType, type SVGProps } from "react";
-import { ChevronsLeft, ChevronsRight, Menu, X } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, Lock, Menu, X } from "lucide-react";
 import { ChatIcon, ShoppingCart } from "@/lib/icons";
 import { ChatWidget } from "@/components/workspace/chat-widget";
 
@@ -18,7 +18,9 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { resolveIcon } from "@/lib/nav-icons";
-import type { NavItem, Workspace } from "@/lib/api";
+import type { NavItem, SubscriptionState, Workspace } from "@/lib/api";
+import { SubscriptionProvider } from "@/lib/context";
+import { navItemPath } from "@/lib/features/routes";
 import { WorkspaceSwitcher } from "@/components/workspace/workspace-switcher";
 import { UserAccountMenu } from "@/components/workspace/user-account-menu";
 import { ThemeToggle } from "@/components/workspace/theme-toggle";
@@ -27,6 +29,7 @@ interface Props {
   workspace: Pick<Workspace, "nanoid" | "name" | "domain">;
   workspaces: Array<Pick<Workspace, "nanoid" | "name" | "domain">>;
   nav: NavItem[];
+  subscription: SubscriptionState;
   user: {
     firstName: string | null;
     lastName?: string | null;
@@ -57,23 +60,39 @@ function NavLink({
   workspaceDomain: string;
 }) {
   const pathname = usePathname();
-  // The backend issues nav targets relative to the workspace root
-  // (e.g. "/dashboard", "/crm/companies"), but the URL is prefixed with
-  // /{workspace} ("/acme/dashboard"). Strip the workspace prefix so the
-  // active match is meaningful and works for both the workspace root
-  // (pathname === "/{workspace}" with end=true) and nested routes.
+  // The backend issues nav items by registry `id` — never a URL. The route
+  // registry translates the id to its default route relative to the
+  // workspace root (e.g. "/dashboard/socialmanager"). Strip the workspace
+  // prefix so the active match is meaningful and works for both the
+  // workspace root (pathname === "/{workspace}" with end=true) and nested
+  // routes.
   const trimmed = pathname.replace(/^\/[^/]+/, "") || "/";
-  const target = item.to.startsWith("/") ? item.to : `/${item.to}`;
+  const target = navItemPath(item.id);
   const active =
     item.end === true
       ? trimmed === target || trimmed === target.replace(/\/$/, "")
       : trimmed === target || trimmed.startsWith(`${target}/`);
   const Icon = resolveIcon(item.icon) as IconComponent;
 
+  // Scope the registry-derived relative target under the active workspace so
+  // Next.js routes it through the [workspace] segment (and its
+  // requireWorkspace guard) instead of escaping to a sibling app route.
+  const scopedHref = `/${workspaceDomain}${target}`;
+
+  // Locked items (owned features on an inactive subscription) navigate to
+  // the access page instead of the feature; Django owns the gate, the UI
+  // just points the customer at the reason.
+  const accessHref =
+    item.feature_keys && item.feature_keys.length > 0
+      ? `/${workspaceDomain}/dashboard/subscription/access?mode=locked&feature=${encodeURIComponent(item.feature_keys[0])}`
+      : `/${workspaceDomain}/dashboard/subscription/access?mode=locked`;
+  const href = item.locked ? accessHref : scopedHref;
+
   const className = [
     "sidebar-item",
     active ? "is-active" : "",
     collapsed ? "is-collapsed" : "",
+    item.locked ? "is-locked" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -88,21 +107,25 @@ function NavLink({
       {item.label}
     </span>
   );
+  const lockBadge = item.locked ? (
+    <span
+      aria-hidden
+      className={`sidebar-lock${collapsed ? " is-collapsed" : ""}`}
+      title="Subscription locked — renew to keep using this"
+    >
+      <Lock size={14} />
+    </span>
+  ) : null;
   const tooltip = collapsed ? (
     <span className="sidebar-tooltip" role="tooltip">
       {item.label}
     </span>
   ) : null;
 
-  // Scope the backend-issued relative target under the active workspace so
-  // Next.js routes it through the [workspace] segment (and its
-  // requireWorkspace guard) instead of escaping to a sibling app route.
-  const scopedHref = `/${workspaceDomain}${target}`;
-
   return (
     <li>
       <Link
-        href={scopedHref}
+        href={href}
         onClick={onNavigate}
         title={collapsed ? item.label : undefined}
         aria-current={active ? "page" : undefined}
@@ -110,6 +133,7 @@ function NavLink({
       >
         {icon}
         {label}
+        {lockBadge}
         {tooltip}
       </Link>
     </li>
@@ -165,7 +189,7 @@ function SidebarBody({
           ) : (
             nav.map((item) => (
               <NavLink
-                key={item.to}
+                key={item.id}
                 item={item}
                 collapsed={collapsed}
                 onNavigate={onNavigate}
@@ -183,6 +207,7 @@ export function WorkspaceShell({
   workspace,
   workspaces,
   nav,
+  subscription,
   user,
   hasActiveChat = false,
   children,
@@ -230,7 +255,7 @@ export function WorkspaceShell({
   }, [pathname]);
 
   const currentNav = nav.find((item) => {
-    const target = item.to.startsWith("/") ? item.to : `/${item.to}`;
+    const target = navItemPath(item.id);
     const trimmed = pathname.replace(/^\/[^/]+/, "") || "/";
     return item.end
       ? trimmed === target || trimmed === target.replace(/\/$/, "")
@@ -239,13 +264,15 @@ export function WorkspaceShell({
   const pageTitle = currentNav?.label ?? "Dashboard";
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <SubscriptionProvider state={subscription}>
+      <div className="flex h-screen overflow-hidden bg-background">
       <aside
         className={`sidebar-surface relative hidden h-full shrink-0 flex-col border-r border-sidebar-divider transition-[width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] md:flex ${
           collapsed ? "w-[72px]" : "w-64"
         }`}
       >
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/60 to-transparent dark:via-white/10" />
+        <SidebarLogo collapsed={collapsed} />
         <SidebarBody nav={nav} collapsed={collapsed} workspaceDomain={workspace.domain} />
       </aside>
 
@@ -362,6 +389,7 @@ export function WorkspaceShell({
       </div>
 
       {!user.isAdmin && <ChatWidget userName={user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : null} />}
-    </div>
+      </div>
+    </SubscriptionProvider>
   );
 }

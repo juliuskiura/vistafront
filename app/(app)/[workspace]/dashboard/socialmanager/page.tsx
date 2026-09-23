@@ -1,4 +1,5 @@
 import { requireWorkspace } from "@/lib/auth/server";
+import { requireFeature } from "@/lib/features/guard";
 import {
   listPages,
   listPosts,
@@ -21,6 +22,7 @@ export default async function SocialHomePage({
 }) {
   const { workspace: slug } = await params;
   const active = await requireWorkspace(slug);
+  await requireFeature(active, "socialmanager.posts");
   const ws = active.domain;
 
   const [pages, posts, platforms, queues] = await Promise.all([

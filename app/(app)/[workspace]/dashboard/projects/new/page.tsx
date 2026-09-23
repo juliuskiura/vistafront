@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { listCompanies, listProjects, type Company, type ProjectPriority, type ProjectStatus } from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
+import { requireFeature } from "@/lib/features/guard";
 import { Card } from "@/components/ui/card";
 import { NewProjectForm } from "@/app/(app)/[workspace]/dashboard/projects/new/new-project-form";
 
@@ -34,6 +35,7 @@ export default async function NewProjectPage({
 }) {
   const { workspace: slug } = await params;
   const active = await requireWorkspace(slug);
+  await requireFeature(active, "projectmanager.projects");
 
   const [companies, projects] = await Promise.all([
     listCompanies({ workspace: active.domain }).catch(() => [] as Company[]),

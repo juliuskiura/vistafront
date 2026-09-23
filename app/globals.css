@@ -678,6 +678,34 @@
   transform: scale(1);
 }
 
+/* Locked items: the subscription owns the feature but it is inactive
+   (expired/cancelled). The item stays visible, dimmed, with a lock badge
+   that routes to the access page. Django remains the real access gate. */
+.sidebar-item.is-locked .sidebar-icon {
+  opacity: 0.55;
+}
+
+.sidebar-lock {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  color: var(--sidebar-muted-foreground);
+  opacity: 0.8;
+}
+
+.sidebar-item:hover .sidebar-lock {
+  opacity: 1;
+}
+
+.sidebar-lock.is-collapsed {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.5rem;
+  margin-left: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sidebar-item,
   .sidebar-icon {

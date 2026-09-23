@@ -18,8 +18,6 @@ export interface Workspace {
   my_role: WorkspaceRole | null;
   /** Fully-prepared dashboard URL, computed by the backend. */
   url: string;
-  /** App keys the org is entitled to under its active subscription. */
-  app_access: string[];
   /** Nanoid of the ClientBusiness (Organization) that owns this workspace. */
   client_business: string;
 }
@@ -405,32 +403,52 @@ export interface OrderInput {
 
 
 
-export interface PlanApp {
-  id: number;
-  plan: string;
-  app_key: string;
-  feature_flag: string;
-}
-
 export type SubscriptionStatus = "active" | "past_due" | "cancelled";
 
 /**
- * The active workspace's own subscription, as returned by the workspace-scoped
- * `/apis/billing/subscription/current/` endpoint (customer-facing billing).
+ * A feature key of the subscription contract (e.g. ``socialmanager.posts``).
+ *
+ * One feature key maps many routes; one route maps to exactly one feature.
+ * Django registers and owns these; Next.js only consumes them.
  */
-export interface CurrentSubscription {
-  id: number;
-  nanoid: string;
-  client_business_nanoid: string;
-  client_business_name: string;
-  plan_slug: string;
-  plan_label: string;
+export type FeatureKey = string;
+
+/**
+ * The customer's subscription facts, backend-authored at
+ * ``GET /apis/subscriptions/state/``.
+ *
+ * ``active`` and ``expired`` are the ONLY facts that feed route/UI
+ * protection; ``plan_slug`` / ``plan_label`` are informational (billing UI)
+ * and must never be consulted for gating.
+ */
+export interface SubscriptionInfo {
+  active: boolean;
+  expired: boolean;
   status: SubscriptionStatus;
-  current_period_start: string | null;
-  current_period_end: string | null;
-  cancel_at_period_end: boolean;
-  app_keys: string[];
-  feature_flags: string[];
+  access_until: string | null;
+  plan_slug: string | null;
+  plan_label: string | null;
+}
+
+/**
+ * The subscription capability contract the app bootstraps from.
+ *
+ * ``features`` is independent of ``active`` — previously-owned (but now
+ * inactive) features stay listed so the UI renders them as ``locked`` rather
+ * than hiding them. ``exempt`` (console/admin workspace) means every feature
+ * is available. Derived states:
+ *
+ * | owned | active | state        |
+ * |-------|--------|--------------|
+ * | yes   | yes    | available    |
+ * | yes   | no     | locked       |
+ * | no    | any    | unavailable  |
+ * | exempt| any    | available    |
+ */
+export interface SubscriptionState {
+  subscription: SubscriptionInfo | null;
+  features: FeatureKey[];
+  exempt: boolean;
 }
 
 
@@ -447,12 +465,6 @@ export interface PlanFormInput {
   includes_enterprise_features?: boolean;
   /** Replacement feature list (sent to the Plan write serializer). */
   features?: { feature: string }[];
-}
-
-export interface PlanAppFormInput {
-  plan: string;
-  app_key: string;
-  feature_flag?: string;
 }
 
 export interface PlanFeatureFormInput {
@@ -567,12 +579,18 @@ export interface InvoiceInput {
 }
 
 export interface NavItem {
-  to: string;
+  /** Registry identity (navigation identity). Never a URL. */
+  id: string;
   label: string;
   icon: string;
   end?: boolean;
   params?: Record<string, string>;
+  root?: string;
   resource?: string | null;
+  /** The subscription feature keys this item belongs to. */
+  feature_keys?: FeatureKey[];
+  /** Owned features on an inactive subscription (expired/cancelled). */
+  locked?: boolean;
   children?: NavItem[];
 }
 

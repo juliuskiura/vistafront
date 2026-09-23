@@ -1,4 +1,5 @@
 import { requireWorkspace } from "@/lib/auth/server";
+import { requireFeature } from "@/lib/features/guard";
 import { listPages, listMetrics } from "@/lib/api";
 import { AnalyticsClient } from "./analytics-client";
 
@@ -14,6 +15,7 @@ export default async function AnalyticsPage({
 }) {
   const { workspace: slug } = await params;
   const active = await requireWorkspace(slug);
+  await requireFeature(active, "socialmanager.analytics");
   const ws = active.domain;
 
   const [pages, metrics] = await Promise.all([

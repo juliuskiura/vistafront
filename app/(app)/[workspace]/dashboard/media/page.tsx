@@ -5,6 +5,7 @@ import {
   type MediaStats,
 } from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
+import { requireFeature } from "@/lib/features/guard";
 import { MediaDashboardClient } from "./media-dashboard-client";
 
 export default async function MediaDashboardPage({
@@ -14,6 +15,7 @@ export default async function MediaDashboardPage({
 }) {
   const { workspace: slug } = await params;
   const active = await requireWorkspace(slug);
+  await requireFeature(active, "media_libary.assets");
 
   const [stats, recentAssets] = await Promise.all([
     getMediaStats(active.domain).catch(() => null as MediaStats | null),

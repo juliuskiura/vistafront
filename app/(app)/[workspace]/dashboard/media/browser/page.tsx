@@ -5,6 +5,7 @@ import {
   type PaginatedAssets,
 } from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
+import { requireFeature } from "@/lib/features/guard";
 import { BrowserClient } from "./browser-client";
 
 export default async function MediaBrowserPage({
@@ -25,6 +26,7 @@ export default async function MediaBrowserPage({
   const { workspace: slug } = await params;
   const sp = await searchParams;
   const active = await requireWorkspace(slug);
+  await requireFeature(active, "media_libary.assets");
 
   const page = Number(sp.page ?? "1");
   const pageSize = Number(sp.page_size ?? "24");

@@ -8,6 +8,7 @@ import {
   type NoteTypeOption,
 } from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
+import { requireFeature } from "@/lib/features/guard";
 import { NoteDetailView } from "@/app/(app)/[workspace]/dashboard/notebook/[id]/note-detail-view";
 
 /**
@@ -24,6 +25,7 @@ export default async function NoteDetailPage({
 }) {
   const { workspace: slug, id } = await params;
   const active = await requireWorkspace(slug);
+  await requireFeature(active, "notebook.notes");
   const note = await getNote(id, active.domain).catch(() => null);
 
   if (!note) {

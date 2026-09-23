@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { listCompanies, listProjects, type Company, type ProjectPriority, type ProjectStatus, type ProjectSummary } from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
+import { requireFeature } from "@/lib/features/guard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -74,6 +75,7 @@ export default async function ProjectsListPage({
   const { workspace: slug } = await params;
   const { search, status, priority } = await searchParams;
   const active = await requireWorkspace(slug);
+  await requireFeature(active, "projectmanager.projects");
 
   // Warm both in parallel; the company list is only needed for the
   // "New project" link label (and a future dropdown). Errors are

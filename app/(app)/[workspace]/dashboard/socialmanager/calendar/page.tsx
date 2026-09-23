@@ -1,4 +1,5 @@
 import { requireWorkspace } from "@/lib/auth/server";
+import { requireFeature } from "@/lib/features/guard";
 import { getSchedule } from "@/lib/api";
 import { CalendarClient } from "./calendar-client";
 
@@ -40,6 +41,7 @@ export default async function CalendarPage({
   const { workspace: slug } = await params;
   const sp = await searchParams;
   const active = await requireWorkspace(slug);
+  await requireFeature(active, "socialmanager.scheduling");
   const ws = active.domain;
 
   const { year, month } = parseYearMonth(sp);

@@ -1,4 +1,5 @@
 import { requireWorkspace } from "@/lib/auth/server";
+import { requireFeature } from "@/lib/features/guard";
 import { listPages, listPosts, listPlatforms } from "@/lib/api";
 import { ChannelDetailClient } from "./channel-detail-client";
 
@@ -14,6 +15,7 @@ export default async function ChannelDetailPage({
 }) {
   const { workspace: slug, channelId } = await params;
   const active = await requireWorkspace(slug);
+  await requireFeature(active, "socialmanager.posts");
   const ws = active.domain;
 
   const [pages, posts, platforms] = await Promise.all([

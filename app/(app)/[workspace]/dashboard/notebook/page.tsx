@@ -1,5 +1,6 @@
 import { listNotes, listNoteTypes, type Note, type NoteTypeOption } from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
+import { requireFeature } from "@/lib/features/guard";
 import { NotebookListView } from "@/app/(app)/[workspace]/dashboard/notebook/notebook-list-view";
 
 /**
@@ -25,6 +26,7 @@ export default async function NotebookListPage({
   const { workspace: slug } = await params;
   const { search, note_type, archived } = await searchParams;
   const active = await requireWorkspace(slug);
+  await requireFeature(active, "notebook.notes");
 
   const showArchived = archived === "true";
 

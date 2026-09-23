@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { requireWorkspace } from "@/lib/auth/server";
+import { requireFeature } from "@/lib/features/guard";
 import { getTrashedAssets } from "@/lib/api";
 import type { Asset } from "@/lib/api";
 import { TrashClient } from "./trash-client";
@@ -11,6 +12,7 @@ export default async function MediaTrashPage({
 }) {
   const { workspace: slug } = await params;
   const active = await requireWorkspace(slug);
+  await requireFeature(active, "media_libary.assets");
 
   const assets = await getTrashedAssets({ workspace: active.domain, page: 1, page_size: 48 }).catch(() => []);
 

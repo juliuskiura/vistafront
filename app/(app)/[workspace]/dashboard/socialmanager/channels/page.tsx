@@ -1,4 +1,5 @@
 import { requireWorkspace } from "@/lib/auth/server";
+import { requireFeature } from "@/lib/features/guard";
 import { listAccounts, listPlatforms } from "@/lib/api";
 import type { SocialAccount, SocialMediaPlatform } from "@/lib/api/types";
 import { ChannelsClient } from "./channels-client";
@@ -10,6 +11,7 @@ export default async function ChannelsPage({
 }) {
   const { workspace: slug } = await params;
   const active = await requireWorkspace(slug);
+  await requireFeature(active, "socialmanager.posts");
   const ws = active.domain;
 
   const [accounts, platforms] = await Promise.all([

@@ -1,6 +1,6 @@
 "use client";
 
-import type { CurrentSubscription, SubsPlan } from "@/lib/api";
+import type { SubscriptionState, SubsPlan } from "@/lib/api";
 import { PlanCard } from "./plan-card";
 
 export function PlansTab({
@@ -12,7 +12,7 @@ export function PlansTab({
   referralCode,
 }: {
   plans: SubsPlan[];
-  subscription: CurrentSubscription | null;
+  subscription: SubscriptionState | null;
   workspaceName: string;
   workspaceDomain: string;
   clientBusinessNanoid: string;
@@ -60,7 +60,7 @@ export function PlansTab({
             key={plan.slug}
             plan={plan}
             isTrial={isTrial}
-            isCurrent={subscription?.plan_slug === plan.slug}
+            isCurrent={subscription?.subscription?.plan_slug === plan.slug}
             subscription={subscription}
             workspaceDomain={workspaceDomain}
             clientBusinessNanoid={clientBusinessNanoid}

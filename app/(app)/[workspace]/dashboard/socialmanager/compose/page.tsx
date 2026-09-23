@@ -1,4 +1,5 @@
 import { requireWorkspace } from "@/lib/auth/server";
+import { requireFeature } from "@/lib/features/guard";
 import {
   listPages,
   listCampaigns,
@@ -20,6 +21,7 @@ export default async function ComposePage({
   const { workspace: slug } = await params;
   const { edit } = await searchParams;
   const active = await requireWorkspace(slug);
+  await requireFeature(active, "socialmanager.posts");
   const ws = active.domain;
 
   const [pages, campaigns, platforms, accounts, hashtags] = await Promise.all([

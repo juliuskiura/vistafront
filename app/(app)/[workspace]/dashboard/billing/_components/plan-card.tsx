@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Check, Clock, Users } from '@/lib/icons';
 import { VSButton } from "@/components/shared/components/customUi/VSButton";
-import type { CurrentSubscription, SubsPlan } from "@/lib/api";
+import type { SubscriptionState, SubsPlan } from "@/lib/api";
 import { formatDate, trialDaysLeft } from "./dates";
 import { ReferralModal } from "./referral-modal";
 import { choosePaidPlan } from "@/app/(app)/[workspace]/dashboard/orders/actions";
@@ -44,7 +44,7 @@ export function PlanCard({
   plan: SubsPlan;
   isTrial: boolean;
   isCurrent: boolean;
-  subscription: CurrentSubscription | null;
+  subscription: SubscriptionState | null;
   workspaceDomain: string;
   clientBusinessNanoid: string;
   referralCode?: string;
@@ -53,8 +53,8 @@ export function PlanCard({
   const [choosing, setChoosing] = useState(false);
   const [chooseError, setChooseError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
-  const trialDays = trialDaysLeft(subscription?.current_period_end);
-  const periodEnd = subscription?.current_period_end;
+  const trialDays = trialDaysLeft(subscription?.subscription?.access_until);
+  const periodEnd = subscription?.subscription?.access_until;
 
   function handleChoosePaidPlan() {
     setChooseError(null);

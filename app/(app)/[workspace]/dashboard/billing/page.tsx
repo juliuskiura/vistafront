@@ -1,6 +1,6 @@
 import {
   listPlans,
-  getCurrentSubscription,
+  getSubscriptionState,
 } from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
 import { PlansTab } from "./_components/plans-tab";
@@ -15,7 +15,11 @@ export default async function PlansPage({
 
   const [plans, subscription] = await Promise.all([
     listPlans().catch(() => []),
-    getCurrentSubscription({ workspace: active.domain }).catch(() => null),
+    getSubscriptionState({ workspace: active.nanoid }).catch(() => ({
+      subscription: null,
+      features: [],
+      exempt: false,
+    })),
   ]);
 
   return (

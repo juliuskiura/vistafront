@@ -5,7 +5,7 @@ import type {
   PlanFeatureFormInput,
   PlanFeatureUpdateInput,
   Subscription,
-  CurrentSubscription,
+  SubscriptionState,
   RegistryFeature,
   SubscriptionCreateInput,
   SubscriptionUpdateInput,
@@ -36,17 +36,19 @@ export async function getSubscription(nanoid: string): Promise<Subscription | nu
 }
 
 /**
- * Get the active workspace's own subscription (customer-facing).
+ * Get the subscription capability contract for the active workspace.
  *
- * Resolved from the request's `X-Workspace`, backed by the workspace-scoped
- * `/apis/subscription/current/` endpoint.
+ * Backed by the workspace-scoped ``GET /apis/subscriptions/state/`` endpoint.
+ * This is the single source of truth the app bootstraps from: Django owns the
+ * facts (``active`` / ``expired`` / ``features`` / ``exempt``) and Next.js
+ * only maps them to UI state.
  */
-export async function getCurrentSubscription({
+export async function getSubscriptionState({
   workspace,
 }: {
   workspace: string;
-}): Promise<CurrentSubscription | null> {
-  return serverFetch<CurrentSubscription>("/apis/billing/subscription/current/", {
+}): Promise<SubscriptionState> {
+  return serverFetch<SubscriptionState>("/apis/subscriptions/state/", {
     workspace,
   });
 }

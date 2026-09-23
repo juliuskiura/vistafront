@@ -1,5 +1,6 @@
 import { getAsset, getAssetVersions, type Asset, type AssetVersion } from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
+import { requireFeature } from "@/lib/features/guard";
 import { HydrationBoundary, QueryClient, dehydrate } from "@tanstack/react-query";
 import { AssetDetailClient } from "./asset-detail-client";
 
@@ -10,6 +11,7 @@ export default async function MediaAssetDetailPage({
 }) {
   const { workspace: slug, nanoid } = await params;
   const active = await requireWorkspace(slug);
+  await requireFeature(active, "media_libary.assets");
 
   const [asset, versions] = await Promise.all([
     getAsset(nanoid, active.domain).catch(() => null as Asset | null),
