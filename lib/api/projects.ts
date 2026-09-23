@@ -4,10 +4,26 @@ import type {
   CreateProjectBody,
   Deliverable,
   DeliverableSummary,
+  Paginated,
   Project,
   ProjectSummary,
   Task,
 } from "./types";
+
+/**
+ * Every list endpoint in this Django app is globally paginated
+ * (``LivechatPagination``, page size 25), so responses come back as
+ * ``{ count, next, previous, results }`` instead of a plain array. Unwrap the
+ * ``results`` page defensively: raw arrays pass through, non-array error
+ * payloads degrade to an empty list instead of crashing callers.
+ */
+function unwrap<T>(payload: T[] | Paginated<T>): T[] {
+  if (Array.isArray(payload)) return payload;
+  if (payload && Array.isArray((payload as Paginated<T>).results)) {
+    return (payload as Paginated<T>).results;
+  }
+  return [];
+}
 
 /* ──────────────────────────────────────────────────────────────────────
  * Projects
@@ -28,14 +44,15 @@ interface ProjectOpts {
  * is returned for the single-item endpoints; the list endpoint uses a
  * slimmer `ProjectSummary` serializer on the backend.
  */
-export function listProjects(
+export async function listProjects(
   opts: ProjectOpts & { workspace: string },
 ): Promise<ProjectSummary[]> {
   const { workspace, ...rest } = opts;
-  return serverFetch<ProjectSummary[]>(
+  const payload = await serverFetch<ProjectSummary[] | Paginated<ProjectSummary>>(
     `/apis/projectmanager/projects/${toQueryString(rest)}`,
     { workspace },
   );
+  return unwrap(payload);
 }
 
 /**
@@ -86,14 +103,15 @@ export async function completeProject(
  * Tasks
  * ────────────────────────────────────────────────────────────────────── */
 
-export function listTasks(
+export async function listTasks(
   opts: { project?: string; workspace: string },
 ): Promise<Task[]> {
   const { workspace, ...rest } = opts;
-  return serverFetch<Task[]>(
+  const payload = await serverFetch<Task[] | Paginated<Task>>(
     `/apis/projectmanager/tasks/${toQueryString(rest)}`,
     { workspace },
   );
+  return unwrap(payload);
 }
 
 export function getTask(
@@ -110,14 +128,14 @@ export function getTask(
  * Deliverables
  * ────────────────────────────────────────────────────────────────────── */
 
-export function listDeliverables(
+export async function listDeliverables(
   opts: { project?: string; type?: string; workspace: string },
 ): Promise<DeliverableSummary[]> {
   const { workspace, ...rest } = opts;
-  return serverFetch<DeliverableSummary[]>(
-    `/apis/projectmanager/deliverables/${toQueryString(rest)}`,
-    { workspace },
-  );
+  const payload = await serverFetch<
+    DeliverableSummary[] | Paginated<DeliverableSummary>
+  >(`/apis/projectmanager/deliverables/${toQueryString(rest)}`, { workspace });
+  return unwrap(payload);
 }
 
 export function getDeliverable(
