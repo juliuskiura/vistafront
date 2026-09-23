@@ -6,8 +6,24 @@ import type {
   Note,
   NoteAttachment,
   NoteTypeOption,
+  Paginated,
   UpdateNoteBody,
 } from "./types";
+
+/**
+ * Every list endpoint in this Django app is globally paginated
+ * (``LivechatPagination``, page size 25), so responses come back as
+ * ``{ count, next, previous, results }`` instead of a plain array. Unwrap the
+ * ``results`` page defensively: raw arrays pass through, non-array error
+ * payloads degrade to an empty list instead of crashing callers.
+ */
+function unwrap<T>(payload: T[] | Paginated<T>): T[] {
+  if (Array.isArray(payload)) return payload;
+  if (payload && Array.isArray((payload as Paginated<T>).results)) {
+    return (payload as Paginated<T>).results;
+  }
+  return [];
+}
 
 /* ──────────────────────────────────────────────────────────────────────
  * Notes
@@ -28,9 +44,9 @@ export interface ListNotesOptions {
   workspace: string;
 }
 
-export function listNotes(opts: ListNotesOptions): Promise<Note[]> {
+export async function listNotes(opts: ListNotesOptions): Promise<Note[]> {
   const { workspace, ...rest } = opts;
-  return serverFetch<Note[]>(
+  const payload = await serverFetch<Note[] | Paginated<Note>>(
     `/apis/notebook/notes/${toQueryString({
       search: rest.search,
       note_type: rest.note_type,
@@ -45,6 +61,7 @@ export function listNotes(opts: ListNotesOptions): Promise<Note[]> {
     })}`,
     { workspace },
   );
+  return unwrap(payload);
 }
 
 export function getNote(nanoid: string, workspace: string): Promise<Note> {
@@ -105,22 +122,29 @@ export function toggleNoteArchive(
  * Note attachments
  * ────────────────────────────────────────────────────────────────────── */
 
-export function listNoteAttachments(
+export async function listNoteAttachments(
   noteNanoid: string,
   workspace: string,
 ): Promise<NoteAttachment[]> {
-  return serverFetch<NoteAttachment[]>(
+  const payload = await serverFetch<NoteAttachment[] | Paginated<NoteAttachment>>(
     `/apis/notebook/attachments/${toQueryString({ note: noteNanoid })}`,
     { workspace },
   );
+  return unwrap(payload);
 }
 
 /* ──────────────────────────────────────────────────────────────────────
  * Note types (workspace-configurable)
  * ────────────────────────────────────────────────────────────────────── */
 
-export function listNoteTypes(workspace: string): Promise<NoteTypeOption[]> {
-  return serverFetch<NoteTypeOption[]>("/apis/notebook/note-types/", { workspace });
+export async function listNoteTypes(
+  workspace: string,
+): Promise<NoteTypeOption[]> {
+  const payload = await serverFetch<NoteTypeOption[] | Paginated<NoteTypeOption>>(
+    "/apis/notebook/note-types/",
+    { workspace },
+  );
+  return unwrap(payload);
 }
 
 export function createNoteType(
