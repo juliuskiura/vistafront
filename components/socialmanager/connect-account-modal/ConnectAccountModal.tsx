@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import type { SocialMediaPlatform, SocialPlatform } from "@/lib/api/types";
 import { oauthInitAction } from "@/app/(app)/[workspace]/dashboard/socialmanager/actions";
@@ -13,6 +13,10 @@ import { StepConnecting } from "./_components/step-connecting";
 import { StepSuccess } from "./_components/step-success";
 import { StepError } from "./_components/step-error";
 import type { PlatformOption } from "./_components/platform-copy";
+
+const BACKEND_ORIGIN = process.env.NEXT_PUBLIC_BACKEND_URL
+  ? new URL(process.env.NEXT_PUBLIC_BACKEND_URL).origin
+  : "";
 
 export type ConnectStep = "select" | "doors" | "connecting" | "success" | "error";
 
@@ -41,15 +45,14 @@ export default function ConnectAccountModal({
   const [selectedPlatform, setSelectedPlatform] = useState<SocialPlatform>(
     preselectedPlatform || "facebook",
   );
-  const [platformOptions, setPlatformOptions] = useState<PlatformOption[]>([]);
+  const platformOptions = useMemo<PlatformOption[]>(
+    () => buildPlatformOptions(platforms),
+    [platforms],
+  );
   const [errorMessage, setErrorMessage] = useState("");
   const popupRef = useRef<Window | null>(null);
   const listenerRef = useRef<((event: MessageEvent) => void) | null>(null);
   const messageReceivedRef = useRef(false);
-
-  useEffect(() => {
-    setPlatformOptions(buildPlatformOptions(platforms));
-  }, [platforms]);
 
   useEffect(() => {
     return () => {
@@ -64,6 +67,12 @@ export default function ConnectAccountModal({
 
   const handleMessage = useCallback(
     (event: MessageEvent) => {
+      // Only accept messages sent by the popup window we opened, and only from
+      // the backend's OAuth closing page — never from a third-party window or a
+      // forged origin, so a foreign page can't claim a connection.
+      if (event.source !== popupRef.current) return;
+      if (BACKEND_ORIGIN && event.origin !== BACKEND_ORIGIN) return;
+
       const data = event.data;
       if (!data || typeof data !== "object") return;
       if (!("success" in data && "platform" in data)) return;
@@ -103,8 +112,10 @@ export default function ConnectAccountModal({
         const popup = popupRef.current;
         if (popup && popup.closed) {
           popupRef.current = null;
-          setStep("success");
-          onConnected(selectedPlatform);
+          setErrorMessage(
+            "We couldn't confirm the connection — the window closed before the flow finished. Refresh to check whether the account connected anyway.",
+          );
+          setStep("error");
         }
       }, 600);
       return () => {
@@ -112,7 +123,7 @@ export default function ConnectAccountModal({
         window.clearInterval(poll);
       };
     }
-  }, [step, handleMessage, onConnected, selectedPlatform]);
+  }, [step, handleMessage, onConnected]);
 
   const handleSelectPlatform = useCallback(
     async (platform: SocialPlatform, route?: string) => {
@@ -141,8 +152,14 @@ export default function ConnectAccountModal({
         }
 
         popupRef.current = popup;
-      } catch (err: any) {
-        setErrorMessage(err?.data?.error || err?.error || "Something went wrong while starting the sign-in.");
+      } catch (err: unknown) {
+        const body =
+          typeof err === "object" && err !== null
+            ? (err as { data?: { error?: string }; error?: string })
+            : {};
+        setErrorMessage(
+          body?.data?.error || body?.error || "Something went wrong while starting the sign-in.",
+        );
         setStep("error");
       }
     },
