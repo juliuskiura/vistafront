@@ -86,6 +86,7 @@ const PostSchema = z.object({
   status: z.string().optional(),
   format: z.string().optional(),
   media_urls: z.string().optional(),
+  media_assets: z.string().optional(),
   recipients_json: z.string().optional(),
   first_comments_json: z.string().optional(),
 });
@@ -193,6 +194,7 @@ export async function createPostAction(
     status: formData.get("status") || undefined,
     format: formData.get("format") || undefined,
     media_urls: formData.get("media_urls") || undefined,
+    media_assets: formData.get("media_assets") || undefined,
     recipients_json: formData.get("recipients_json") || undefined,
     first_comments_json: formData.get("first_comments_json") || undefined,
   });
@@ -210,6 +212,7 @@ export async function createPostAction(
       status: parsed.data.status || undefined,
       format: parsed.data.format || undefined,
       media_urls: parsed.data.media_urls ? JSON.parse(parsed.data.media_urls) : undefined,
+      media_assets: parsed.data.media_assets ? JSON.parse(parsed.data.media_assets) : undefined,
       recipients: parsed.data.recipients_json
         ? JSON.parse(parsed.data.recipients_json)
         : undefined,
