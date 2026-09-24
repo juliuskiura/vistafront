@@ -145,7 +145,7 @@ export async function createCampaignAction(
     return { status: "error", message: "Failed to create campaign." };
   }
 
-  revalidatePath("/", "layout");
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", message: "Campaign created." };
 }
 
@@ -160,7 +160,7 @@ export async function updateCampaignAction(
     return { status: "error", message: "Failed to update campaign." };
   }
 
-  revalidatePath("/", "layout");
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", message: "Campaign updated." };
 }
 
@@ -174,7 +174,7 @@ export async function deleteCampaignAction(
     return { status: "error", message: "Failed to delete campaign." };
   }
 
-  revalidatePath("/", "layout");
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", message: "Campaign deleted." };
 }
 
@@ -222,7 +222,7 @@ export async function createPostAction(
     };
 
     const post = await createPost(payload, workspace);
-    revalidatePath("/", "layout");
+    revalidatePath(`/${workspace}/dashboard/socialmanager`);
     return { status: "success", post };
   } catch {
     return { status: "error", message: "Failed to create post." };
@@ -240,7 +240,7 @@ export async function updatePostAction(
     return { status: "error", message: "Failed to update post." };
   }
 
-  revalidatePath("/", "layout");
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", message: "Post updated." };
 }
 
@@ -255,7 +255,7 @@ export async function publishPostAction(
     return { status: "error", message: "Failed to publish post." };
   }
 
-  revalidatePath("/", "layout");
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", post };
 }
 
@@ -270,7 +270,7 @@ export async function cancelPostAction(
     return { status: "error", message: "Failed to cancel post." };
   }
 
-  revalidatePath("/", "layout");
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", post };
 }
 
@@ -285,7 +285,7 @@ export async function duplicatePostAction(
     return { status: "error", message: "Failed to duplicate post." };
   }
 
-  revalidatePath("/", "layout");
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", post };
 }
 
@@ -331,7 +331,7 @@ export async function createHashtagAction(
     return { status: "error", message: "Failed to create hashtag." };
   }
 
-  revalidatePath("/", "layout");
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", message: `Hashtag #${parsed.data.tag} created.` };
 }
 
@@ -360,7 +360,7 @@ export async function createQueueAction(
     return { status: "error", message: "Failed to create queue." };
   }
 
-  revalidatePath("/", "layout");
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", message: "Queue created." };
 }
 
@@ -375,7 +375,7 @@ export async function updateQueueAction(
     return { status: "error", message: "Failed to update queue." };
   }
 
-  revalidatePath("/", "layout");
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", message: "Queue updated." };
 }
 
@@ -389,7 +389,7 @@ export async function deleteQueueAction(
     return { status: "error", message: "Failed to delete queue." };
   }
 
-  revalidatePath("/", "layout");
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", message: "Queue deleted." };
 }
 
@@ -403,7 +403,7 @@ export async function scheduleQueueAction(
     return { status: "error", message: "Failed to schedule queue." };
   }
 
-  revalidatePath("/", "layout");
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", message: "Queue scheduled for publishing." };
 }
 
@@ -419,7 +419,7 @@ export async function createQueueItemAction(
     return { status: "error", message: "Failed to add item to queue." };
   }
 
-  revalidatePath("/", "layout");
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", message: "Item added to queue." };
 }
 
@@ -434,7 +434,7 @@ export async function updateQueueItemAction(
     return { status: "error", message: "Failed to update queue item." };
   }
 
-  revalidatePath("/", "layout");
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", message: "Queue item updated." };
 }
 
@@ -448,7 +448,7 @@ export async function deleteQueueItemAction(
     return { status: "error", message: "Failed to remove queue item." };
   }
 
-  revalidatePath("/", "layout");
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", message: "Queue item removed." };
 }
 
@@ -466,7 +466,7 @@ export async function syncAccountAction(
     return { status: "error", message: "Failed to sync account." };
   }
 
-  revalidatePath("/", "layout");
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", message: "Account synced." };
 }
 
@@ -480,7 +480,7 @@ export async function revokeAccountAction(
     return { status: "error", message: "Failed to revoke account." };
   }
 
-  revalidatePath("/", "layout");
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", message: "Account disconnected." };
 }
 
@@ -494,7 +494,7 @@ export async function deleteAccountAction(
     return { status: "error", message: "Failed to delete account." };
   }
 
-  revalidatePath("/", "layout");
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", message: "Account deleted." };
 }
 
@@ -519,7 +519,7 @@ export async function disconnectChannelAction(
     return { status: "error", message: "Failed to disconnect channel." };
   }
 
-  revalidatePath("/", "layout");
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", message: "Channel disconnected." };
 }
 
@@ -606,7 +606,7 @@ export async function createPlatformAction(
     return { status: "error", message: "Failed to create platform." };
   }
 
-  revalidatePath("/", "layout");
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", message: "Platform created." };
 }
 
@@ -621,7 +621,7 @@ export async function updatePlatformAction(
     return { status: "error", message: "Failed to update platform." };
   }
 
-  revalidatePath("/", "layout");
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", message: "Platform updated." };
 }
 
@@ -635,7 +635,7 @@ export async function deletePlatformAction(
     return { status: "error", message: "Failed to delete platform." };
   }
 
-  revalidatePath("/", "layout");
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", message: "Platform deleted." };
 }
 
@@ -649,7 +649,7 @@ export async function createContentFormatAction(
     return { status: "error", message: "Failed to create content format." };
   }
 
-  revalidatePath("/", "layout");
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", message: "Content format created." };
 }
 
@@ -664,7 +664,7 @@ export async function updateContentFormatAction(
     return { status: "error", message: "Failed to update content format." };
   }
 
-  revalidatePath("/", "layout");
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", message: "Content format updated." };
 }
 
@@ -678,7 +678,7 @@ export async function deleteContentFormatAction(
     return { status: "error", message: "Failed to delete content format." };
   }
 
-  revalidatePath("/", "layout");
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", message: "Content format deleted." };
 }
 
@@ -692,7 +692,7 @@ export async function createConstraintAction(
     return { status: "error", message: "Failed to create constraint." };
   }
 
-  revalidatePath("/", "layout");
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", message: "Constraint created." };
 }
 
@@ -707,7 +707,7 @@ export async function updateConstraintAction(
     return { status: "error", message: "Failed to update constraint." };
   }
 
-  revalidatePath("/", "layout");
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", message: "Constraint updated." };
 }
 
@@ -721,7 +721,7 @@ export async function deleteConstraintAction(
     return { status: "error", message: "Failed to delete constraint." };
   }
 
-  revalidatePath("/", "layout");
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", message: "Constraint deleted." };
 }
 
@@ -735,7 +735,7 @@ export async function createMediaSpecAction(
     return { status: "error", message: "Failed to create media spec." };
   }
 
-  revalidatePath("/", "layout");
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", message: "Media spec created." };
 }
 
@@ -750,7 +750,7 @@ export async function updateMediaSpecAction(
     return { status: "error", message: "Failed to update media spec." };
   }
 
-  revalidatePath("/", "layout");
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", message: "Media spec updated." };
 }
 
@@ -764,7 +764,7 @@ export async function deleteMediaSpecAction(
     return { status: "error", message: "Failed to delete media spec." };
   }
 
-  revalidatePath("/", "layout");
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", message: "Media spec deleted." };
 }
 
@@ -778,7 +778,7 @@ export async function deletePostAction(
     return { status: "error", message: "Failed to delete post." };
   }
 
-  revalidatePath("/", "layout");
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", message: "Post deleted." };
 }
 
