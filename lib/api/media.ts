@@ -4,7 +4,7 @@
  * Rule (see AGENTS.md "Backend access rule"): every call to Django must go
  * through the shared base in `lib/api/server-fetch.ts` — `serverFetch` for
  * reads, `serverMutate` for writes. They forward httpOnly cookies,
- * `X-Workspace` and CSRF, and refresh the JWT on 401/403.
+ * `X-Workspace` and CSRF, and refresh the JWT on 401.
  *
  *   - Server Components / Server Actions call these wrappers directly.
  *   - Client Components call a Next Route Handler (`app/api/…/route.ts`)

@@ -125,7 +125,11 @@ export async function serverFetch<T>(
   });
 
   if (!response.ok) {
-    const isAuthError = response.status === 401 || response.status === 403;
+    // Feature gating raises PermissionDenied → 403 on every scoped request, so
+    // a workspace without the feature would pay a needless refresh round-trip
+    // and still receive the 403. Only an expired/absent JWT (401) warrants a
+    // refresh-and-retry.
+    const isAuthError = response.status === 401;
     const canRetry = !options._retry && isAuthError && !!refreshToken;
 
     if (canRetry) {
@@ -193,7 +197,9 @@ export async function serverMutate<T>(
   });
 
   if (!response.ok) {
-    const isAuthError = response.status === 401 || response.status === 403;
+    // 403 signals feature gating (PermissionDenied), not expired credentials —
+    // only retry the raw 401 auth-expiry case.
+    const isAuthError = response.status === 401;
     const canRetry = !options._retry && isAuthError && !!refreshToken;
 
     if (canRetry) {
