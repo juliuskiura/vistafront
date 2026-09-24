@@ -248,42 +248,45 @@ export async function publishPostAction(
   nanoid: string,
   workspace: string,
 ): Promise<PostActionState | { status: "success"; post: ScheduledPost }> {
+  let post: ScheduledPost;
   try {
-    const post = await publishPost(nanoid, workspace);
-    return { status: "success", post };
+    post = await publishPost(nanoid, workspace);
   } catch {
     return { status: "error", message: "Failed to publish post." };
   }
 
   revalidatePath("/", "layout");
+  return { status: "success", post };
 }
 
 export async function cancelPostAction(
   nanoid: string,
   workspace: string,
 ): Promise<PostActionState | { status: "success"; post: ScheduledPost }> {
+  let post: ScheduledPost;
   try {
-    const post = await cancelPost(nanoid, workspace);
-    return { status: "success", post };
+    post = await cancelPost(nanoid, workspace);
   } catch {
     return { status: "error", message: "Failed to cancel post." };
   }
 
   revalidatePath("/", "layout");
+  return { status: "success", post };
 }
 
 export async function duplicatePostAction(
   nanoid: string,
   workspace: string,
 ): Promise<PostActionState | { status: "success"; post: ScheduledPost }> {
+  let post: ScheduledPost;
   try {
-    const post = await duplicatePost(nanoid, workspace);
-    return { status: "success", post };
+    post = await duplicatePost(nanoid, workspace);
   } catch {
     return { status: "error", message: "Failed to duplicate post." };
   }
 
   revalidatePath("/", "layout");
+  return { status: "success", post };
 }
 
 export async function startAiTailorAction(
