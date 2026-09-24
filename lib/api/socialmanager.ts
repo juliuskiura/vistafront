@@ -42,16 +42,33 @@ function wsOpts(workspace: string) {
 /**
  * Every list endpoint in this Django app is globally paginated
  * (``LivechatPagination``, page size 25), so responses come back as
- * ``{ count, next, previous, results }`` instead of a plain array. Unwrap the
- * ``results`` page defensively: raw arrays pass through, non-array error
- * payloads degrade to an empty list instead of crashing callers.
+ * ``{ count, next, previous, results }`` instead of a plain array. Follow the
+ * ``next`` link until the full dataset is collected: callers that aggregate
+ * rows (analytics totals, home-page post lists, …) must not silently sum a
+ * single 25-row page. Raw arrays pass through, non-array error payloads
+ * degrade to an empty list instead of crashing callers, and the loop is
+ * capped defensively so a backend pagination bug cannot hang the page.
  */
-function unwrap<T>(payload: T[] | Paginated<T>): T[] {
+async function unwrapAll<T>(
+  payload: T[] | Paginated<T>,
+  workspace: string,
+): Promise<T[]> {
   if (Array.isArray(payload)) return payload;
-  if (payload && Array.isArray((payload as Paginated<T>).results)) {
-    return (payload as Paginated<T>).results;
+  const page = payload as Paginated<T>;
+  if (!Array.isArray(page.results)) return [];
+  const results = [...page.results];
+  let next = page.next;
+  let pages = 0;
+  while (next && pages < 100) {
+    const path = next.startsWith("http")
+      ? new URL(next).pathname + new URL(next).search
+      : next;
+    const nextPage = await serverFetch<Paginated<T>>(path, wsOpts(workspace));
+    if (Array.isArray(nextPage.results)) results.push(...nextPage.results);
+    next = nextPage.next;
+    pages += 1;
   }
-  return [];
+  return results;
 }
 
 /* ──────────────────────────────────────────────────────────────────────
@@ -65,7 +82,7 @@ export function listPlatforms(
   return serverFetch<SocialMediaPlatform[] | Paginated<SocialMediaPlatform>>(
     `/apis/socialmanager/platforms/${toQueryString(rest)}`,
     wsOpts(workspace),
-  ).then(unwrap);
+  ).then((payload) => unwrapAll(payload, workspace));
 }
 
 export function createPlatform(
@@ -106,7 +123,7 @@ export function listContentFormats(
   return serverFetch<PlatformContentFormat[] | Paginated<PlatformContentFormat>>(
     `/apis/socialmanager/content-formats/${toQueryString(rest)}`,
     wsOpts(workspace),
-  ).then(unwrap);
+  ).then((payload) => unwrapAll(payload, workspace));
 }
 
 export function createContentFormat(
@@ -147,7 +164,7 @@ export function listConstraints(
   return serverFetch<ContentConstraint[] | Paginated<ContentConstraint>>(
     `/apis/socialmanager/constraints/${toQueryString(rest)}`,
     wsOpts(workspace),
-  ).then(unwrap);
+  ).then((payload) => unwrapAll(payload, workspace));
 }
 
 export function getProviderConstraints(
@@ -157,7 +174,7 @@ export function getProviderConstraints(
   return serverFetch<ContentConstraint[] | Paginated<ContentConstraint>>(
     `/apis/socialmanager/constraints/?platform=${encodeURIComponent(platform)}`,
     wsOpts(workspace),
-  ).then(unwrap);
+  ).then((payload) => unwrapAll(payload, workspace));
 }
 
 export function createConstraint(
@@ -198,7 +215,7 @@ export function listMediaSpecs(
   return serverFetch<MediaConstraint[] | Paginated<MediaConstraint>>(
     `/apis/socialmanager/media-specs/${toQueryString(rest)}`,
     wsOpts(workspace),
-  ).then(unwrap);
+  ).then((payload) => unwrapAll(payload, workspace));
 }
 
 export function createMediaSpec(
@@ -238,7 +255,7 @@ export function listAccounts(workspace: string): Promise<SocialAccount[]> {
   return serverFetch<SocialAccount[] | Paginated<SocialAccount>>(
     "/apis/socialmanager/accounts/",
     wsOpts(workspace),
-  ).then(unwrap);
+  ).then((payload) => unwrapAll(payload, workspace));
 }
 
 export function createAccount(
@@ -339,7 +356,7 @@ export function listPages(
   return serverFetch<ManagedChannel[] | Paginated<ManagedChannel>>(
     `/apis/socialmanager/pages/${toQueryString(rest)}`,
     wsOpts(workspace),
-  ).then(unwrap);
+  ).then((payload) => unwrapAll(payload, workspace));
 }
 
 export function verifyPage(
@@ -382,7 +399,7 @@ export function listCampaigns(workspace: string): Promise<Campaign[]> {
   return serverFetch<Campaign[] | Paginated<Campaign>>(
     "/apis/socialmanager/campaigns/",
     wsOpts(workspace),
-  ).then(unwrap);
+  ).then((payload) => unwrapAll(payload, workspace));
 }
 
 export function createCampaign(
@@ -423,7 +440,7 @@ export function listPosts(
   return serverFetch<ScheduledPost[] | Paginated<ScheduledPost>>(
     `/apis/socialmanager/posts/${toQueryString(rest)}`,
     wsOpts(workspace),
-  ).then(unwrap);
+  ).then((payload) => unwrapAll(payload, workspace));
 }
 
 export function getPost(nanoid: string, workspace: string): Promise<ScheduledPost> {
@@ -555,7 +572,7 @@ export function listPostComments(
   return serverFetch<PostComment[] | Paginated<PostComment>>(
     `/apis/socialmanager/comments/?${params.toString()}`,
     wsOpts(workspace),
-  ).then(unwrap);
+  ).then((payload) => unwrapAll(payload, workspace));
 }
 
 /* ──────────────────────────────────────────────────────────────────────
@@ -566,7 +583,7 @@ export function listHashtags(workspace: string): Promise<Hashtag[]> {
   return serverFetch<Hashtag[] | Paginated<Hashtag>>(
     "/apis/socialmanager/hashtags/",
     wsOpts(workspace),
-  ).then(unwrap);
+  ).then((payload) => unwrapAll(payload, workspace));
 }
 
 export function createHashtag(
@@ -584,7 +601,7 @@ export function listQueues(workspace: string): Promise<PostQueue[]> {
   return serverFetch<PostQueue[] | Paginated<PostQueue>>(
     "/apis/socialmanager/queues/",
     wsOpts(workspace),
-  ).then(unwrap);
+  ).then((payload) => unwrapAll(payload, workspace));
 }
 
 export function createQueue(
@@ -630,7 +647,7 @@ export function listQueueItems(
   return serverFetch<PostQueueItem[] | Paginated<PostQueueItem>>(
     `/apis/socialmanager/queue-items/${toQueryString(rest)}`,
     wsOpts(workspace),
-  ).then(unwrap);
+  ).then((payload) => unwrapAll(payload, workspace));
 }
 
 export function createQueueItem(
@@ -680,7 +697,7 @@ export function listMetrics(
   return serverFetch<MetricSnapshot[] | Paginated<MetricSnapshot>>(
     `/apis/socialmanager/metrics/${toQueryString(rest)}`,
     wsOpts(workspace),
-  ).then(unwrap);
+  ).then((payload) => unwrapAll(payload, workspace));
 }
 
 export function syncAnalytics(
