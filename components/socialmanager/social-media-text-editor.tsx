@@ -142,7 +142,7 @@ export default function SocialMediaTextEditor({
       className={cn(
         !bare && "rounded-2xl border border-slate-200 bg-white overflow-hidden transition-colors",
         overLimit && !bare ? "border-rose-300 ring-1 ring-rose-200" : "",
-        !bare && "focus-within:border-indigo-400 focus-within:ring-1 focus-within:ring-indigo-200",
+        !bare && "focus-within:border-primary-400 focus-within:ring-1 focus-within:ring-primary-200",
         disabled && "opacity-60 pointer-events-none",
         className,
       )}
@@ -211,11 +211,11 @@ export default function SocialMediaTextEditor({
               type="button"
               onClick={onAddMedia}
               disabled={disabled}
-              className="group flex size-20 flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-slate-300 bg-[#FAFAFA] text-slate-500 transition-colors hover:border-indigo-400 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-50"
+              className="group flex size-20 flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-slate-300 bg-[#FAFAFA] text-slate-500 transition-colors hover:border-primary-400 hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <span className="relative">
                 <ImagePlus className="size-6" />
-                <span className="absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center rounded-full bg-indigo-600 text-white">
+                <span className="absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center rounded-full bg-primary-600 text-white">
                   <Plus className="size-3" />
                 </span>
               </span>
@@ -230,7 +230,7 @@ export default function SocialMediaTextEditor({
           {hashtags.map((ht, i) => (
             <span
               key={i}
-              className="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700 border border-indigo-200"
+              className="inline-flex items-center gap-1 rounded-md bg-primary-50 px-2 py-0.5 text-[11px] font-medium text-primary-700 border border-primary-200"
             >
               {ht}
               {onRemoveHashtag && (
@@ -238,7 +238,7 @@ export default function SocialMediaTextEditor({
                   type="button"
                   onClick={() => onRemoveHashtag(i)}
                   aria-label="Remove hashtag"
-                  className="text-indigo-400 hover:text-rose-600 font-bold"
+                  className="text-primary-400 hover:text-rose-600 font-bold"
                 >
                   ×
                 </button>
@@ -274,7 +274,7 @@ export default function SocialMediaTextEditor({
                 disabled={disabled}
                 aria-label="Add hashtag"
                 title="Add hashtag"
-                className="ml-1 flex size-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-200/70 hover:text-indigo-600 disabled:cursor-not-allowed"
+                className="ml-1 flex size-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-200/70 hover:text-primary-600 disabled:cursor-not-allowed"
               >
                 <Hash className="size-5" />
               </button>
@@ -287,7 +287,7 @@ export default function SocialMediaTextEditor({
               disabled={disabled || !onShortenLinks}
               aria-label="Shorten links"
               title={onShortenLinks ? "Shorten links in this post" : "Link shortener unavailable"}
-              className="ml-1 flex size-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-200/70 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-40"
+              className="ml-1 flex size-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-200/70 hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Link2 className="size-5" />
             </button>
@@ -304,7 +304,7 @@ export default function SocialMediaTextEditor({
             onClick={() => setAiOpen(true)}
             className="gap-1.5"
           >
-            <Sparkles className="size-4 text-indigo-500" />
+            <Sparkles className="size-4 text-primary-500" />
             <span className="text-xs">AI</span>
           </Button>
           {showCharCount && (
@@ -341,7 +341,7 @@ export default function SocialMediaTextEditor({
                 disabled={disabled}
                 onChange={(e) => onFirstCommentChange?.(e.target.value)}
                 placeholder="Your comment"
-                className="w-full rounded-full border border-slate-200 bg-white py-1.5 pl-4 pr-10 text-xs text-slate-900 placeholder:text-[#9CA3AF] focus:outline-none focus:border-indigo-500 disabled:cursor-not-allowed"
+                className="w-full rounded-full border border-slate-200 bg-white py-1.5 pl-4 pr-10 text-xs text-slate-900 placeholder:text-[#9CA3AF] focus:outline-none focus:border-primary-500 disabled:cursor-not-allowed"
               />
               <button
                 type="button"
@@ -349,7 +349,7 @@ export default function SocialMediaTextEditor({
                 aria-label="Generate first comment with AI"
                 title="Generate first comment with AI"
                 onClick={() => onFirstCommentAi?.()}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 flex size-7 items-center justify-center rounded-full text-indigo-500 transition-colors hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-40"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 flex size-7 items-center justify-center rounded-full text-primary-500 transition-colors hover:bg-primary-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Sparkles className="size-4" />
               </button>

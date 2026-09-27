@@ -123,7 +123,7 @@ export default function AiOptimizerSheet({
       <SheetContent side="right" className="sm:max-w-md">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-indigo-500" />
+            <Sparkles className="h-4 w-4 text-primary-500" />
             AI Optimizer
           </SheetTitle>
           <SheetDescription>
@@ -150,7 +150,7 @@ export default function AiOptimizerSheet({
               <div
                 className={`max-w-[85%] rounded-2xl px-3 py-2 text-xs leading-relaxed ${
                   msg.role === "user"
-                    ? "bg-indigo-600 text-white"
+                  ? "bg-primary-600 text-white"
                     : "bg-slate-100 text-slate-800 border border-slate-200"
                 }`}
               >
@@ -185,7 +185,7 @@ export default function AiOptimizerSheet({
                 type="button"
                 disabled={busy || !hasModel}
                 onClick={() => send(a.instruction)}
-                className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 transition-colors hover:border-indigo-300 hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 transition-colors hover:border-primary-300 hover:text-primary-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {a.label}
               </button>

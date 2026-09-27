@@ -27,7 +27,7 @@ export function StepError({ errorMessage, onRetry, onClose }: StepErrorProps) {
       <div className="flex items-center justify-center gap-3 pt-2">
         <Button
           onClick={onRetry}
-          className="bg-indigo-600 text-xs font-bold text-white hover:bg-indigo-700"
+          className="bg-primary-600 text-xs font-bold text-white hover:bg-primary-700"
         >
           Try again
         </Button>

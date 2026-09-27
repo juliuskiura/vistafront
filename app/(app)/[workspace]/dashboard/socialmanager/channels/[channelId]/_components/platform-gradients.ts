@@ -7,7 +7,7 @@ export interface TokenHealth {
 
 export const PLATFORM_GRADIENTS: Record<string, string> = {
   instagram: "from-pink-500 to-rose-500",
-  facebook: "from-indigo-500 to-blue-500",
+  facebook: "from-primary-500 to-blue-500",
   x: "from-slate-700 to-slate-900",
   linkedin: "from-blue-600 to-blue-800",
   tiktok: "from-slate-800 to-zinc-950",
@@ -41,7 +41,7 @@ export const STATUS_META: Record<string, { label: string; badge: string; dot: st
 };
 
 export function getPlatformGradient(platform: string): string {
-  return PLATFORM_GRADIENTS[platform] ?? "from-indigo-600 to-purple-600";
+  return PLATFORM_GRADIENTS[platform] ?? "from-primary-600 to-purple-600";
 }
 
 export function getTokenHealth(expiresAt: string | null): TokenHealth {

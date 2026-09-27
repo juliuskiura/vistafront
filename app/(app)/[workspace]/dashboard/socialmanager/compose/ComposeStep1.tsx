@@ -5,8 +5,10 @@ import { Plus, Layers, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ManagedChannel, SocialMediaPlatform, Hashtag, Asset, Campaign } from "@/lib/api/types";
 import { verifyPageAction } from "../actions";
+import { useConnectAccount } from "@/lib/context";
 import SocialMediaTextEditor from "@/components/socialmanager/social-media-text-editor";
 import { PlatformGlyph, getPlatformStyle } from "@/components/platform-icon";
+import { VSButton } from "@/components/shared/components/customUi/VSButton";
 
 interface ComposeStep1Props {
   pages: ManagedChannel[];
@@ -31,8 +33,6 @@ interface ComposeStep1Props {
   setCampaigns: React.Dispatch<React.SetStateAction<Campaign[]>>;
   connectErrors: Record<string, string>;
   setConnectErrors: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  connectOpen: boolean;
-  setConnectOpen: React.Dispatch<React.SetStateAction<boolean>>;
   campaignModalOpen: boolean;
   setCampaignModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
   newCampaignName: string;
@@ -70,8 +70,6 @@ export function ComposeStep1({
   setCampaigns,
   connectErrors,
   setConnectErrors,
-  connectOpen,
-  setConnectOpen,
   campaignModalOpen,
   setCampaignModalOpen,
   newCampaignName,
@@ -86,6 +84,12 @@ export function ComposeStep1({
   setPickerOpen,
 }: ComposeStep1Props) {
   const ws = workspaceDomain.toLowerCase();
+
+  // The connect flow is owned by ConnectAccountProvider (one modal instance
+  // for the whole app), so this button no longer carries its own open state.
+  // The provider's onConnected also calls router.refresh(), which re-runs this
+  // page's Server Component and pulls the newly connected channel into `pages`.
+  const { open: openConnectAccount, canConnect } = useConnectAccount();
 
   const pageToPlatformSlug = useMemo(() => {
     const map: Record<string, string> = {};
@@ -216,19 +220,29 @@ export function ComposeStep1({
     <>
       <div>
         <div className="flex items-center justify-between mb-2">
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+          <div> 
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-900">
             Where do you want to publish?
           </label>
-          <Button
+          <p className="text-xs font-bold text-slate-500">Select one or multiple social channels to cross-post this campaign simultaneously.</p>
+          </div>
+          <VSButton
             type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setConnectOpen(true)}
+            variant="secondary"
+            appearance="outline"
+            size="md"
+            onClick={() => openConnectAccount()}
+            disabled={!canConnect}
+            title={
+              canConnect
+                ? "Link a social account to cross-post"
+                : "Your plan does not include social publishing"
+            }
             className="!px-2 !py-1 !text-[11px] !rounded-lg gap-1.5"
           >
             <Plus className="w-3.5 h-3.5" />
             Connect Channel
-          </Button>
+          </VSButton>
         </div>
         {Object.keys(pagesByPlatform).length === 0 && (
           <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
@@ -262,12 +276,12 @@ export function ComposeStep1({
                               void verifyAndFlag(page);
                             }
                           }}
-                          className={`flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors hover:bg-slate-50 ${checked ? "bg-indigo-50/50" : ""}`}
+                          className={`flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors hover:bg-slate-50 ${checked ? "bg-primary-50/50" : ""}`}
                         >
                           <span
                             className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${
                               checked
-                                ? "border-indigo-600 bg-indigo-600 text-white"
+                              ? "border-primary-600 bg-primary-600 text-white"
                                 : "border-slate-300 bg-white"
                             }`}
                           >
@@ -332,14 +346,14 @@ export function ComposeStep1({
 
       <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-4">
         <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-700">
-          <Layers className="h-4 w-4 text-indigo-600" />
+          <Layers className="h-4 w-4 text-primary-600" />
           Campaign (optional)
         </label>
         <div className="flex gap-2">
           <select
             value={campaignId ?? ""}
             onChange={(e) => setCampaignId(e.target.value || null)}
-            className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-indigo-500 focus:outline-none"
+            className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-primary-500 focus:outline-none"
           >
             <option value="">No campaign</option>
             {campaigns.map((c) => (
@@ -349,7 +363,7 @@ export function ComposeStep1({
           <Button
             type="button"
             onClick={() => setCampaignModalOpen(true)}
-            className="inline-flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-100"
+            className="inline-flex items-center gap-1 rounded-lg border border-primary-200 bg-primary-50 px-2.5 py-1.5 text-[11px] font-semibold text-primary-700 hover:bg-primary-100"
           >
             <Plus className="h-3.5 w-3.5" />
             New

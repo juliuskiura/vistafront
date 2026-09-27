@@ -109,8 +109,18 @@ export const navLandingPaths: Partial<Record<string, string>> = {
   platform: "/dashboard/platform",
 };
 
-export function navItemPath(id: string): string {
-  return navLandingPaths[id] ?? "/dashboard";
+/**
+ * The landing path for a nav item id, or `undefined` when the id has no
+ * frontend route.
+ *
+ * There is deliberately NO fallback to "/dashboard": a silent default made
+ * unmapped ids (e.g. the console-admin-only `mails`, `documents`,
+ * `developer`) resolve to the exact same string as `overview`, so their
+ * prefix match lit up on every dashboard subpage and hijacked the page
+ * heading. Callers must handle `undefined` explicitly.
+ */
+export function navItemPath(id: string): string | undefined {
+  return navLandingPaths[id];
 }
 
 export function featureById(id: string): FeatureRoute | undefined {
@@ -124,5 +134,8 @@ export function featureByKey(feature: string): FeatureRoute | undefined {
 /** The default landing path after the access page (for the "Go back" link). */
 export function accessPageGoBackPath(feature?: string): string {
   const route = feature ? featureByKey(feature) : undefined;
-  return route?.id ? navItemPath(route.id) : "/dashboard";
+  // A feature with no nav id (or no registered route) falls back to the
+  // dashboard root. This is a navigation target, not an active-state match,
+  // so a default is safe here.
+  return (route?.id ? navItemPath(route.id) : undefined) ?? "/dashboard";
 }

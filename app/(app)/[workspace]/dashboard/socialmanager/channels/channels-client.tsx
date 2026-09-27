@@ -6,23 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SocialIcon, hasSocialIcon } from "@/components/social-icons";
 import { getPlatformStyle } from "@/components/platform-icon";
-import ConnectAccountModal from "@/components/socialmanager/connect-account-modal";
+import { useConnectAccount } from "@/lib/context";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { syncAccountAction, disconnectChannelAction } from "../actions";
-import type { ManagedChannel, SocialMediaPlatform, SocialPlatform } from "@/lib/api/types";
+import type { ManagedChannel, SocialPlatform } from "@/lib/api/types";
 import { ShieldCheck, AlertCircle, Lock, Unlink, RefreshCw, ChevronRight, Plus } from "lucide-react";
-
-interface ConnectIntent {
-  open: boolean;
-  preselectedPlatform?: SocialPlatform;
-  rerequest?: boolean;
-}
 
 interface Props {
   channels: ManagedChannel[];
   workspaceDomain: string;
   pageToAccountNanoid: Record<string, string>;
-  platforms: SocialMediaPlatform[];
 }
 
 function getTokenStatus(expiresAt: string | null): { status: "active" | "expiring_soon" | "expired"; days: number | null } {
@@ -46,9 +39,12 @@ function toLocaleDateTime(value: string): string {
   });
 }
 
-export function ChannelsClient({ channels, workspaceDomain, pageToAccountNanoid, platforms }: Props) {
+export function ChannelsClient({ channels, workspaceDomain, pageToAccountNanoid }: Props) {
   const ws = workspaceDomain.toLowerCase();
-  const [connectIntent, setConnectIntent] = useState<ConnectIntent>({ open: false });
+  // The connect flow belongs to ConnectAccountProvider — one modal instance for
+  // the whole app. This page just states *what* it wants: a bare open for the
+  // header button, and a preselected platform + rerequest for Reconnect.
+  const { open: openConnectAccount, canConnect } = useConnectAccount();
   const [disconnectTarget, setDisconnectTarget] = useState<ManagedChannel | null>(null);
   const [disconnecting, setDisconnecting] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
@@ -100,8 +96,14 @@ export function ChannelsClient({ channels, workspaceDomain, pageToAccountNanoid,
           </p>
         </div>
         <Button
-          onClick={() => setConnectIntent({ open: true })}
-          className="flex items-center justify-center gap-2 bg-primary text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-xs transition-all shrink-0"
+          onClick={() => openConnectAccount()}
+          disabled={!canConnect}
+          title={
+            canConnect
+              ? "Link a social account to cross-post"
+              : "Your plan does not include social publishing"
+          }
+          className="flex items-center justify-center gap-2 bg-primary text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-xs transition-all shrink-0 disabled:opacity-60"
         >
           <Plus className="w-4 h-4" />
           <span>Connect New Channel</span>
@@ -238,8 +240,12 @@ export function ChannelsClient({ channels, workspaceDomain, pageToAccountNanoid,
                     onClick={() =>
                       isConnected
                         ? setDisconnectTarget(page)
-                        : setConnectIntent({ open: true, preselectedPlatform: page.platform as SocialPlatform, rerequest: true })
+                        : openConnectAccount({
+                            preselectedPlatform: page.platform as SocialPlatform,
+                            rerequest: true,
+                          })
                     }
+                    disabled={!isConnected && !canConnect}
                     variant={isConnected ? "outline" : "default"}
                     className={isConnected ? "border-rose-200 text-rose-700 hover:bg-rose-50" : "bg-emerald-600 text-white hover:bg-emerald-700"}
                     size="sm"
@@ -252,19 +258,6 @@ export function ChannelsClient({ channels, workspaceDomain, pageToAccountNanoid,
           })}
         </div>
       )}
-
-      <ConnectAccountModal
-        workspaceDomain={ws}
-        isOpen={connectIntent.open}
-        onClose={() => setConnectIntent((prev) => ({ ...prev, open: false }))}
-        onConnected={() => {
-          setConnectIntent({ open: false });
-          router.refresh();
-        }}
-        platforms={platforms}
-        preselectedPlatform={connectIntent.preselectedPlatform}
-        rerequest={connectIntent.rerequest}
-      />
 
       <ConfirmDialog
         open={disconnectTarget !== null}

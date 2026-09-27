@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import { Check, Search } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import type { RegistryFeature } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -104,14 +103,6 @@ export function FeatureCheckList({
                       <span className="text-sm font-medium">
                         {option.label}
                       </span>
-                      {option.app_key ? (
-                        <Badge
-                          variant="outline"
-                          className="px-1.5 py-0 text-[10px] font-normal"
-                        >
-                          {option.app_key}
-                        </Badge>
-                      ) : null}
                     </span>
                     <span className="mt-0.5 block truncate font-mono text-[11px] text-muted-foreground">
                       {option.key}

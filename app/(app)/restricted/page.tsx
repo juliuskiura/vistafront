@@ -15,7 +15,7 @@ export default async function RestrictedPage() {
   return (
     <AuthShell brandName="Vistasolve">
       <Card className="relative w-full max-w-md overflow-hidden rounded-2xl border border-white/30 bg-white/70 p-6 shadow-xl shadow-slate-900/10 backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/70">
-        <div className="pointer-events-none absolute -top-20 -right-20 size-48 rounded-full bg-indigo-500/15 blur-3xl" />
+        <div className="pointer-events-none absolute -top-20 -right-20 size-48 rounded-full bg-primary-500/15 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-20 -left-20 size-48 rounded-full bg-fuchsia-500/15 blur-3xl" />
         <div className="relative">
           <h1 className="text-xl font-semibold">Workspace access unavailable</h1>

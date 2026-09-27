@@ -23,12 +23,12 @@ export function StepDoors({ onBack, onFacebookConnect }: StepDoorsProps) {
           className="h-auto w-full cursor-pointer justify-start gap-4 p-4 text-left"
           onClick={onFacebookConnect}
         >
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50">
-            <SocialIcon name="facebook" size={24} className="text-indigo-600" />
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary-200 bg-primary-50">
+            <SocialIcon name="facebook" size={24} className="text-primary-600" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-2">
-              <h5 className="text-sm font-bold text-slate-900 transition-colors group-hover:text-indigo-600">
+              <h5 className="text-sm font-bold text-slate-900 transition-colors group-hover:text-primary-600">
                 Log in with Facebook
               </h5>
               <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">

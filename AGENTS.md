@@ -7,7 +7,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 ## Core Next.js App Router Principles
-
+The directory "/home/vistasolve/developments/regwakes/frontend/" was the old directory and should never be edited. The frontend has been moved to "/home/vistasolve/developments/vistafront/"
 1. **Server Components are the default** — Every page/layout starts as a Server Component. Add `"use client"` ONLY when hooks or browser APIs are required.
 
 2. **Fetch data on the server** — All data fetching happens in Server Components or Server Actions. No client-side fetching except for real-time features that cannot be server-rendered.

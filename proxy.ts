@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+import { redirectTo } from "@/lib/redirect.server";
+
 const AUTH_NEXT_URL_COOKIE = "auth_next_url";
+const AUTH_CHECK_PATH = "/api/auth/check";
 
 const PUBLIC_PATHS = [
   "/login",
@@ -88,6 +91,24 @@ function setAuthNextUrl(
   });
 }
 
+/**
+ * Send the request through the /api/auth/check Route Handler WITHOUT the
+ * browser ever going there.
+ *
+ * `NextResponse.rewrite` resolves the target internally and only the
+ * handler's final response reaches the client, so the address bar keeps
+ * showing the page the user asked for. A `NextResponse.redirect` to the same
+ * path would put `/api/auth/check` in the URL bar on every stale-session page
+ * load, which is both ugly and a needless disclosure of an internal endpoint.
+ *
+ * The target is still built from `request.url` — that is safe here, unlike in
+ * a `Location` header, because a rewrite is a routing decision made inside
+ * this same process and never leaves the server.
+ */
+function rewriteToAuthCheck(request: NextRequest): NextResponse {
+  return NextResponse.rewrite(new URL(AUTH_CHECK_PATH, request.url));
+}
+
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const isAsset = isAssetPath(pathname);
@@ -110,13 +131,19 @@ export function proxy(request: NextRequest) {
   // access cookie would bounce them to /dashboard, which fails, redirects
   // back to /login, and loops forever.
   //
-  // Instead we send them through /api/auth/check, a Route Handler that
-  // validates the session against Django (silently refreshing if needed).
-  // If the session is real it redirects to auth_next_url (or /dashboard);
-  // if it is dead it clears the stale cookies and redirects to /login.
+  // So we route them through /api/auth/check, a Route Handler that validates
+  // the session against Django (silently refreshing if needed). The hop exists
+  // because the proxy runs on the Edge runtime and has no BACKEND_URL, so it
+  // cannot talk to Django itself — NOT because cookies need a Route Handler.
+  // Cookies are set and deleted on proxy responses all over this file
+  // (see setAuthNextUrl and the dead-session branch below).
+  //
+  // It is a REWRITE, not a redirect: the browser's URL never changes, so
+  // /api/auth/check is an internal implementation detail and never appears in
+  // the address bar. `rewriteToAuthCheck` documents the shape.
   if (isAuthPath(pathname)) {
     if (hasAccessToken) {
-      return NextResponse.redirect(new URL("/api/auth/check", request.url));
+      return rewriteToAuthCheck(request);
     }
     return NextResponse.next();
   }
@@ -142,21 +169,22 @@ export function proxy(request: NextRequest) {
     }
 
     // Stale session (no access, or access expired) but a refresh token
-    // exists → validate/refresh in /api/auth/check. Route Handlers may set
-    // cookies (Server Component render may NOT), so this is the only place
-    // a silent refresh can actually persist. On failure the handler clears
-    // cookies and lands on /login — no loop possible.
+    // exists → validate/refresh through the internal /api/auth/check rewrite.
+    // If the session is real the handler redirects on to auth_next_url (or
+    // /dashboard); if it is dead it clears the cookies and lands on /login.
+    // Either way the browser only ever sees the final destination.
     if (hasRefreshToken) {
-      const res = NextResponse.redirect(
-        new URL("/api/auth/check", request.url),
-      );
+      const res = rewriteToAuthCheck(request);
       setAuthNextUrl(res, destination);
       return res;
     }
 
     // Dead session: clear stale cookies and send to login. auth_next_url is
     // preserved so loginAction can bounce the user back to `destination`.
-    const res = NextResponse.redirect(new URL("/login", request.url));
+    // Relative Location: the browser stays on whatever host it is already on
+    // (app.vistasolve.net), so a loopback `request.url` can never redirect it
+    // to localhost:3000.
+    const res = redirectTo("/login");
     setAuthNextUrl(res, destination);
     res.cookies.delete("access");
     res.cookies.delete("refresh");

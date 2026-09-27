@@ -18,7 +18,8 @@ import {
   type InnerNavItem,
   type InnerNavGroup,
 } from "@/components/workspace/workspace-inner-nav";
-import { Banner } from "@/components/banner";
+import { Banner, type BannerAction } from "@/components/banner";
+import { useConnectAccount } from "@/lib/context";
 
 /* ──────────────────────────────────────────────────────────────────────
  * Social Manager Layout
@@ -59,10 +60,27 @@ export function SocialManagerLayout({
   workspaceDomain,
 }: SocialManagerLayoutProps) {
   const pathname = usePathname();
+  const { open: openConnectAccount, canConnect } = useConnectAccount();
 
   const basePath = `/${workspaceDomain}/dashboard/socialmanager`;
 
   const isHome = pathname === basePath;
+
+  const actions: BannerAction[] = [
+    { label: "New Post", icon: PenLine, href: `${basePath}/compose` },
+  ];
+
+  // Opens the shared ConnectAccountModal (one instance, mounted by
+  // ConnectAccountProvider) instead of navigating to /channels and making the
+  // user start the OAuth flow from a second screen.
+  if (canConnect) {
+    actions.push({
+      label: "Connect Account",
+      icon: Plus,
+      onClick: () => openConnectAccount(),
+      variant: "secondary",
+    });
+  }
 
   return (
     <div className="flex flex-col">
@@ -70,10 +88,7 @@ export function SocialManagerLayout({
         <Banner
           title="Welcome to Social Manager"
           description="Plan, schedule, and publish across all your social channels from one place."
-          actions={[
-            { label: "New Post", icon: PenLine, href: `${basePath}/compose` },
-            { label: "Connect Account", icon: Plus, href: `${basePath}/channels`, variant: "secondary" },
-          ]}
+          actions={actions}
         />
       )}
 

@@ -111,7 +111,7 @@ export function ComposeStep2({
     <div className="space-y-4 pt-2">
       <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
         <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-700">
-          <CalendarIcon className="h-4 w-4 text-indigo-600" />
+          <CalendarIcon className="h-4 w-4 text-primary-600" />
           Set Schedule
         </label>
         <div className="flex gap-2">
@@ -120,7 +120,7 @@ export function ComposeStep2({
             onClick={() => setPublishNow(true)}
             className={`flex-1 rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
               publishNow
-                ? "bg-indigo-600 text-white"
+              ? "bg-primary-600 text-white"
                 : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
             }`}
           >
@@ -131,7 +131,7 @@ export function ComposeStep2({
             onClick={() => setPublishNow(false)}
             className={`flex-1 rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
               !publishNow
-                ? "bg-indigo-600 text-white"
+              ? "bg-primary-600 text-white"
                 : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
             }`}
           >
@@ -147,13 +147,13 @@ export function ComposeStep2({
                 const date = e.target.value ? new Date(e.target.value) : undefined;
                 setDateTime(date);
               }}
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
             />
             <input
               type="time"
               value={scheduledAt ? new Date(scheduledAt).toTimeString().slice(0, 5) : ""}
               onChange={(e) => setDateTime(undefined, e.target.value)}
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-mono focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-mono focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
             />
           </div>
         )}

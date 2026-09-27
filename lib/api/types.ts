@@ -501,7 +501,6 @@ export interface RegistryFeature {
   key: string;
   label: string;
   description: string;
-  app_key: string;
 }
 export interface SubsPlan {
   nanoid: string;

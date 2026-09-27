@@ -47,7 +47,7 @@ export function CampaignModal({
               value={newCampaignName}
               onChange={(e) => setNewCampaignName(e.target.value)}
               placeholder="Campaign name"
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
             />
           </div>
           <div>
@@ -57,7 +57,7 @@ export function CampaignModal({
               value={newCampaignDesc}
               onChange={(e) => setNewCampaignDesc(e.target.value)}
               placeholder="Brief description"
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
             />
           </div>
         </div>

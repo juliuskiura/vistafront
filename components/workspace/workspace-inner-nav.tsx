@@ -87,9 +87,9 @@ export function WorkspaceInnerNav({
         {hideBrand ? null : (
           <Link
             href={basePath}
-            className="flex shrink-0 items-center gap-2 pr-1 text-sm font-bold tracking-tight text-slate-900 hover:text-indigo-600 dark:text-slate-100 dark:hover:text-indigo-400"
+            className="flex shrink-0 items-center gap-2 pr-1 text-sm font-bold tracking-tight text-slate-900 hover:text-primary-600 dark:text-slate-100 dark:hover:text-primary-400"
           >
-            <BrandIcon className="h-4 w-4 text-indigo-500" />
+            <BrandIcon className="h-4 w-4 text-primary-500" />
             {brandLabel}
           </Link>
         )}

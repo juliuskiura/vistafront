@@ -17,7 +17,7 @@ export function ModalHeader({ platform, onClose }: ModalHeaderProps) {
           {platform && hasSocialIcon(platform.id) ? (
             <SocialIcon name={platform.id} size={20} className={platform.color} />
           ) : (
-            <Link2 className="h-5 w-5 text-indigo-600" />
+              <Link2 className="h-5 w-5 text-primary-600" />
           )}
         </div>
         <div>

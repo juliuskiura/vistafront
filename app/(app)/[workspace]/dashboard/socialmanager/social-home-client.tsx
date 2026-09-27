@@ -44,7 +44,7 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 const QUICK_ACTIONS: { label: string; description: string; icon: LucideIcon; href: string; color: string; bg: string }[] = [
-  { label: "Compose", description: "Create and schedule posts", icon: PenLine, href: "compose", color: "text-indigo-600", bg: "bg-indigo-50" },
+  { label: "Compose", description: "Create and schedule posts", icon: PenLine, href: "compose", color: "text-primary-600", bg: "bg-primary-50" },
   { label: "Calendar", description: "Drag-and-drop scheduling", icon: CalendarDays, href: "calendar", color: "text-violet-600", bg: "bg-violet-50" },
   { label: "Queues", description: "Repeating post schedules", icon: ListOrdered, href: "queues", color: "text-emerald-600", bg: "bg-emerald-50" },
   { label: "Bulk Upload", description: "Import posts from CSV", icon: Upload, href: "bulk-upload", color: "text-amber-600", bg: "bg-amber-50" },
@@ -187,7 +187,7 @@ export function SocialHomePageClient({
     [posts],
   );
   const stats = [
-    { label: "Connected", value: connectedPages.length, icon: Wifi, color: "text-indigo-600", bg: "bg-indigo-50" },
+    { label: "Connected", value: connectedPages.length, icon: Wifi, color: "text-primary-600", bg: "bg-primary-50" },
     { label: "Scheduled", value: scheduled.length, icon: Clock, color: "text-violet-600", bg: "bg-violet-50" },
     { label: "Published", value: published.length, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
     { label: "Drafts", value: drafts.length, icon: PenLine, color: "text-amber-600", bg: "bg-amber-50" },
@@ -236,7 +236,7 @@ export function SocialHomePageClient({
             </button>
             <Link
               href={`${basePath}/calendar`}
-              className="text-xs font-semibold text-indigo-600 hover:text-indigo-700"
+              className="text-xs font-semibold text-primary-600 hover:text-primary-700"
             >
               View all →
             </Link>
@@ -373,7 +373,7 @@ export function SocialHomePageClient({
         ) : (
           <div className="rounded-xl border border-neutral-200 bg-white p-6 text-center text-sm text-neutral-500">
             No posts yet.{" "}
-            <Link href={`${basePath}/compose`} className="font-semibold text-indigo-600 hover:text-indigo-700">
+              <Link href={`${basePath}/compose`} className="font-semibold text-primary-600 hover:text-primary-700">
               Compose one →
             </Link>
           </div>
@@ -395,7 +395,7 @@ export function SocialHomePageClient({
               >
                 <span className="font-semibold">{err.page || "A channel"}</span> couldn't be read: {err.error}
                 {err.page && (
-                  <Link href={`${basePath}/channels`} className="ml-1 font-semibold text-indigo-600 hover:text-indigo-700">
+                  <Link href={`${basePath}/channels`} className="ml-1 font-semibold text-primary-600 hover:text-primary-700">
                     Reconnect →
                   </Link>
                 )}
@@ -440,7 +440,7 @@ export function SocialHomePageClient({
         <div>
           <div className="mb-3 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-neutral-900">Upcoming Posts</h3>
-            <Link href={`${basePath}/calendar`} className="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
+            <Link href={`${basePath}/calendar`} className="text-xs font-semibold text-primary-600 hover:text-primary-700">
               View calendar →
             </Link>
           </div>
@@ -487,7 +487,7 @@ export function SocialHomePageClient({
           ) : (
             <div className="rounded-xl border border-neutral-200 bg-white p-6 text-center text-sm text-neutral-500">
               No upcoming posts.{" "}
-              <Link href={`${basePath}/compose`} className="font-semibold text-indigo-600 hover:text-indigo-700">
+                <Link href={`${basePath}/compose`} className="font-semibold text-primary-600 hover:text-primary-700">
                 Compose one →
               </Link>
             </div>
@@ -498,7 +498,7 @@ export function SocialHomePageClient({
         <div>
           <div className="mb-3 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-neutral-900">Connected Channels</h3>
-            <Link href={`${basePath}/channels`} className="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
+            <Link href={`${basePath}/channels`} className="text-xs font-semibold text-primary-600 hover:text-primary-700">
               Manage →
             </Link>
           </div>
@@ -529,7 +529,7 @@ export function SocialHomePageClient({
           ) : (
             <div className="rounded-xl border border-neutral-200 bg-white p-6 text-center text-sm text-neutral-500">
               No channels connected yet.{" "}
-              <Link href={`${basePath}/channels`} className="font-semibold text-indigo-600 hover:text-indigo-700">
+                <Link href={`${basePath}/channels`} className="font-semibold text-primary-600 hover:text-primary-700">
                 Connect your first account →
               </Link>
             </div>

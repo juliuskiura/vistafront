@@ -1,5 +1,5 @@
 export const PLATFORM_THEMES: Record<string, { bg: string; border: string; badge: string }> = {
-  facebook: { bg: "bg-indigo-50", border: "border-indigo-200", badge: "bg-indigo-100 text-indigo-700" },
+  facebook: { bg: "bg-primary-50", border: "border-primary-200", badge: "bg-primary-100 text-primary-700" },
   instagram: { bg: "bg-pink-50", border: "border-pink-200", badge: "bg-pink-100 text-pink-700" },
   x: { bg: "bg-sky-50", border: "border-sky-200", badge: "bg-sky-100 text-sky-700" },
   linkedin: { bg: "bg-blue-50", border: "border-blue-200", badge: "bg-blue-100 text-blue-700" },

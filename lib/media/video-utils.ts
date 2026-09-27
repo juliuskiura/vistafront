@@ -90,7 +90,7 @@ export function debounce<T extends (...args: any[]) => void>(fn: T, ms: number):
 export function generateColor(str: string): string {
   const colors = [
     "bg-blue-500", "bg-green-500", "bg-yellow-500", "bg-purple-500",
-    "bg-pink-500", "bg-indigo-500", "bg-red-500", "bg-teal-500",
+    "bg-pink-500", "bg-primary-500", "bg-red-500", "bg-teal-500",
   ];
   let hash = 0;
   for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
@@ -109,35 +109,47 @@ export function containerFromExtension(asset: Asset): string | null {
 
 export type { VideoView } from "@/lib/apptypes/media_libary";
 
+/** Django-served path prefixes that the app host can reach on the same origin. */
+const DJANGO_SERVED_PREFIXES = ["/apis/", "/media/", "/m/", "/d/"];
+
 /**
- * Rehost a Django-served URL onto the same origin the browser uses for API
- * calls. `stream_url`/`original_file` are absolute URLs baked server-side
- * from Django's Host header (e.g. `http://127.0.0.1:8000/...`), but direct
- * browser calls authenticate against `NEXT_PUBLIC_BACKEND_URL`. If their
- * hosts differ (`localhost` vs `127.0.0.1`), the `access` cookie is not sent
- * and the request 401s. Rewriting the origin to the configured base keeps the
- * request same-site with the cookie.
+ * Reduce a Django-served URL to a same-origin path.
+ *
+ * `stream_url` and friends are absolute URLs that Django builds from the Host it
+ * saw on the request (`request.build_absolute_uri`, see
+ * media_libary/serializers.py). That host is the app host whenever the browser
+ * calls /apis/ same-origin, which is now the only way it calls it. But a value
+ * that reached us another way -- a server-side render, or a row written when the
+ * request came in on 127.0.0.1 -- can still carry a backend origin. Fetching
+ * such a URL from the browser is cross-origin, so the httpOnly `access` cookie
+ * is not attached and playback 401s.
+ *
+ * Dropping the origin and keeping path + query makes the browser resolve it
+ * against the current page, which is exactly where nginx (or the Next.js
+ * rewrite, in local dev) forwards it to Django.
+ *
+ * URLs outside the Django-served prefixes -- presigned object-storage links on
+ * OCI, for instance -- are returned untouched. They are fetched by the storage
+ * provider's own host, have no /media/ path to preserve, and must keep their
+ * signature.
  */
-export function toProtocolRelative(
-  url: string | null | undefined,
-): string | null {
+export function toSameOrigin(url: string | null | undefined): string | null {
   if (!url) return null;
   try {
-    const base = new URL(url);
-    const target = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
-    const dj = new URL(target);
-    if (base.origin !== dj.origin) {
-      base.protocol = dj.protocol;
-      base.host = dj.host;
+    // Relative inputs resolve against the placeholder and fall through as-is.
+    const parsed = new URL(url, "http://relative.invalid");
+    if (parsed.origin === "http://relative.invalid") return url;
+    if (!DJANGO_SERVED_PREFIXES.some((p) => parsed.pathname.startsWith(p))) {
+      return url;
     }
-    return base.href;
+    return `${parsed.pathname}${parsed.search}`;
   } catch {
     return url;
   }
 }
 
 export function toVideoView(asset: Asset): VideoView {
-  const src = toProtocolRelative(asset.stream_url) || toProtocolRelative(asset.original_file) || null;
+  const src = toSameOrigin(asset.stream_url) || toSameOrigin(asset.original_file) || null;
   return {
     src,
     poster: asset.thumbnail || null,

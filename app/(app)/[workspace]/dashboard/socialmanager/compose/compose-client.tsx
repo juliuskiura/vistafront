@@ -29,7 +29,6 @@ import { DevicePreview } from "./DevicePreview";
 import { ComposeFooter } from "./ComposeFooter";
 import { CampaignModal } from "./CampaignModal";
 import { ToastNotifications } from "./ToastNotifications";
-import ConnectAccountModal from "@/components/socialmanager/connect-account-modal";
 import AssetPicker from "@/components/media/asset-picker";
 
 interface Props {
@@ -117,7 +116,6 @@ export function ComposeClient({
   });
   const [firstCommentByPage, setFirstCommentByPage] = useState<Record<string, string>>({});
   const [connectErrors, setConnectErrors] = useState<Record<string, string>>({});
-  const [connectOpen, setConnectOpen] = useState(false);
   const [publishError, setPublishError] = useState("");
 
   const pageToPlatformSlug = useMemo(() => {
@@ -354,10 +352,6 @@ export function ComposeClient({
     setStep(2);
   }, [content, selectedPages, variants]);
 
-  const handleChannelConnected = useCallback(() => {
-    setConnectOpen(false);
-  }, []);
-
   const handleCreateCampaign = useCallback(async () => {
     if (!newCampaignName.trim()) return;
     const fd = new FormData();
@@ -412,8 +406,6 @@ export function ComposeClient({
                 setCampaigns={setCampaigns}
                 connectErrors={connectErrors}
                 setConnectErrors={setConnectErrors}
-                connectOpen={connectOpen}
-                setConnectOpen={setConnectOpen}
                 campaignModalOpen={campaignModalOpen}
                 setCampaignModalOpen={setCampaignModalOpen}
                 newCampaignName={newCampaignName}
@@ -506,14 +498,6 @@ export function ComposeClient({
           setNewCampaignDesc={setNewCampaignDesc}
           campaignAction={campaignAction}
           setCampaignAction={setCampaignAction}
-        />
-
-        <ConnectAccountModal
-          isOpen={connectOpen}
-          onClose={() => setConnectOpen(false)}
-          onConnected={handleChannelConnected}
-          workspaceDomain={ws}
-          platforms={platforms}
         />
 
         <AssetPicker

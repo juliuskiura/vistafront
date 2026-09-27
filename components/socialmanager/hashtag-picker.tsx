@@ -92,7 +92,7 @@ export default function HashtagPicker({
         {search && showNewTag && (
           <button
             onClick={handleCreateAndSelect}
-            className="mb-2 flex w-full items-center gap-2 rounded-md bg-indigo-50 px-2 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100 transition-colors"
+            className="mb-2 flex w-full items-center gap-2 rounded-md bg-primary-50 px-2 py-1.5 text-xs font-medium text-primary-700 hover:bg-primary-100 transition-colors"
           >
             <Plus className="h-3 w-3" />
             Add "#{search.replace(/^#/, "")}" and insert

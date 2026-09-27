@@ -1,7 +1,7 @@
 import { requireWorkspace } from "@/lib/auth/server";
 import { requireFeature } from "@/lib/features/guard";
-import { listAccounts, listPlatforms } from "@/lib/api";
-import type { SocialAccount, SocialMediaPlatform } from "@/lib/api/types";
+import { listAccounts } from "@/lib/api";
+import type { SocialAccount } from "@/lib/api/types";
 import { ChannelsClient } from "./channels-client";
 
 export default async function ChannelsPage({
@@ -14,10 +14,9 @@ export default async function ChannelsPage({
   await requireFeature(active, "socialmanager.posts");
   const ws = active.domain;
 
-  const [accounts, platforms] = await Promise.all([
-    listAccounts(ws).catch((): SocialAccount[] => []),
-    listPlatforms({ all: true, workspace: ws }).catch((): SocialMediaPlatform[] => []),
-  ]);
+  // No platform list here: ConnectAccountProvider owns that fetch and only runs
+  // it when the shared connect modal is actually opened.
+  const accounts = await listAccounts(ws).catch((): SocialAccount[] => []);
 
   const channels = accounts.flatMap((account) => account.managed_pages ?? []);
 
@@ -27,5 +26,5 @@ export default async function ChannelsPage({
     return map;
   }, {});
 
-  return <ChannelsClient channels={channels} workspaceDomain={ws} pageToAccountNanoid={pageToAccountNanoid} platforms={platforms} />;
+  return <ChannelsClient channels={channels} workspaceDomain={ws} pageToAccountNanoid={pageToAccountNanoid} />;
 }

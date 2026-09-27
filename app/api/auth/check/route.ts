@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import { listWorkspaces } from "@/lib/api";
+import { redirectTo } from "@/lib/redirect.server";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:8000";
 
@@ -40,15 +41,25 @@ async function isValidWorkspaceDestination(destination: string): Promise<boolean
  * is signed in and bounce them toward /dashboard, which fails, redirects back
  * to /login, and loops forever.
  *
- * This Route Handler runs on Node where the backend env is available and where
- * cookies CAN be set (allowed in Route Handlers, unlike Server Component
- * render). It:
+ * This Route Handler runs on Node where the backend env is available, so it:
  *   1. Verifies the access token against Django, silently refreshing if 401.
  *   2. Valid → 307 to the captured auth_next_url (or /dashboard).
  *   3. Invalid → clears the stale cookies and 307 to /login.
  *
  * Because it clears cookies on death, the next proxy pass sees a genuinely
  * logged-out user and lets /login render — the loop terminates.
+ *
+ * ## This endpoint is internal, and the browser never sees it
+ *
+ * The proxy reaches this handler through `NextResponse.rewrite`, not a
+ * redirect, so this path is not a user-facing URL and should not be linked
+ * to, bookmarked, or treated as part of the app's surface. It is not Django's
+ * API either: Django is mounted at `/apis/` (see nginx/server.conf), while
+ * `/api/*` is this Next.js BFF layer that fronts Django server-side.
+ *
+ * Every `Location` below is a relative path (see `redirectTo`), so the browser
+ * resolves it against app.vistasolve.net and can never be bounced to
+ * localhost:3000 by a loopback `req.url`.
  */
 export async function GET(req: NextRequest) {
   const access = req.cookies.get("access")?.value;
@@ -73,7 +84,7 @@ export async function GET(req: NextRequest) {
   if (access && (await verify(access))) {
     const validDestination = await isValidWorkspaceDestination(destination);
     const redirectUrl = validDestination ? destination : "/dashboard";
-    const res = NextResponse.redirect(new URL(redirectUrl, req.url));
+    const res = redirectTo(redirectUrl);
     res.cookies.delete("auth_next_url");
     return res;
   }
@@ -120,9 +131,7 @@ export async function GET(req: NextRequest) {
           if (await verify(newAccess)) {
             const validDestination = await isValidWorkspaceDestination(destination);
             const redirectUrl = validDestination ? destination : "/dashboard";
-            const res = NextResponse.redirect(
-              new URL(redirectUrl, req.url),
-            );
+            const res = redirectTo(redirectUrl);
             res.cookies.delete("auth_next_url");
             res.cookies.set("access", newAccess, authCookieOptions());
             for (const { name, value } of rotated) {
@@ -139,7 +148,7 @@ export async function GET(req: NextRequest) {
 
   // 3. Session is dead — clear the stale cookies so the proxy stops
   //    treating the user as authenticated, then go to /login.
-  const res = NextResponse.redirect(new URL("/login", req.url));
+  const res = redirectTo("/login");
   res.cookies.delete("access");
   res.cookies.delete("refresh");
   res.cookies.delete("auth_next_url");

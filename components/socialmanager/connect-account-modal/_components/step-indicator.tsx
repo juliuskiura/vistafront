@@ -32,13 +32,13 @@ export function StepIndicator({ step }: StepIndicatorProps) {
             {index > 0 && (
               <span
                 className={`h-px flex-1 ${
-                  done ? "bg-emerald-400" : active ? "bg-indigo-300" : "bg-slate-300"
+                  done ? "bg-emerald-400" : active ? "bg-primary-300" : "bg-slate-300"
                 }`}
               />
             )}
             <span
               className={`flex items-center gap-1.5 text-[11px] font-semibold ${
-                active ? "text-indigo-600" : done ? "text-emerald-600" : "text-slate-400"
+                active ? "text-primary-600" : done ? "text-emerald-600" : "text-slate-400"
               }`}
             >
               <span
@@ -46,7 +46,7 @@ export function StepIndicator({ step }: StepIndicatorProps) {
                   done
                     ? "bg-emerald-600 text-white"
                     : active
-                      ? "bg-indigo-600 text-white"
+                    ? "bg-primary-600 text-white"
                       : "bg-slate-200 text-slate-500"
                 }`}
               >

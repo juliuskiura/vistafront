@@ -12,7 +12,7 @@ interface HeaderProps {
 
 export function Header({ title, isMulti, selectedCount }: HeaderProps) {
   return (
-    <DialogHeader className="bg-indigo-600 px-5 py-4 shrink-0">
+    <DialogHeader className="bg-primary-600 px-5 py-4 shrink-0">
       <DialogTitle className="text-white flex items-center gap-2">
         <ImagePlus size={18} />
         {title}

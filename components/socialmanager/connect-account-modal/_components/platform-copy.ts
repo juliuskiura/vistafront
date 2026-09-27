@@ -37,9 +37,9 @@ const PLATFORM_DETAILS: Record<string, PlatformDetails> = {
   },
   facebook: {
     description: "Share posts, photos, and videos with your Facebook audience.",
-    color: "text-indigo-600",
-    bgColor: "bg-indigo-50",
-    borderColor: "border-indigo-200",
+    color: "text-primary-600",
+    bgColor: "bg-primary-50",
+    borderColor: "border-primary-200",
   },
   tiktok: {
     description: "Publish short videos to your TikTok followers.",

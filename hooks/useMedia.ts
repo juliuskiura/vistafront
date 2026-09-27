@@ -1,10 +1,13 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 
-const DJANGO_API_BASE =
-  process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
-
+/**
+ * Same-origin API path. The browser never addresses Django directly: nginx
+ * routes /apis/ to Django and Next.js rewrites it in local dev, so a relative
+ * path lands correctly in every environment and keeps the request same-site
+ * with the httpOnly `access` cookie.
+ */
 function dj(path: string): string {
-  return `${DJANGO_API_BASE}${path}`;
+  return path;
 }
 
 function getCookie(name: string): string | null {

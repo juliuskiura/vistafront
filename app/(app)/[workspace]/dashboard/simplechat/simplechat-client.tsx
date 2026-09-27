@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { getWebSocketUrl } from "@/lib/env";
 import { cn } from "@/lib/utils";
 
 type Message = {
@@ -40,11 +41,7 @@ export function SimpleChatClient() {
   const nextId = () => ++nextIdRef.current;
 
   useEffect(() => {
-    const backendUrl = new URL(
-      process.env.NEXT_PUBLIC_BACKEND_URL ?? window.location.origin,
-    );
-    const protocol = backendUrl.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${backendUrl.host}/ws/simplechat/rooms/`;
+    const wsUrl = getWebSocketUrl("/ws/simplechat/rooms/");
     const BASE_DELAY = 1000;
     const MAX_DELAY = 30000;
     let cancelled = false;

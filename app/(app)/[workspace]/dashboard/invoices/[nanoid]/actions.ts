@@ -4,6 +4,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { createPaypalCheckout } from "@/lib/api";
+import { APP_BASE_URL, isDeployedBuild } from "@/lib/env";
 
 export interface PaypalCheckoutResult {
   ok: boolean;
@@ -46,16 +47,21 @@ export async function startPaypalCheckout(input: {
 }
 
 /**
- * Absolute app origin for the current request (host header), so PayPal's
- * return/cancel URLs point back at this tenant's invoice page.
+ * Absolute app origin for the current request, so PayPal's return/cancel URLs
+ * point back at this tenant's invoice page.
+ *
+ * nginx forwards `Host` and `X-Forwarded-Proto`, so the forwarded headers are
+ * the accurate source. The `APP_BASE_URL` fallback is only for the case where
+ * no host header survives at all — and it is a real hostname
+ * (https://app.vistasolve.net), never a loopback address: this value is
+ * handed to PayPal as a return URL, and "localhost:3000" in a URL PayPal
+ * redirects a paying customer to is a broken checkout.
  */
 async function resolveAppOrigin(): Promise<string> {
   const headerList = await headers();
   const host = headerList.get("x-forwarded-host") ?? headerList.get("host");
   const proto =
     headerList.get("x-forwarded-proto") ??
-    (process.env.NODE_ENV === "production" ? "https" : "http");
-  return host
-    ? `${proto}://${host}`
-    : (process.env.APP_BASE_URL ?? "http://localhost:3000");
+    (isDeployedBuild ? "https" : "http");
+  return host ? `${proto}://${host}` : APP_BASE_URL;
 }

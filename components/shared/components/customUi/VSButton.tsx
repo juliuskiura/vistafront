@@ -17,6 +17,8 @@ const vsButtonVariants = cva(
           "[--vs-fill:var(--color-accent-600)] [--vs-fill-hover:var(--color-accent-500)] [--vs-on-fill:var(--color-accent-50)] [--vs-ink:var(--color-accent-500)] [--vs-wash:var(--color-accent-500)] [--vs-top:var(--color-accent-400)] [--vs-bottom:var(--color-accent-700)]",
         destructive:
           "[--vs-fill:var(--color-destructive-600)] [--vs-fill-hover:var(--color-destructive-500)] [--vs-on-fill:var(--color-destructive-50)] [--vs-ink:var(--color-destructive-500)] [--vs-wash:var(--color-destructive-500)] [--vs-top:var(--color-destructive-400)] [--vs-bottom:var(--color-destructive-700)]",
+        light:
+          "[--vs-fill:var(--primary-50)] [--vs-fill-hover:var(--primary-100)] [--vs-on-fill:var(--primary-800)] [--vs-ink:var(--primary-800)] [--vs-wash:var(--primary-500)] [--vs-top:var(--primary-200)] [--vs-bottom:var(--primary-400)]",
       },
       appearance: {
         solid:

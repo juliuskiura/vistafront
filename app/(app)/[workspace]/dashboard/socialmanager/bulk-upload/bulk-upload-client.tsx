@@ -187,7 +187,7 @@ export function BulkUploadClient({ pages, campaigns, workspaceDomain }: Props) {
             <select
               value={selectedPage}
               onChange={(e) => setSelectedPage(e.target.value)}
-              className="h-9 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="h-9 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
             >
               <option value="">Select a page...</option>
               {activePages.map((page) => (
@@ -274,7 +274,7 @@ export function BulkUploadClient({ pages, campaigns, workspaceDomain }: Props) {
         {rows.map((row, idx) => (
           <Card key={row.id} className="p-3">
             <div className="flex items-start gap-3">
-              <span className="mt-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-[10px] font-bold text-indigo-700">
+              <span className="mt-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-100 text-[10px] font-bold text-primary-700">
                 {idx + 1}
               </span>
               <div className="flex-1 space-y-2">
@@ -282,7 +282,7 @@ export function BulkUploadClient({ pages, campaigns, workspaceDomain }: Props) {
                   placeholder="Post content..."
                   value={row.content}
                   onChange={(e) => updateRow(row.id, "content", e.target.value)}
-                  className="min-h-[60px] w-full rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  className="min-h-[60px] w-full rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                 />
                 <div className="flex gap-3">
                   <div className="flex-1">

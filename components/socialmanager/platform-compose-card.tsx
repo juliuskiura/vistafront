@@ -142,7 +142,7 @@ export default function PlatformComposeCard({
             value={linkUrl}
             onChange={(e) => onLinkUrlChange(e.target.value)}
             placeholder="https://yourbrand.com/article"
-            className="w-full bg-white text-xs text-slate-900 px-3 py-1.5 rounded-lg border border-slate-200 focus:outline-none focus:border-indigo-500"
+            className="w-full bg-white text-xs text-slate-900 px-3 py-1.5 rounded-lg border border-slate-200 focus:outline-none focus:border-primary-500"
           />
         </div>
       )}

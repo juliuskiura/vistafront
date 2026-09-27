@@ -164,14 +164,14 @@ function ScopePillInput({
       {pills.map((pill, i) => (
         <span
           key={`${pill}-${i}`}
-          className="inline-flex items-center gap-1 rounded-full bg-indigo-100 px-2 py-0.5 font-mono text-[10px] text-indigo-800"
+          className="inline-flex items-center gap-1 rounded-full bg-primary-100 px-2 py-0.5 font-mono text-[10px] text-primary-800"
         >
           {pill}
           <button
             type="button"
             aria-label={`Remove ${pill}`}
             onClick={() => removePill(i)}
-            className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full text-indigo-500 hover:bg-indigo-200"
+            className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full text-primary-500 hover:bg-primary-200"
           >
             ×
           </button>
@@ -620,8 +620,8 @@ function OauthSetupCard({ platformSlug, platformName, callbackUri }: { platformS
   };
 
   return (
-    <div className="mt-3 rounded-lg border border-indigo-200 bg-indigo-50/60 p-3 space-y-2">
-      <p className="text-[11px] font-semibold text-indigo-900">OAuth setup for {platformName}</p>
+    <div className="mt-3 rounded-lg border border-primary-200 bg-primary-50/60 p-3 space-y-2">
+      <p className="text-[11px] font-semibold text-primary-900">OAuth setup for {platformName}</p>
       <ol className="list-decimal list-inside space-y-1 text-[11px] text-slate-600">
         <li>Enter the App ID / Client ID above (from the {platformName} developer console).</li>
         <li>

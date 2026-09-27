@@ -19,8 +19,12 @@ import {
 } from "@/components/ui/sheet";
 import { resolveIcon } from "@/lib/nav-icons";
 import type { NavItem, SubscriptionState, Workspace } from "@/lib/api";
-import { SubscriptionProvider } from "@/lib/context";
+import { ConnectAccountProvider, SubscriptionProvider } from "@/lib/context";
 import { navItemPath } from "@/lib/features/routes";
+import {
+  findActiveNavItem,
+  isNavItemActive,
+} from "@/lib/features/nav-active";
 import { WorkspaceSwitcher } from "@/components/workspace/workspace-switcher";
 import { UserAccountMenu } from "@/components/workspace/user-account-menu";
 import { ThemeToggle } from "@/components/workspace/theme-toggle";
@@ -61,23 +65,18 @@ function NavLink({
 }) {
   const pathname = usePathname();
   // The backend issues nav items by registry `id` — never a URL. The route
-  // registry translates the id to its default route relative to the
-  // workspace root (e.g. "/dashboard/socialmanager"). Strip the workspace
-  // prefix so the active match is meaningful and works for both the
-  // workspace root (pathname === "/{workspace}" with end=true) and nested
-  // routes.
-  const trimmed = pathname.replace(/^\/[^/]+/, "") || "/";
-  const target = navItemPath(item.id);
-  const active =
-    item.end === true
-      ? trimmed === target || trimmed === target.replace(/\/$/, "")
-      : trimmed === target || trimmed.startsWith(`${target}/`);
+  // registry translates the id to its route relative to the workspace root
+  // (e.g. "/dashboard/socialmanager"). `isNavItemActive` owns that matching
+  // so the highlight here and the header title can never disagree.
+  const active = isNavItemActive(pathname, item);
   const Icon = resolveIcon(item.icon) as IconComponent;
 
   // Scope the registry-derived relative target under the active workspace so
   // Next.js routes it through the [workspace] segment (and its
   // requireWorkspace guard) instead of escaping to a sibling app route.
-  const scopedHref = `/${workspaceDomain}${target}`;
+  // Ids with no registered route have no target, so they keep the existing
+  // dashboard-root destination and simply never highlight.
+  const scopedHref = `/${workspaceDomain}${navItemPath(item.id) ?? "/dashboard"}`;
 
   // Locked items (owned features on an inactive subscription) navigate to
   // the access page instead of the feature; Django owns the gate, the UI
@@ -254,17 +253,15 @@ export function WorkspaceShell({
     setMobileOpen(false);
   }, [pathname]);
 
-  const currentNav = nav.find((item) => {
-    const target = navItemPath(item.id);
-    const trimmed = pathname.replace(/^\/[^/]+/, "") || "/";
-    return item.end
-      ? trimmed === target || trimmed === target.replace(/\/$/, "")
-      : trimmed === target || trimmed.startsWith(`${target}/`);
-  });
+  const currentNav = findActiveNavItem(pathname, nav);
   const pageTitle = currentNav?.label ?? "Dashboard";
 
   return (
     <SubscriptionProvider state={subscription}>
+      {/* Must stay inside the provider above: it calls useSubscription(). Owns
+          the single ConnectAccountModal instance that every Banner trigger
+          opens, so the modal is not duplicated per banner. */}
+      <ConnectAccountProvider>
       <div className="flex h-screen overflow-hidden bg-background">
       <aside
         className={`sidebar-surface relative hidden h-full shrink-0 flex-col border-r border-sidebar-divider transition-[width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] md:flex ${
@@ -390,6 +387,7 @@ export function WorkspaceShell({
 
       {!user.isAdmin && <ChatWidget userName={user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : null} />}
       </div>
+      </ConnectAccountProvider>
     </SubscriptionProvider>
   );
 }

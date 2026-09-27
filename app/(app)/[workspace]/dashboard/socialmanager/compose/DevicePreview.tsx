@@ -72,7 +72,7 @@ export function DevicePreview({
         )}
         <p className="text-[11px] leading-relaxed text-slate-800">{previewContent || "Your post preview..."}</p>
         {tags.length > 0 && (
-          <p className="text-[10px] font-medium text-indigo-600">{tags.join(" ")}</p>
+          <p className="text-[10px] font-medium text-primary-600">{tags.join(" ")}</p>
         )}
       </div>
     </div>

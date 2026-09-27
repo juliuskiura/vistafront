@@ -25,7 +25,7 @@ import { SeekToTimeModal } from "./SeekToTimeModal";
 import { KeyboardShortcutsModal } from "./KeyboardShortcutsModal";
 import { VideoTechnicalStats } from "./VideoTechnicalStats";
 import { attachHls, isHlsAsset, isHlsSupported } from "@/lib/media/hls";
-import { formatTime, formatTimecode, toProtocolRelative } from "@/lib/media/video-utils";
+import { formatTime, formatTimecode, toSameOrigin } from "@/lib/media/video-utils";
 import type { Asset } from "@/lib/api";
 import type { VideoCuePoint, VideoPlayerState } from "@/lib/apptypes/media_libary";
 
@@ -93,7 +93,7 @@ export function VideoPlayer({
   }, []);
 
   const resolveVideoSource = useCallback((): { src: string | null; kind: 'progressive' | 'hls' | 'unsupported' } => {
-    const src = toProtocolRelative(asset.stream_url) || toProtocolRelative(asset.original_file) || null;
+    const src = toSameOrigin(asset.stream_url) || toSameOrigin(asset.original_file) || null;
     if (!src) return { src: null, kind: 'unsupported' };
     if (isHlsAsset(asset)) {
       if (!isHlsSupported()) return { src, kind: 'unsupported' };

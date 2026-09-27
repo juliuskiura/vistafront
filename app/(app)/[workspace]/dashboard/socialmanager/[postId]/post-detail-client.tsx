@@ -152,13 +152,13 @@ function SparkAreaChart({ data }: { data: number[] }) {
           <stop offset="100%" stopColor="currentColor" stopOpacity={0} />
         </linearGradient>
       </defs>
-      <path d={areaPath} fill="url(#areaGrad)" className="text-indigo-500" />
+      <path d={areaPath} fill="url(#areaGrad)" className="text-primary-500" />
       <polyline
         fill="none"
         stroke="currentColor"
         strokeWidth={2}
         points={points}
-        className="text-indigo-600"
+        className="text-primary-600"
       />
       {data.map((v, i) => {
         const x = padding + i * step;
@@ -169,7 +169,7 @@ function SparkAreaChart({ data }: { data: number[] }) {
             cx={x}
             cy={y}
             r={3}
-            className="fill-white stroke-indigo-600 stroke-2"
+            className="fill-white stroke-primary-600 stroke-2"
           />
         );
       })}
@@ -292,7 +292,7 @@ function CommentsSection({
           <button
             type="button"
             onClick={onRefresh}
-            className="font-semibold text-indigo-600 hover:text-indigo-700"
+            className="font-semibold text-primary-600 hover:text-primary-700"
           >
             Sync comments →
           </button>
@@ -301,7 +301,7 @@ function CommentsSection({
         <div className="max-h-[320px] space-y-4 overflow-y-auto p-5">
           {comments.map((c) => (
             <div key={c.nanoid} className="flex gap-3">
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-xs font-bold text-white">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-500 to-violet-600 text-xs font-bold text-white">
                 {c.author_name?.charAt(0).toUpperCase() ?? "?"}
               </div>
               <div className="flex-1">
@@ -336,7 +336,7 @@ function MetricChart({ metrics }: { metrics: MetricSnapshot[] }) {
         No time-series engagement data yet.{" "}
         <button
           type="button"
-          className="font-semibold text-indigo-600 hover:text-indigo-700"
+          className="font-semibold text-primary-600 hover:text-primary-700"
         >
           Sync analytics →
         </button>
@@ -639,7 +639,7 @@ export function PostDetailClient({ post: initialPost, comments: initialComments,
               {(post.status === "failed" || post.status === "draft") && (
                 <Button
                   size="sm"
-                  className="gap-1.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:from-indigo-500 hover:to-violet-500"
+                  className="gap-1.5 bg-gradient-to-r from-primary-600 to-violet-600 text-white hover:from-primary-500 hover:to-violet-500"
                   onClick={() => handleAction("publish")}
                 >
                   <Send className="size-3.5" /> Publish now

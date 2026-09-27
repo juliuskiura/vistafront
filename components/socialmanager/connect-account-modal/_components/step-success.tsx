@@ -21,7 +21,7 @@ export function StepSuccess({ platformName, onClose }: StepSuccessProps) {
       <div className="pt-2">
         <Button
           onClick={onClose}
-          className="bg-indigo-600 text-xs font-bold text-white hover:bg-indigo-700"
+          className="bg-primary-600 text-xs font-bold text-white hover:bg-primary-700"
         >
           Done
         </Button>

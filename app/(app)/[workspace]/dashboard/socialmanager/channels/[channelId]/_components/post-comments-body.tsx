@@ -93,7 +93,7 @@ export function PostCommentsBody({ post, workspace }: PostCommentsBodyProps) {
           <Button
             variant="ghost"
             size="sm"
-            className="ml-2 h-6 gap-1 px-2 text-[10px] text-slate-500 hover:bg-indigo-50 hover:text-indigo-600"
+            className="ml-2 h-6 gap-1 px-2 text-[10px] text-slate-500 hover:bg-primary-50 hover:text-primary-600"
             disabled={syncingComments}
             onClick={handleSyncComments}
           >
@@ -138,14 +138,14 @@ export function PostCommentsBody({ post, workspace }: PostCommentsBodyProps) {
       {own.length > 0 && (
         <section>
           <h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-slate-900">
-            <Sparkles className="size-3.5 text-indigo-500" />
+            <Sparkles className="size-3.5 text-primary-500" />
             Your first comments
             <span className="ml-auto text-[10px] font-normal text-muted-foreground">{own.length}</span>
           </h4>
           <ul className="space-y-2.5">
             {own.map((c) => (
               <li key={c.nanoid} className="flex gap-2.5">
-                <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-[10px] font-bold text-white">
+                <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-500 to-purple-600 text-[10px] font-bold text-white">
                   {(c.author_name || "You")
                     .split(/\s+/)
                     .map((p) => p[0])
@@ -154,9 +154,9 @@ export function PostCommentsBody({ post, workspace }: PostCommentsBodyProps) {
                     .join("")
                     .toUpperCase()}
                 </span>
-                <div className="min-w-0 flex-1 rounded-2xl rounded-tl-sm border border-indigo-100 bg-indigo-50/50 px-3 py-2 shadow-sm">
+                <div className="min-w-0 flex-1 rounded-2xl rounded-tl-sm border border-primary-100 bg-primary-50/50 px-3 py-2 shadow-sm">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-medium capitalize text-indigo-600">
+                    <span className="rounded-full bg-primary-100 px-2 py-0.5 text-[10px] font-medium capitalize text-primary-600">
                       {c.status}
                     </span>
                     <span className="shrink-0 text-[10px] text-muted-foreground">{formatDate(c.published_at)}</span>

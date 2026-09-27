@@ -21,7 +21,7 @@ import { AssetSelectionToolbar } from "@/components/media/asset-selection-toolba
 import type { Asset, MediaStats } from "@/lib/api";
 
 const STATS_CONFIG = [
-  { key: "total_assets", label: "Total Assets", icon: Images, color: "from-indigo-500 to-blue-600", path: "/dashboard/media/browser" },
+  { key: "total_assets", label: "Total Assets", icon: Images, color: "from-primary-500 to-blue-600", path: "/dashboard/media/browser" },
   { key: "images", label: "Images", icon: ImageIcon, color: "from-purple-500 to-fuchsia-500", path: "/dashboard/media/browser?asset_type=image" },
   { key: "videos", label: "Videos", icon: Video, color: "from-pink-500 to-rose-500", path: "/dashboard/media/browser?asset_type=video" },
   { key: "documents", label: "Documents", icon: FileText, color: "from-amber-500 to-orange-500", path: "/dashboard/media/browser?asset_type=document" },
@@ -60,7 +60,7 @@ export function MediaDashboardClient({ workspaceDomain, stats, recentAssets }: P
     return [
       { label: "Storage Used", value: stats.storage_used, icon: HardDrive, color: "text-emerald-600 bg-emerald-50" },
       { label: "Favorites", value: String(stats.favorites), icon: Heart, color: "text-pink-600 bg-pink-50" },
-      { label: "Collections", value: String(stats.collections), icon: FolderOpen, color: "text-indigo-600 bg-indigo-50" },
+      { label: "Collections", value: String(stats.collections), icon: FolderOpen, color: "text-primary-600 bg-primary-50" },
       { label: "Folders", value: String(stats.folders), icon: FolderOpen, color: "text-violet-600 bg-violet-50" },
     ];
   }, [stats]);
@@ -115,7 +115,7 @@ export function MediaDashboardClient({ workspaceDomain, stats, recentAssets }: P
           variant="ghost"
           size="sm"
           onClick={() => router.push(`/${workspaceDomain}/dashboard/media/browser`)}
-          className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-semibold text-xs flex items-center gap-1 hover:underline"
+          className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-semibold text-xs flex items-center gap-1 hover:underline"
         >
           <span>View All</span>
           <ArrowUpRight className="w-4 h-4" />

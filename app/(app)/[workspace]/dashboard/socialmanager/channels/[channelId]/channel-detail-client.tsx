@@ -109,7 +109,7 @@ export function ChannelDetailClient({
       <div className="space-y-4">
         <Link
           href={`${basePath}/channels`}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-700"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary-600 hover:text-primary-700"
         >
           <ArrowLeft className="size-3.5" /> Back to channels
         </Link>
@@ -132,7 +132,7 @@ export function ChannelDetailClient({
     <div className="space-y-6">
       <Link
         href={`${basePath}/channels`}
-        className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-700"
+        className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary-600 hover:text-primary-700"
       >
         <ArrowLeft className="size-3.5" /> Back to channels
       </Link>

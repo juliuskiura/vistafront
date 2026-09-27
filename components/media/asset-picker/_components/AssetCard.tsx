@@ -24,7 +24,7 @@ export function AssetCard({ asset, isSelected, onToggle, disabled, isMulti }: As
       className={cn(
         "group relative flex flex-col items-center gap-1.5 rounded-xl border bg-white p-2 text-left transition-all",
         isSelected
-          ? "border-indigo-500 ring-2 ring-indigo-500/30 bg-indigo-50"
+          ? "border-primary-500 ring-2 ring-primary-500/30 bg-primary-50"
           : "border-slate-200 hover:border-slate-300 hover:shadow-sm",
         disabled && "opacity-60 cursor-not-allowed",
       )}
@@ -58,7 +58,7 @@ export function AssetCard({ asset, isSelected, onToggle, disabled, isMulti }: As
             className={cn(
               "absolute top-1.5 right-1.5 flex size-5 items-center justify-center rounded-md border-2 bg-white/80 backdrop-blur-sm transition-all",
               isSelected
-                ? "border-indigo-600 bg-indigo-600 text-white"
+                ? "border-primary-600 bg-primary-600 text-white"
                 : "border-slate-300 bg-white",
             )}
           >

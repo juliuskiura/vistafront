@@ -6,7 +6,7 @@ import { SocialIcon, hasSocialIcon } from "@/components/social-icons";
  */
 export const PLATFORM_STYLES: Record<string, { label: string; color: string; bg: string; border: string }> = {
   instagram: { label: "Instagram", color: "text-pink-600", bg: "bg-pink-50", border: "border-pink-200" },
-  facebook: { label: "Facebook", color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-200" },
+  facebook: { label: "Facebook", color: "text-primary-600", bg: "bg-primary-50", border: "border-primary-200" },
   x: { label: "X", color: "text-sky-600", bg: "bg-sky-50", border: "border-sky-200" },
   linkedin: { label: "LinkedIn", color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200" },
   tiktok: { label: "TikTok", color: "text-slate-900", bg: "bg-slate-100", border: "border-slate-300" },

@@ -137,7 +137,7 @@ export function ChatInput({
           onClick={submit}
           disabled={!value.trim() || disabled}
           aria-label="Send message"
-          className={isAdmin ? "flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:pointer-events-none disabled:opacity-45" : "flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-45"}
+          className={isAdmin ? "flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-600 text-white shadow-sm transition-colors hover:bg-primary-700 disabled:pointer-events-none disabled:opacity-45" : "flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-45"}
         >
           <Send size={12} />
         </button>
@@ -146,7 +146,7 @@ export function ChatInput({
   );
 
   return isAdmin ? (
-    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm transition-all focus-within:border-indigo-300 focus-within:ring-1 focus-within:ring-indigo-300/30">
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm transition-all focus-within:border-primary-300 focus-within:ring-1 focus-within:ring-primary-300/30">
       {input}
     </div>
   ) : (

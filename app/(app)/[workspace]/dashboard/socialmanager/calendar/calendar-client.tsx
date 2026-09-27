@@ -30,7 +30,7 @@ const MONTHS = [
 
 const STATUS_STYLES: Record<string, string> = {
   draft: "bg-slate-100 text-slate-700 border-slate-200",
-  scheduled: "bg-indigo-100 text-indigo-700 border-indigo-200",
+  scheduled: "bg-primary-100 text-primary-700 border-primary-200",
   publishing: "bg-amber-100 text-amber-700 border-amber-200",
   published: "bg-emerald-100 text-emerald-700 border-emerald-200",
   failed: "bg-red-100 text-red-700 border-red-200",
@@ -101,17 +101,17 @@ function DroppableDay({
   return (
     <div
       ref={setNodeRef}
-      className={`relative min-h-[90px] rounded-lg border p-1.5 transition-colors ${isOver ? "border-indigo-400 bg-indigo-50/50 ring-1 ring-indigo-400" : "border-slate-100"} ${isToday ? "bg-slate-50" : "bg-white"}`}
+      className={`relative min-h-[90px] rounded-lg border p-1.5 transition-colors ${isOver ? "border-primary-400 bg-primary-50/50 ring-1 ring-primary-400" : "border-slate-100"} ${isToday ? "bg-slate-50" : "bg-white"}`}
     >
       <span
-        className={`mb-1 block text-[10px] font-medium ${isToday ? "flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-white" : "text-slate-500"}`}
+        className={`mb-1 block text-[10px] font-medium ${isToday ? "flex h-5 w-5 items-center justify-center rounded-full bg-primary-600 text-white" : "text-slate-500"}`}
       >
         {dayNum}
       </span>
       <div className="space-y-0.5">
         {children}
         {posts.length > 3 && (
-          <span className="block text-[10px] font-medium text-indigo-600">+{posts.length - 3} more</span>
+          <span className="block text-[10px] font-medium text-primary-600">+{posts.length - 3} more</span>
         )}
       </div>
     </div>
@@ -368,7 +368,7 @@ export function CalendarClient({
 
       <DragOverlay>
         {activePost && (
-          <div className="rounded-lg border border-indigo-300 bg-indigo-50 px-2.5 py-1.5 text-[10px] shadow-lg">
+          <div className="rounded-lg border border-primary-300 bg-primary-50 px-2.5 py-1.5 text-[10px] shadow-lg">
             {activePost.content.slice(0, 40)}
           </div>
         )}

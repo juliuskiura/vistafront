@@ -9,7 +9,7 @@ interface StepConnectingProps {
 export function StepConnecting({ platformName, onCancel }: StepConnectingProps) {
   return (
     <div className="space-y-5 px-6 py-12 text-center">
-      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 shadow-md">
+      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary-100 text-primary-600 shadow-md">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
       <div className="space-y-1">

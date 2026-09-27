@@ -53,7 +53,7 @@ export function Banner({
         className,
       )}
     >
-      <BannerGlowOrbs />
+      {/* <BannerGlowOrbs /> */}
       {children && (
         <div className="pointer-events-none absolute inset-0">
           {children}
@@ -72,6 +72,7 @@ export function Banner({
           </p>
         )}
       </div>
+      
       {actions && actions.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {actions.map((action) => {
@@ -111,5 +112,6 @@ export function Banner({
         </div>
       )}
     </div>
+    
   );
 }

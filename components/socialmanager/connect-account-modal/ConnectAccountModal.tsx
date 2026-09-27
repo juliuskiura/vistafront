@@ -14,10 +14,6 @@ import { StepSuccess } from "./_components/step-success";
 import { StepError } from "./_components/step-error";
 import type { PlatformOption } from "./_components/platform-copy";
 
-const BACKEND_ORIGIN = process.env.NEXT_PUBLIC_BACKEND_URL
-  ? new URL(process.env.NEXT_PUBLIC_BACKEND_URL).origin
-  : "";
-
 export type ConnectStep = "select" | "doors" | "connecting" | "success" | "error";
 
 export interface ConnectAccountModalProps {
@@ -68,10 +64,17 @@ export default function ConnectAccountModal({
   const handleMessage = useCallback(
     (event: MessageEvent) => {
       // Only accept messages sent by the popup window we opened, and only from
-      // the backend's OAuth closing page — never from a third-party window or a
-      // forged origin, so a foreign page can't claim a connection.
+      // this app's own origin — never from a third-party window or a forged
+      // origin, so a foreign page can't claim a connection.
+      //
+      // Django's OAuth closing page is served through the same public host as
+      // this app (nginx proxies /apis/ to Django), so its origin IS this app's
+      // origin. Compare against the live runtime origin rather than a build-time
+      // NEXT_PUBLIC_* constant: a constant is frozen at build and silently rots
+      // when the deploy target changes, which previously made this check reject
+      // every genuine success message.
       if (event.source !== popupRef.current) return;
-      if (BACKEND_ORIGIN && event.origin !== BACKEND_ORIGIN) return;
+      if (event.origin !== window.location.origin) return;
 
       const data = event.data;
       if (!data || typeof data !== "object") return;

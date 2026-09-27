@@ -43,7 +43,7 @@ const TYPE_COLORS: Record<string, string> = {
   deliverable: "bg-purple-500",
   project_deadline: "bg-red-500",
   activity: "bg-green-500",
-  post: "bg-indigo-500",
+  post: "bg-primary-500",
 };
 
 const DEFAULT_LEGEND = [
@@ -51,7 +51,7 @@ const DEFAULT_LEGEND = [
   { type: "deliverable", label: "Deliverables", color: "bg-purple-500" },
   { type: "project_deadline", label: "Project deadlines", color: "bg-red-500" },
   { type: "activity", label: "Activities", color: "bg-green-500" },
-  { type: "post", label: "Posts", color: "bg-indigo-500" },
+  { type: "post", label: "Posts", color: "bg-primary-500" },
 ];
 
 function dateKey(y: number, m: number, d: number): string {

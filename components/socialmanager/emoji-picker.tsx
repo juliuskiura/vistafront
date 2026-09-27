@@ -85,7 +85,7 @@ export default function EmojiPicker({ onEmojiSelect, children }: EmojiPickerProp
             placeholder="Search emojis..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-indigo-500"
+            className="w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-primary-500"
           />
         </div>
 
@@ -97,7 +97,7 @@ export default function EmojiPicker({ onEmojiSelect, children }: EmojiPickerProp
                 onClick={() => setActiveCategory(i)}
                 className={`shrink-0 rounded-md px-2 py-1 text-[11px] font-medium transition-colors ${
                   i === activeCategory
-                    ? "bg-indigo-600 text-white"
+                  ? "bg-primary-600 text-white"
                     : "text-slate-600 hover:bg-slate-100"
                 }`}
               >

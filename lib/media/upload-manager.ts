@@ -34,8 +34,6 @@ const MAX_BACKOFF_MS = 10_000;
 const MIN_PART_SIZE = 5 * 1024 * 1024; // OCI minimum part size
 const DEFAULT_PART_SIZE = 5 * 1024 * 1024;
 const NOTIFY_THROTTLE_MS = 120; // min interval between UI progress flushes
-const DJANGO_API_BASE =
-  process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
 
 /** One slice of the file being uploaded via the relay endpoint. */
 export interface UploadPart {
@@ -115,8 +113,13 @@ function getDb(): Promise<IDBDatabase> {
   return dbPromise;
 }
 
+/**
+ * Same-origin API path. nginx routes /apis/ to Django and Next.js rewrites it
+ * in local dev, so a relative path reaches Django in every environment and the
+ * upload request stays same-site with the httpOnly `access` cookie.
+ */
 function apiUrl(path: string): string {
-  return `${DJANGO_API_BASE.replace(/\/$/, "")}${path}`;
+  return path;
 }
 
 async function browserApi<T>(

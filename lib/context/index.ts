@@ -10,3 +10,8 @@ export {
   type ToastInput,
   type ToastVariant,
 } from "./ToastContext";
+export {
+  ConnectAccountProvider,
+  useConnectAccount,
+  type ConnectIntent,
+} from "./ConnectAccountContext";
