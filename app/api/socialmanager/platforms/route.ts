@@ -1,4 +1,5 @@
 import { listPlatforms } from "@/lib/api";
+import { apiErrorResponse } from "@/lib/api/route-errors";
 
 /**
  * Client-component bridge for the social-network picker.
@@ -7,8 +8,8 @@ import { listPlatforms } from "@/lib/api";
  * by `ConnectAccountProvider` — above every Server Component fetch — so it has
  * no `platforms` prop to receive. Route Handlers run on the server, so this
  * delegates to the same `listPlatforms` wrapper the Server Components use and
- * inherits its cookie forwarding, `X-Workspace` header, 401 refresh, and
- * `unwrapAll` pagination handling.
+ * inherits its cookie forwarding, `X-Workspace` header, and `unwrapAll`
+ * pagination handling.
  *
  * The workspace arrives as a query param because this route sits outside the
  * `[workspace]` segment and cannot read it from `params` — same convention as
@@ -25,7 +26,7 @@ export async function GET(request: Request) {
     return Response.json(platforms, {
       headers: { "Cache-Control": "private, no-store" },
     });
-  } catch {
-    return Response.json({ error: "Failed to load platforms." }, { status: 502 });
+  } catch (error) {
+    return await apiErrorResponse(error, { message: "Failed to load platforms." });
   }
 }

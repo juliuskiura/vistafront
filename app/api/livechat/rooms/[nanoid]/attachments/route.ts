@@ -2,6 +2,8 @@ import { serverMutateFormData } from "@/lib/media/server-mutate-formdata";
 import { serverFetch } from "@/lib/api/server-fetch";
 import { NextRequest, NextResponse } from "next/server";
 
+import { apiErrorResponse } from "@/lib/api/route-errors";
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ nanoid: string }> },
@@ -12,8 +14,11 @@ export async function GET(
       `/apis/livechat/attachments/by-room/${nanoid}/`,
     );
     return NextResponse.json(attachments);
-  } catch {
-    return NextResponse.json({ error: "Failed to fetch images." }, { status: 500 });
+  } catch (error) {
+    return await apiErrorResponse(error, {
+      message: "Failed to fetch images.",
+      status: 500,
+    });
   }
 }
 
@@ -46,10 +51,10 @@ export async function POST(
       { workspace: request.headers.get("x-workspace") ?? undefined },
     );
     return NextResponse.json(attachment, { status: 201 });
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to upload image." },
-      { status: 500 },
-    );
+  } catch (error) {
+    return await apiErrorResponse(error, {
+      message: "Failed to upload image.",
+      status: 500,
+    });
   }
 }

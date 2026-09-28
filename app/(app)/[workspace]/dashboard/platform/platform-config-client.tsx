@@ -215,6 +215,8 @@ function PlatformForm({
   const [textColor, setTextColor] = useState(platform.text_color || "");
   const [hoverColor, setHoverColor] = useState(platform.hover_color || "");
   const [svg, setSvg] = useState(platform.svg || "");
+  const [authDestination, setAuthDestination] = useState(platform.auth_destination || "");
+  const [authDialog, setAuthDialog] = useState(platform.auth_dialog || "");
   const [isActive, setIsActive] = useState(platform.is_active ?? true);
 
   const theme = getPlatformTheme(slug);
@@ -249,6 +251,11 @@ function PlatformForm({
                 text_color: textColor,
                 hover_color: hoverColor,
                 svg,
+                // Blank means "this platform": the model stores the slug when
+                // either is left empty, and the connect picker reads them to
+                // decide which sign-in doors reach this platform.
+                auth_destination: authDestination.trim() || null,
+                auth_dialog: authDialog.trim() || null,
                 is_active: isActive,
               })
             }
@@ -282,6 +289,30 @@ function PlatformForm({
         <div className="col-span-2">
           <Label className="text-[10px]">Scopes</Label>
           <ScopePillInput value={scopes} onChange={setScopes} placeholder="e.g. pages_show_list, manage_pages" />
+        </div>
+        <div
+          className="col-span-2"
+          title="The platform slug the connected channel ends up on. Leave blank for this platform. Two platforms sharing a destination are the alternative ways to connect it — the connect modal offers them as a choice."
+        >
+          <Label className="text-[10px]">Auth Destination</Label>
+          <Input
+            value={authDestination}
+            onChange={(e) => setAuthDestination(e.target.value)}
+            placeholder={slug || "this platform"}
+            className="h-8 text-xs bg-white font-mono"
+          />
+        </div>
+        <div
+          className="col-span-2"
+          title="The platform slug whose sign-in dialog the user goes through. Leave blank when this platform signs in as itself — e.g. instagramfb signs in with Facebook."
+        >
+          <Label className="text-[10px]">Auth Dialog</Label>
+          <Input
+            value={authDialog}
+            onChange={(e) => setAuthDialog(e.target.value)}
+            placeholder={slug || "this platform"}
+            className="h-8 text-xs bg-white font-mono"
+          />
         </div>
         <div>
           <Label className="text-[10px]">Color</Label>
@@ -648,6 +679,18 @@ function ConfigDetailsTable({ platform }: { platform: SocialMediaPlatform }) {
     ["Name", platform.name],
     ["Slug", <span key="slug" className="font-mono">{platform.slug}</span>],
     ["Status", platform.is_active ? "Active" : "Inactive"],
+    [
+      "Auth destination",
+      <span key="ad" className="font-mono">
+        {platform.auth_destination || `${platform.slug} (self)`}
+      </span>,
+    ],
+    [
+      "Auth dialog",
+      <span key="adg" className="font-mono">
+        {platform.auth_dialog || `${platform.slug} (self)`}
+      </span>,
+    ],
     ["Client ID", platform.client_id ? <span key="cid" className="font-mono">{platform.client_id.slice(0, 20)}…</span> : "—"],
     ["Redirect URI", platform.oauth_callback_uri ? <span key="ru" className="font-mono text-[10px] break-all">{platform.oauth_callback_uri}</span> : "—"],
     [

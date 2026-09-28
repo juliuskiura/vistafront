@@ -1,5 +1,38 @@
 import type { SocialMediaPlatform, SocialPlatform } from "@/lib/api/types";
 
+/**
+ * One way of signing in to a destination.
+ *
+ * A "door" is a single `SocialMediaPlatform` row. Two rows that share an
+ * `auth_destination` are alternative doors into the same destination: the
+ * `instagramfb` row (sign in with Facebook) and the `instagram` row (sign in
+ * with Instagram itself) both land on `instagram`, so the picker shows one
+ * "Instagram" card and lets the user choose the door. `id` is the slug to send
+ * to `oauth_init`; `dialog` is the platform whose icon/name the user sees.
+ */
+export interface PlatformDoor {
+  /** Platform row slug — this is what the OAuth handshake is started with. */
+  id: SocialPlatform;
+  /** The row's own name, e.g. "Instagram (via Facebook)". */
+  name: string;
+  /** `auth_dialog` (defaults to the row's slug) — who the user signs in as. */
+  dialog: SocialPlatform;
+  /** Display name of `auth_dialog`, e.g. "Facebook". */
+  dialogName: string;
+  /** `auth_destination` (defaults to the row's slug) — where content lands. */
+  destination: SocialPlatform;
+  /** False for a door whose platform row is not deployed yet. */
+  available: boolean;
+  color: string;
+  bgColor: string;
+  borderColor: string;
+}
+
+/**
+ * One card in the network picker: a destination plus every door into it.
+ * `id` is the destination slug, so selecting the card never presumes which
+ * door the user will end up using.
+ */
 export interface PlatformOption {
   id: SocialPlatform;
   name: string;
@@ -7,6 +40,7 @@ export interface PlatformOption {
   color: string;
   bgColor: string;
   borderColor: string;
+  doors: PlatformDoor[];
 }
 
 interface PlatformDetails {
@@ -92,19 +126,80 @@ const FALLBACK_DETAILS: PlatformDetails = {
   borderColor: "border-slate-200",
 };
 
+/** Details for a slug, falling back to a generated description for it. */
+function detailsFor(slug: string, displayName: string): PlatformDetails {
+  if (PLATFORM_DETAILS[slug]) return PLATFORM_DETAILS[slug];
+  return { ...FALLBACK_DETAILS, description: `Connect your ${displayName} account.` };
+}
+
+/** `auth_dialog` / `auth_destination` are optional; a blank one means "self". */
+function resolve(value: string | null | undefined, fallback: string): SocialPlatform {
+  return (value && value.trim() ? value.trim() : fallback) as SocialPlatform;
+}
+
+/**
+ * Turn the flat platform rows from the API into one card per *destination*.
+ *
+ * Rows sharing an `auth_destination` are grouped together, so the `instagramfb`
+ * and `instagram` rows collapse into a single "Instagram" card that carries both
+ * doors. A destination with no active door is dropped — it has nothing the user
+ * could connect — while an *inactive* door survives as a greyed-out option on
+ * the doors step, which is how a door that is not deployed yet stays visible
+ * without being clickable.
+ */
 export function buildPlatformOptions(platforms: SocialMediaPlatform[]): PlatformOption[] {
-  return platforms
-    .filter((p) => p.is_active)
-    .map((p) => {
-      const details =
-        PLATFORM_DETAILS[p.slug] ?? { ...FALLBACK_DETAILS, description: `Connect your ${p.name} account.` };
-      return {
-        id: p.slug as SocialPlatform,
-        name: p.name,
-        description: details.description,
-        color: details.color,
-        bgColor: details.bgColor,
-        borderColor: details.borderColor,
-      };
+  // Slug → display name, taken from every row (deployed or not) so a door can
+  // name the platform its dialog belongs to even when that row is inactive.
+  const nameBySlug = new Map(platforms.map((p) => [p.slug, p.name]));
+
+  const groups = new Map<string, PlatformDoor[]>();
+  for (const platform of platforms) {
+    const destination = resolve(platform.auth_destination, platform.slug);
+    const dialog = resolve(platform.auth_dialog, platform.slug);
+    // The user sees the dialog's branding, so colours follow the dialog.
+    const details = detailsFor(dialog, nameBySlug.get(dialog) || dialog);
+    const door: PlatformDoor = {
+      id: platform.slug as SocialPlatform,
+      name: platform.name,
+      dialog,
+      dialogName: nameBySlug.get(dialog) || dialog,
+      destination,
+      available: platform.is_active,
+      color: details.color,
+      bgColor: details.bgColor,
+      borderColor: details.borderColor,
+    };
+    const bucket = groups.get(destination);
+    if (bucket) bucket.push(door);
+    else groups.set(destination, [door]);
+  }
+
+  const options: PlatformOption[] = [];
+  for (const [destination, doors] of groups) {
+    if (!doors.some((d) => d.available)) continue;
+    const lead = doors.find((d) => d.available) ?? doors[0];
+    // Label the card after the destination itself when that row exists, and
+    // otherwise after the door's dialog ("Instagram" rather than
+    // "Instagram (via Facebook)").
+    const label = nameBySlug.get(destination) ?? lead.dialogName;
+    const details = detailsFor(destination, label);
+    options.push({
+      id: lead.destination,
+      name: label,
+      description: details.description,
+      color: details.color,
+      bgColor: details.bgColor,
+      borderColor: details.borderColor,
+      doors,
     });
+  }
+  return options;
+}
+
+/**
+ * Whether a card needs the doors step: only when the destination has more than
+ * one way in. A single door goes straight to the OAuth handshake.
+ */
+export function needsDoorChoice(option: PlatformOption | null): boolean {
+  return (option?.doors.length ?? 0) > 1;
 }

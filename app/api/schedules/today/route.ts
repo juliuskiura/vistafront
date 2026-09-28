@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { serverFetch } from "@/lib/api/server-fetch";
+import { apiErrorResponse } from "@/lib/api/route-errors";
 
 /**
  * Route Handler — proxies `/apis/schedules/today/` from Django to the
@@ -30,7 +31,6 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Server fetch failed";
-    return NextResponse.json({ error: message }, { status: 502 });
+    return await apiErrorResponse(error, { message: "Server fetch failed" });
   }
 }

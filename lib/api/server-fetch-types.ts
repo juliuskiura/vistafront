@@ -4,14 +4,12 @@ export interface RequestOptions {
   cache?: RequestCache;
   next?: { revalidate?: number | false; tags?: string[] };
   workspace?: string;
-  _retry?: boolean;
 }
 
 export interface MutateOptions {
   body: unknown;
   method?: "POST" | "PUT" | "PATCH" | "DELETE";
   workspace?: string;
-  _retry?: boolean;
 }
 
 export class ServerFetchError extends Error {

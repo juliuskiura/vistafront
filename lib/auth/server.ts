@@ -2,12 +2,10 @@
 
 import { cache } from "react";
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
 import { listWorkspaces, type Workspace } from "@/lib/api";
 import {
   clearAuthCookies as clearAuthCookiesFromStore,
   getAccessToken,
-  getRefreshToken,
 } from "@/lib/auth/cookies";
 
 export interface User {
@@ -49,9 +47,14 @@ const getWorkspacesForUser = cache(
 
 /**
  * Get the current authenticated user from the server.
- * Reads the HttpOnly 'access' cookie and validates with Django backend,
- * refreshing the access token once via `refreshAccessToken()` on a 401.
- * Returns null if not authenticated or the token cannot be refreshed.
+ * Reads the HttpOnly 'access' cookie and validates it against Django.
+ *
+ * Returns null when there is no cookie, when the token has expired, or when
+ * Django rejects it. It deliberately does **not** try to refresh: see the long
+ * note on `serverFetch` in `lib/api/server-fetch.ts` for why a refresh inside
+ * a page render cannot work (Next seals `cookies()` outside the action phase)
+ * and why attempting one from several places at once races Django's
+ * refresh-token rotation. The proxy's `GET /api/auth/check` hop owns refresh.
  */
 export const getAuthUser = cache(async (): Promise<User | null> => {
   const accessToken = await getAccessToken();
@@ -69,38 +72,11 @@ export const getAuthUser = cache(async (): Promise<User | null> => {
       cache: "no-store",
     });
 
-    if (response.ok) {
-      return await response.json();
+    if (!response.ok) {
+      return null;
     }
 
-    // Access token expired or invalid — try to refresh once before giving up.
-    if (response.status === 401 || response.status === 403) {
-      const refreshed = await refreshAccessToken();
-      if (!refreshed) {
-        return null;
-      }
-
-      const newAccessToken = await getAccessToken();
-      if (!newAccessToken) {
-        return null;
-      }
-
-      const retry = await fetch(`${BACKEND_URL}/apis/auth/users/me/`, {
-        headers: {
-          Cookie: `access=${newAccessToken}`,
-          "Content-Type": "application/json",
-        },
-        cache: "no-store",
-      });
-
-      if (!retry.ok) {
-        return null;
-      }
-
-      return await retry.json();
-    }
-
-    return null;
+    return await response.json();
   } catch (error) {
     console.error("Failed to fetch auth user:", error);
     return null;
@@ -189,98 +165,6 @@ export async function requireWorkspace(
 
   void user;
   return match;
-}
-
-/**
- * Refresh the access token using the refresh token cookie.
- * Called when the access token is expired.
- */
-export async function refreshAccessToken(): Promise<boolean> {
-  const refreshToken = await getRefreshToken();
-
-  if (!refreshToken) {
-    return false;
-  }
-
-  const cookieStore = await cookies();
-
-  try {
-    const response = await fetch(`${BACKEND_URL}/apis/auth/jwt/refresh/`, {
-      method: "POST",
-      headers: {
-        Cookie: `refresh=${refreshToken}`,
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      return false;
-    }
-
-    if (response.status === 204) {
-      forwardAuthCookies(response, cookieStore);
-      return true;
-    }
-
-    const data = (await response.json()) as { access?: string };
-    if (!data.access) {
-      return false;
-    }
-
-    cookieStore.set("access", data.access, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-    });
-
-    forwardAuthCookies(response, cookieStore);
-
-    return true;
-  } catch (error) {
-    console.error("Failed to refresh token:", error);
-    return false;
-  }
-}
-
-/**
- * Forward rotated auth cookies (`access`, `refresh`) from Django's
- * `Set-Cookie` headers onto the outbound browser cookies. If the response
- * does not include a given cookie (token rotation disabled), the existing
- * cookie is left untouched.
- */
-function forwardAuthCookies(
-  response: Response,
-  cookieStore: Awaited<ReturnType<typeof cookies>>,
-): void {
-  const setCookies = response.headers.getSetCookie();
-  if (!setCookies.length) return;
-
-  for (const raw of setCookies) {
-    const [pair, ...attributes] = raw.split("; ");
-    const eq = pair.indexOf("=");
-    if (eq <= 0) continue;
-    const name = pair.slice(0, eq);
-    const value = pair.slice(eq + 1);
-    if (name !== "access" && name !== "refresh") continue;
-
-    const lowerAttrs = attributes.map((a) => a.toLowerCase());
-    const secure = lowerAttrs.some((a) => a === "secure");
-    const sameSiteAttr = attributes.find((a) =>
-      a.toLowerCase().startsWith("samesite="),
-    )?.split("=")[1];
-    const sameSite = (sameSiteAttr ?? "lax").toLowerCase() as
-      | "lax"
-      | "strict"
-      | "none";
-
-    cookieStore.set(name, value, {
-      httpOnly: true,
-      secure,
-      sameSite,
-      path: "/",
-    });
-  }
 }
 
 /**

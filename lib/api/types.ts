@@ -1113,6 +1113,7 @@ export interface CreateProjectBody {
 export type SocialPlatform =
   | "facebook"
   | "instagram"
+  | "instagramfb"
   | "x"
   | "linkedin"
   | "tiktok"
@@ -1136,6 +1137,19 @@ export interface SocialMediaPlatform {
   client_id: string | null;
   redirect_uri: string | null;
   scopes: string | null;
+  /**
+   * Platform slug whose sign-in dialog the user goes through. Null/blank means
+   * the platform signs in as itself. Set on a door that borrows another
+   * platform's dialog — e.g. the `instagramfb` row signs in with Facebook.
+   */
+  auth_dialog?: string | null;
+  /**
+   * Platform slug the connected channel ends up on. Null/blank means the
+   * platform is its own destination. Doors that land on the same destination
+   * are the alternative ways to connect it, and the picker offers them as a
+   * choice (see `buildPlatformOptions` in the connect-account modal).
+   */
+  auth_destination?: string | null;
   is_active: boolean;
   oauth_callback_uri: string;
   created_at: string;

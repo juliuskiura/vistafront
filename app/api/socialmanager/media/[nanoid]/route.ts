@@ -1,5 +1,10 @@
 import { cookies } from "next/headers";
 
+import {
+  SESSION_EXPIRED_HEADER,
+  SESSION_EXPIRED_VALUE,
+} from "@/lib/api/session-expired";
+
 const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:8000";
 
 export async function GET(request: Request) {
@@ -44,11 +49,20 @@ export async function GET(request: Request) {
 
     if (!response.ok) {
       const errorText = await response.text();
+      // `<img src>` cannot run our client wrapper, so there is nothing to
+      // recover on this path — but the header is still worth stamping so the
+      // response is self-describing for any future fetch-based caller.
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (response.status === 401) {
+        headers[SESSION_EXPIRED_HEADER] = SESSION_EXPIRED_VALUE;
+      }
       return new Response(
         JSON.stringify({ error: `Media fetch failed: ${response.status}`, details: errorText }),
         {
           status: response.status,
-          headers: { "Content-Type": "application/json" },
+          headers,
         },
       );
     }

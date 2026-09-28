@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import Script from "next/script";
 
-import { SidebarProvider, ToastProvider } from "@/lib/context";
+import {
+  SessionRefreshProvider,
+  SidebarProvider,
+  ToastProvider,
+} from "@/lib/context";
 import { QueryProvider } from "@/lib/tanstack/query-provider";
 import "./globals.css";
 
@@ -71,7 +75,11 @@ export default async function RootLayout({
         />
         <ToastProvider>
           <QueryProvider>
-            <SidebarProvider>{children}</SidebarProvider>
+            {/* Owns `router.refresh()`, which is the only client-side way to
+                get a page request through the proxy's /api/auth/check hop. */}
+            <SessionRefreshProvider>
+              <SidebarProvider>{children}</SidebarProvider>
+            </SessionRefreshProvider>
           </QueryProvider>
         </ToastProvider>
       </body>

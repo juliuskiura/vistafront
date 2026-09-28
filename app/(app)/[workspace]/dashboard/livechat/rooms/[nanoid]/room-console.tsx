@@ -8,7 +8,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { useToast } from "@/lib/context";
+import { useApiFetch, useToast } from "@/lib/context";
 import { useTabNotification } from "@/hooks/use-tab-notification";
 import { getWebSocketUrl } from "@/lib/env";
 import {
@@ -63,6 +63,7 @@ export function RoomConsole({
 }: Props) {
   const router = useRouter();
   const toast = useToast();
+  const apiFetch = useApiFetch();
   const basePath = `/${workspaceDomain}/dashboard/livechat`;
 
   const [room, setRoom] = useState<ChatRoom>(initialRoom);
@@ -261,11 +262,12 @@ export function RoomConsole({
     setUploading(true);
     const formData = new FormData();
     formData.append("file", file, file.name);
-    void fetch(`/api/livechat/rooms/${room.nanoid}/attachments/`, {
+    // `apiFetch` so an expired session refreshes via `router.refresh()`
+    // instead of reporting a misleading "Failed to upload image."
+    void apiFetch(`/api/livechat/rooms/${room.nanoid}/attachments/`, {
       method: "POST",
       headers: { "X-Workspace": workspaceDomain },
       body: formData,
-      credentials: "include",
     })
       .then(async (response) => {
         if (!response.ok) throw new Error("upload failed");
@@ -280,7 +282,7 @@ export function RoomConsole({
         toast.push({ variant: "error", message: "Failed to upload image." }),
       )
       .finally(() => setUploading(false));
-  }, [room.is_active, room.nanoid, toast, uploading, workspaceDomain]);
+  }, [apiFetch, room.is_active, room.nanoid, toast, uploading, workspaceDomain]);
 
   useEffect(() => {
     if (!room.is_active || !wsReady) return;

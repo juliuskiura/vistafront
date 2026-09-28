@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useChatRoom } from "./use-chat-room";
 import { useChatSocket } from "./use-chat-socket";
-import { useToast } from "@/lib/context";
+import { useApiFetch, useToast } from "@/lib/context";
 import { ChatLauncher } from "./_components/chat-launcher";
 import { ChatPanel } from "./_components/chat-panel";
 import type { ChatAttachment, ChatMessage, ChatRoom } from "./types";
@@ -24,6 +24,7 @@ export function ChatWidget({ userName = null }: ChatWidgetProps) {
   const { currentRoom, isPending } = useChatRoom();
   const queryClient = useQueryClient();
   const { push: toast } = useToast();
+  const apiFetch = useApiFetch();
 
   const [starting, setStarting] = useState(false);
   const startingRef = useRef(false);
@@ -37,7 +38,7 @@ export function ChatWidget({ userName = null }: ChatWidgetProps) {
     startingRef.current = true;
     setStarting(true);
     try {
-      const res = await fetch("/api/livechat/rooms/", { method: "POST" });
+      const res = await apiFetch("/api/livechat/rooms/", { method: "POST" });
       if (!res.ok) throw new Error("create failed");
       await queryClient.invalidateQueries({ queryKey: ["chatRooms"] });
     } catch {
@@ -53,9 +54,9 @@ export function ChatWidget({ userName = null }: ChatWidgetProps) {
     const nanoid = roomNanoidRef.current;
     if (!nanoid) return;
     try {
-      await fetch(
+      await apiFetch(
         `/api/livechat/rooms/${nanoid}/close/`,
-        { method: "POST", credentials: "include" }
+        { method: "POST" }
       );
     } catch {
       toast({ variant: "error", message: "Failed to close chat" });
@@ -125,11 +126,16 @@ function ChatWidgetInner({
   const [uploading, setUploading] = useState(false);
   const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
   const { push: toast } = useToast();
+  const apiFetch = useApiFetch();
 
+  // A tab left open past the 60-minute access lifetime used to leave this
+  // query stuck: the Route Handler degraded a 401 to `500`, the widget showed
+  // no history and never retried. `apiFetch` now surfaces the expiry, calls
+  // `router.refresh()`, and lets TanStack's retry backoff re-fetch.
   const { data: history } = useQuery<ChatMessage[]>({
     queryKey: ["chatMessages", room?.nanoid],
     queryFn: () =>
-      fetch(`/api/livechat/${room?.nanoid}/messages/`).then((r) => r.json()),
+      apiFetch(`/api/livechat/${room?.nanoid}/messages/`).then((r) => r.json()),
     enabled: !!room?.nanoid,
   });
 
@@ -214,10 +220,9 @@ function ChatWidgetInner({
     setUploading(true);
     const formData = new FormData();
     formData.append("file", file, file.name);
-    void fetch(`/api/livechat/rooms/${room.nanoid}/attachments/`, {
+    void apiFetch(`/api/livechat/rooms/${room.nanoid}/attachments/`, {
       method: "POST",
       body: formData,
-      credentials: "include",
     })
       .then(async (response) => {
         if (!response.ok) throw new Error("upload failed");

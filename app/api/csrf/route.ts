@@ -1,6 +1,11 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
+import {
+  SESSION_EXPIRED_HEADER,
+  SESSION_EXPIRED_VALUE,
+} from "@/lib/api/session-expired";
+
 const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:8000";
 
 /**
@@ -33,9 +38,13 @@ export async function GET() {
   });
 
   if (!res.ok) {
+    const headers: Record<string, string> = {};
+    if (res.status === 401) {
+      headers[SESSION_EXPIRED_HEADER] = SESSION_EXPIRED_VALUE;
+    }
     return NextResponse.json(
       { detail: "Failed to fetch CSRF token" },
-      { status: res.status },
+      { status: res.status, headers },
     );
   }
 

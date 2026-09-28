@@ -2,6 +2,12 @@ import { serverFetch } from "@/lib/api/server-fetch";
 import { serverMutate } from "@/lib/api/server-fetch";
 import { NextRequest, NextResponse } from "next/server";
 
+import {
+  apiErrorResponse,
+  isRecoverableSessionExpiry,
+  sessionExpiredResponse,
+} from "@/lib/api/route-errors";
+
 function unwrapMessages(payload: unknown): unknown[] {
   const messages = Array.isArray(payload)
     ? payload
@@ -22,13 +28,18 @@ export async function GET(
       `/apis/livechat/rooms/${nanoid}/messages/`,
     );
     return NextResponse.json(unwrapMessages(payload));
-  } catch {
+  } catch (error) {
+    // The public endpoint is anonymous, so an expired session does not stop us
+    // reading history — only report the expiry if the fallback failed too.
     try {
       const payload: unknown = await serverFetch(
         `/apis/livechat/public/rooms/${nanoid}/messages/`,
       );
       return NextResponse.json(unwrapMessages(payload));
-    } catch {
+    } catch (fallbackError) {
+      if (await isRecoverableSessionExpiry(error, fallbackError)) {
+        return sessionExpiredResponse({ error: "Session expired." });
+      }
       return NextResponse.json(
         { error: "Failed to fetch messages" },
         { status: 500 },
@@ -55,10 +66,10 @@ export async function POST(
       },
     });
     return NextResponse.json(message);
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to send message" },
-      { status: 500 },
-    );
+  } catch (error) {
+    return await apiErrorResponse(error, {
+      message: "Failed to send message",
+      status: 500,
+    });
   }
 }

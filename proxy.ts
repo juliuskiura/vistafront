@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-import { redirectTo } from "@/lib/redirect.server";
-
 const AUTH_NEXT_URL_COOKIE = "auth_next_url";
 const AUTH_CHECK_PATH = "/api/auth/check";
 
@@ -41,6 +39,15 @@ function isAssetPath(pathname: string): boolean {
     pathname.startsWith("/images/") ||
     /^\/(.*\.(png|jpg|jpeg|svg|webp|ico|css|js|woff2?))$/i.test(pathname)
   );
+}
+
+/**
+ * True for the Next BFF layer — `app/api/.../route.ts` — i.e. the endpoints
+ * Client Components call with `fetch()`. `/api/auth/check` is excluded because
+ * it is the refresh handler, not a client-facing endpoint.
+ */
+function isBffPath(pathname: string): boolean {
+  return pathname.startsWith("/api/") && pathname !== AUTH_CHECK_PATH;
 }
 
 /**
@@ -124,6 +131,27 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // ── BFF Route Handlers ──────────────────────────────────────────────
+  // `/api/*` is the Next BFF layer that Client Components `fetch()` from
+  // (TanStack Query queryFns, event handlers, the chat widget). It is NOT
+  // gated here, and that is deliberate.
+  //
+  // The stale-session branch below answers with a 307 to a *page*. For a
+  // `fetch()` that is useless: the caller follows the redirect and ends up
+  // with an HTML document where it expected JSON. That is why a long-lived tab
+  // used to see `GET /api/socialmanager/platforms → 307` in the logs and then
+  // render an empty platform list.
+  //
+  // So these requests pass straight through. Each handler calls
+  // `serverFetch`, which forwards the httpOnly cookies and lets Django enforce
+  // auth — nothing is lost by not gating here — and a dead token comes back as
+  // `401 + X-Session-Expired` (see `lib/api/route-errors.ts`). The client's
+  // `apiFetch` wrapper then calls `router.refresh()`, and *that* is a page
+  // request, so it does get the refresh hop.
+  if (isBffPath(pathname)) {
+    return NextResponse.next();
+  }
+
   // ── Auth pages ──────────────────────────────────────────────────────
   // If the user appears authenticated (access cookie present) and navigates
   // to a sign-in / sign-up / password-reset page, they cannot be trusted to
@@ -179,12 +207,21 @@ export function proxy(request: NextRequest) {
       return res;
     }
 
-    // Dead session: clear stale cookies and send to login. auth_next_url is
-    // preserved so loginAction can bounce the user back to `destination`.
-    // Relative Location: the browser stays on whatever host it is already on
-    // (app.vistasolve.net), so a loopback `request.url` can never redirect it
-    // to localhost:3000.
-    const res = redirectTo("/login");
+    // Dead session: clear the stale cookies and let the request continue.
+    //
+    // This deliberately does NOT redirect. A relative `Location` is the only
+    // way to avoid baking the request's `Host` header into a redirect (see
+    // `redirectTo`), but Next re-parses whatever `Location` the proxy returns
+    // with `new NextURL(location, { headers, nextConfig })` and no base
+    // (`next/dist/server/web/adapter.js`), so a relative one throws
+    // `ERR_INVALID_URL` there and the request is downgraded to a 500.
+    //
+    // Nothing is lost by passing through: every guarded page already redirects
+    // itself. `app/(app)/layout.tsx` calls `requireAuth()`, which resolves to
+    // `getAuthUser()` → null (no `access` cookie now) → `redirect('/login')`,
+    // and `next/navigation`'s `redirect()` emits a valid absolute Location.
+    // `auth_next_url` is preserved so `loginAction` can bounce the user back.
+    const res = NextResponse.next();
     setAuthNextUrl(res, destination);
     res.cookies.delete("access");
     res.cookies.delete("refresh");

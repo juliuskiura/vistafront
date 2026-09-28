@@ -15,3 +15,8 @@ export {
   useConnectAccount,
   type ConnectIntent,
 } from "./ConnectAccountContext";
+export {
+  SessionRefreshProvider,
+  useApiFetch,
+  useSessionRefresh,
+} from "./SessionRefreshContext";

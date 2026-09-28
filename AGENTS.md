@@ -228,6 +228,7 @@ export async function serverFetch<T>(path: string): Promise<T> {
 | User-specific data | Server Component reads cookies, forwards to backend |
 | Live data on a long-lived page (background refetch, polling) | Server Component prefetch + `<HydrationBoundary>` + Client `useQuery` (see §5) |
 | Search/filter/pagination | Server Component with `searchParams` |
+| Any client-side `fetch("/api/…")` | `useApiFetch()` from `@/lib/context`, so an expired session can be refreshed (see §7a) |
 
 ### Backend access rule — everything goes through `serverFetch`/`serverMutate`
 
@@ -237,8 +238,9 @@ never with a raw `fetch("http://…/.env BACKEND_URL…/apis/…")` in applicati
 
 - **Server Components / Server Actions:** call `lib/api/<feature>.ts` wrappers,
   which call `serverFetch`/`serverMutate` directly. This is the allowed path —
-  `serverFetch` already forwards httpOnly cookies + `X-Workspace` + CSRF and
-  refreshes the JWT on 401/403.
+  `serverFetch` already forwards httpOnly cookies + `X-Workspace` + CSRF.
+  A 401 is **terminal**: it throws `ServerFetchError(401)`. It never refreshes
+  the JWT — see "JWT refresh happens in exactly one place" below.
 - **Client Components (`"use client"`):** cannot call `serverFetch` (it is
   `"use server"`). They must call a **Next Route Handler** (`app/api/…/route.ts`)
   that delegates to `serverFetch`/`serverMutate` and forwards cookies +
@@ -548,7 +550,7 @@ The Django endpoints under `/apis/<app>/*` (CRM, projects, schedules, notebook, 
 | `/[workspace]/dashboard/*` (Server Component, Server Action) | **Yes — mandatory.** Pass `active.domain` from `requireWorkspace(slug)`. | All `lib/api/crm.ts`, `lib/api/projects.ts`, `lib/api/schedules.ts`, `lib/api/notebook.ts`, tenant-scoped calls. |
 | `/onboarding/*` (Server Actions) | No. | Pre-tenant — the user doesn't yet belong to a workspace. The backend resolves to the `app` workspace and `WorkspaceViewSet` membership-scopes the response. |
 | `/login`, `/signup`, `/password/*`, `/activate/*`, `/verify-email` | No. | These use raw `fetch()` directly (not `serverFetch`) and bypass the data layer entirely. |
-| `createClientBusiness`, `createWorkspace`, `redeemInvitation`, `checkDomainAvailability`, `getCsrfToken`, `refreshAccessToken` | No. | Workspace-bootstrap mutations and pre-tenant reads. |
+| `createClientBusiness`, `createWorkspace`, `redeemInvitation`, `checkDomainAvailability`, `getCsrfToken` | No. | Workspace-bootstrap mutations and pre-tenant reads. |
 | `lib/api/workspaces.ts`, `lib/api/invitations.ts` (tenant-side wrappers) | When called from a tenant route, the wrapper requires `workspace` and forwards it. When called from onboarding, the wrapper omits it. | The wrapper signature decides. |
 
 ### How `serverFetch` / `serverMutate` know
@@ -588,6 +590,78 @@ await createProject(body);
 ### 7. Django Backend code is read-only. Should NEVER be changed
 
 Do not change the backend code. Your is to call the endpoint and ensure the frontend and nextjs use the backend as-is
+
+---
+
+### 7a. JWT refresh happens in exactly one place: `GET /api/auth/check`
+
+**Rule:** nothing on the render path refreshes the access token. `serverFetch`,
+`serverMutate`, and `getAuthUser()` all treat a 401 as terminal.
+
+The single refresh point is the proxy hop in `proxy.ts`:
+
+```
+request ──proxy sees an expired/absent `access` cookie──▶ NextResponse.rewrite
+       ──▶ GET /api/auth/check  (a Route Handler, so cookies ARE mutable)
+       ──▶ POST /apis/auth/jwt/refresh/ → Set-Cookie(access, refresh) → 307 destination
+```
+
+Two reasons the old "refresh on 401 inside `serverFetch`" approach is banned:
+
+| Attempted location | What actually happens |
+|---|---|
+| Server Component render | `cookies().set()` throws `ReadonlyRequestCookiesError` (E1180) — Next seals cookies unless `phase === 'action'`. The throw was swallowed by a `catch` and reported as "refresh failed", so the user was logged out ~60 min after login. |
+| Server Action / Route Handler | Works, but **races itself**: Django runs `ROTATE_REFRESH_TOKENS = True` + `BLACKLIST_AFTER_ROTATION = True`. All in-flight requests carry the same old `refresh` cookie; the first refresh blacklists it and every concurrent refresh then 401s `token_blacklisted`, which the losers read as "session dead". `app/(app)/[workspace]/layout.tsx` fires five parallel authenticated fetches per render, so this fired every time. |
+
+`proxy.ts` must also never emit a relative `Location`: Next re-parses it with
+`new NextURL(location, { headers, nextConfig })` (no base) and downgrades the
+response to a 500 (`TypeError [ERR_INVALID_URL]`). The dead-session branch
+clears the cookies and calls `NextResponse.next()`; `app/(app)/layout.tsx`'s
+`requireAuth()` does the redirect via `next/navigation`. Do not call
+`redirectTo()` from `proxy.ts`.
+
+#### Recovering a session that died while the tab was open
+
+The hop above is a *page* concern. A Client Component's `fetch("/api/…")` is
+not a page request, so it never gets refreshed — which is why a tab left open
+past the 60-minute access lifetime used to sit there with an empty widget and
+no way out. The recovery is three cooperating pieces:
+
+```
+fetch("/api/schedules/today?…")                    ← Client Component
+   │  proxy lets /api/… through (see below)
+   ▼
+Route Handler → serverFetch → Django 401
+   │  apiErrorResponse() → 401 + X-Session-Expired: 1
+   ▼
+apiFetch() sees the header
+   → recover()  ==  router.refresh()               ← a PAGE request, so the
+   → throws SessionExpiredError                        proxy hop finally runs
+   ▼
+TanStack Query retries → succeeds with fresh cookies
+```
+
+| Piece | File | Rule |
+|---|---|---|
+| Marker header + error type | `lib/api/session-expired.ts` | Import-free on purpose — shared by the server and browser bundles. |
+| `401` → `401 + X-Session-Expired` | `lib/api/route-errors.ts` | `apiErrorResponse()` in **every** `app/api/…/route.ts` catch. `isRecoverableSessionExpiry()` before returning a degraded empty payload (`[]`, `null`). |
+| Client recovery | `lib/api/client-fetch.ts` + `lib/context/SessionRefreshContext.tsx` | Client Components use `useApiFetch()` instead of bare `fetch`. It injects `router.refresh()` — never call `window.location.reload()` (§1) and never a global navigator (§5). |
+
+Two rules that make this work:
+
+- **`proxy.ts` must not gate `/api/…`.** The stale-session branch answers with a
+  `307` to a *page*; a `fetch()` that follows it gets HTML where it expected
+  JSON (this is what produced `GET /api/socialmanager/platforms → 307` in the
+  logs). `isBffPath()` in `proxy.ts` returns `NextResponse.next()` for every
+  `/api/` path except `/api/auth/check`. Nothing is lost — each handler calls
+  `serverFetch`, which forwards the httpOnly cookies and lets Django enforce
+  auth. Only the *browser* can be sent to `/login`, and only a page request does
+  that.
+- **Only stamp the header when a session actually existed.** Django answers
+  `401` for "your token expired" and "you never sent one" alike, and only the
+  first is worth recovering from — a signed-out visitor needs `/login`, not a
+  re-render. `isRecoverableSessionExpiry()` checks for an `access` cookie first.
+
 ---
 
 ### 8. Destructive actions MUST use `ConfirmDialog`, never native `alert`/`confirm`
@@ -754,6 +828,8 @@ Before marking any work complete:
 - [ ] Every `serverFetch` / `serverMutate` under `/[workspace]/dashboard/*` carries `X-Workspace` (`active.domain`)
 - [ ] No `serverFetch` / `serverMutate` under `/onboarding/*`, `/login`, `/signup`, `/password/*`, `/activate/*`, `/verify-email` sets `X-Workspace`
 - [ ] TanStack Query callers prefetch on the server under `<HydrationBoundary>` and include the workspace in the query key
+- [ ] Client Components `fetch("/api/…")` through `useApiFetch()`, never bare `fetch` (no expired-session recovery otherwise — see §7a)
+- [ ] Every `app/api/…/route.ts` catch routes through `apiErrorResponse()`; handlers that degrade to `[]`/`null` check `isRecoverableSessionExpiry()` first
 - [ ] Forms with rich client validation use React Hook Form + the Zod schema that the Server Action also uses
 - [ ] No destructive/delete action uses native `confirm()` / `alert()` — it uses `ConfirmDialog` (or another styled dialog)
 - [ ] All icons are imported from `@/lib/icons`, never from `lucide-react` directly

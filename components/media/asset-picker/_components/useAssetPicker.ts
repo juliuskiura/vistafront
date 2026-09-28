@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useApiFetch } from "@/lib/context";
 import type { Asset, PaginatedAssets, SearchFilters } from "@/lib/api/types";
 
 interface UseAssetPickerOptions {
@@ -76,6 +77,7 @@ export function useAssetPicker({
   pageSize,
   allowedAssetTypes,
 }: UseAssetPickerOptions): UseAssetPickerReturn {
+  const apiFetch = useApiFetch();
   const queryString = useMemo(
     () =>
       buildQueryString({
@@ -96,12 +98,15 @@ export function useAssetPicker({
       // `serverFetch` (`lib/api/server-fetch.ts`). This avoids calling Django
       // directly from the client and keeps the trailing-slash + auth juggling
       // in one server-side place.
-      const response = await fetch(
+      // `apiFetch` (not bare `fetch`) so a 401 from the handler — which now
+      // carries `X-Session-Expired` — triggers `router.refresh()` and this
+      // query retries against a refreshed session instead of showing an empty
+      // asset grid forever.
+      const response = await apiFetch(
         `/api/media/assets${queryString ? `?${queryString}` : ""}`,
         {
           method: "GET",
           headers: { "X-Workspace": workspaceDomain },
-          credentials: "include",
         },
       );
       if (!response.ok) {
@@ -109,7 +114,7 @@ export function useAssetPicker({
       }
       return response.json();
     },
-    [workspaceDomain, queryString],
+    [apiFetch, workspaceDomain, queryString],
   );
 
   const { data, isFetching, refetch } = useQuery<PaginatedAssets>({

@@ -10,11 +10,22 @@ import type {
   TodaySummary,
 } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useApiFetch } from "@/lib/context";
+import type { ApiFetch } from "@/lib/api/client-fetch";
 
-async function fetchToday(workspace: string): Promise<TodaySummary> {
-  const res = await fetch(
+/**
+ * `apiFetch` is threaded in rather than imported so the recovery callback comes
+ * from the `useApiFetch()` hook in the component below. A 60s poll can easily
+ * be the request that first meets an expired token; `apiFetch` throws
+ * `SessionExpiredError` and triggers `router.refresh()`, and TanStack Query's
+ * default retry backoff re-runs this once the fresh cookies have landed.
+ */
+async function fetchToday(
+  workspace: string,
+  apiFetch: ApiFetch,
+): Promise<TodaySummary> {
+  const res = await apiFetch(
     `/api/schedules/today?workspace=${encodeURIComponent(workspace)}`,
-    { credentials: "include" },
   );
   if (!res.ok) {
     throw new Error(`Today fetch failed: ${res.status}`);
@@ -155,9 +166,10 @@ function ProjectRow({
  * Server-Component version had to be re-navigated to see new items.
  */
 export function TodayBoard({ workspace }: { workspace: string }) {
+  const apiFetch = useApiFetch();
   const { data = EMPTY } = useQuery<TodaySummary>({
     queryKey: ["today", workspace],
-    queryFn: () => fetchToday(workspace),
+    queryFn: () => fetchToday(workspace, apiFetch),
     refetchInterval: 60_000,
   });
 

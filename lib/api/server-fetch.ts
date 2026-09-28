@@ -5,89 +5,38 @@ import { ServerFetchError, type RequestOptions, type MutateOptions } from "./ser
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:8000";
 
-async function tryRefreshAccessToken(
-  cookieStore: Awaited<ReturnType<typeof cookies>>,
-): Promise<boolean> {
-  const refreshToken = cookieStore.get("refresh")?.value;
-  if (!refreshToken) return false;
-
-  try {
-    const response = await fetch(`${BACKEND_URL}/apis/auth/jwt/refresh/`, {
-      method: "POST",
-      headers: {
-        Cookie: `refresh=${refreshToken}`,
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) return false;
-
-    if (response.status === 204) {
-      forwardAuthCookies(response, cookieStore);
-      return true;
-    }
-
-    const data = (await response.json()) as { access?: string };
-    if (!data.access) return false;
-
-    cookieStore.set("access", data.access, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-    });
-
-    forwardAuthCookies(response, cookieStore);
-
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Forward rotated auth cookies (`access`, `refresh`) from Django's
- * `Set-Cookie` headers onto the outbound browser cookies. If the response
- * does not include a given cookie (token rotation disabled), the existing
- * cookie is left untouched.
- */
-function forwardAuthCookies(
-  response: Response,
-  cookieStore: Awaited<ReturnType<typeof cookies>>,
-): void {
-  const setCookies = response.headers.getSetCookie();
-  if (!setCookies.length) return;
-
-  for (const raw of setCookies) {
-    const [pair, ...attributes] = raw.split("; ");
-    const eq = pair.indexOf("=");
-    if (eq <= 0) continue;
-    const name = pair.slice(0, eq);
-    const value = pair.slice(eq + 1);
-    if (name !== "access" && name !== "refresh") continue;
-
-    const lowerAttrs = attributes.map((a) => a.toLowerCase());
-    const secure = lowerAttrs.some((a) => a === "secure");
-    const sameSiteAttr = attributes.find((a) =>
-      a.toLowerCase().startsWith("samesite="),
-    )?.split("=")[1];
-    const sameSite = (sameSiteAttr ?? "lax").toLowerCase() as
-      | "lax"
-      | "strict"
-      | "none";
-
-    cookieStore.set(name, value, {
-      httpOnly: true,
-      secure,
-      sameSite,
-      path: "/",
-    });
-  }
-}
-
 /**
  * Server-side fetch utility that forwards auth cookies to Django backend.
  * Use this in Server Components and Server Actions to fetch authenticated data.
+ *
+ * ## Why this never refreshes the JWT
+ *
+ * A 401 here is terminal: the caller sees a `ServerFetchError(401)` and the
+ * auth guard (`requireAuth()`) sends the user to `/login`. Refreshing from
+ * inside this function used to be attempted and was wrong twice over.
+ *
+ * 1. **It cannot work from a Server Component.** Next seals `cookies()` for
+ *    the whole render phase — pages get `phase: 'render'`, Route Handlers and
+ *    Server Actions get `phase: 'action'` — and `cookies().set()` throws
+ *    `ReadonlyRequestCookiesError` (E1180) unless the phase is `'action'`
+ *    (`next/dist/server/web/spec-extension/adapters/request-cookies.js`).
+ *    Every attempt to write the refreshed token from a page render threw, got
+ *    swallowed by a `catch`, and was reported as "refresh failed" anyway.
+ *
+ * 2. **Where it *could* run, it raced itself.** Django runs with
+ *    `ROTATE_REFRESH_TOKENS = True` and `BLACKLIST_AFTER_ROTATION = True`
+ *    (`regwakes/settings.py`). Every in-flight request carries the same old
+ *    `refresh` cookie, so the first one to POST `/apis/auth/jwt/refresh/`
+ *    rotates it and blacklists the old copy — and every concurrent refresh
+ *    with that same cookie then fails `token_blacklisted`. A page render
+ *    fires five such calls in parallel (`app/(app)/[workspace]/layout.tsx`),
+ *    so the losers read their 401 as "the session is dead" and logged the
+ *    user out.
+ *
+ * Refreshing is therefore a **single, serialized hop in the proxy**
+ * (`proxy.ts` → `GET /api/auth/check`, a Route Handler where cookies *are*
+ * mutable). By the time any page or handler renders, the browser already
+ * holds a fresh `access` cookie.
  */
 export async function serverFetch<T>(
   path: string,
@@ -125,22 +74,7 @@ export async function serverFetch<T>(
   });
 
   if (!response.ok) {
-    // Feature gating raises PermissionDenied → 403 on every scoped request, so
-    // a workspace without the feature would pay a needless refresh round-trip
-    // and still receive the 403. Only an expired/absent JWT (401) warrants a
-    // refresh-and-retry.
-    const isAuthError = response.status === 401;
-    const canRetry = !options._retry && isAuthError && !!refreshToken;
-
-    if (canRetry) {
-      const refreshed = await tryRefreshAccessToken(cookieStore);
-      if (refreshed) {
-        return serverFetch<T>(path, { ...options, _retry: true });
-      }
-    }
-
-    const errorText = await response.text();
-    throw new ServerFetchError(response.status, errorText, path);
+    throw new ServerFetchError(response.status, await response.text(), path);
   }
 
   if (response.status === 204) {
@@ -155,6 +89,8 @@ export async function serverFetch<T>(
  * Automatically includes CSRF token for Django and the ``X-Workspace``
  * tenant header. See {@link RequestOptions.workspace} for why the header
  * is mandatory.
+ *
+ * 401s are terminal here too — see the note on {@link serverFetch}.
  */
 export async function serverMutate<T>(
   path: string,
@@ -197,20 +133,7 @@ export async function serverMutate<T>(
   });
 
   if (!response.ok) {
-    // 403 signals feature gating (PermissionDenied), not expired credentials —
-    // only retry the raw 401 auth-expiry case.
-    const isAuthError = response.status === 401;
-    const canRetry = !options._retry && isAuthError && !!refreshToken;
-
-    if (canRetry) {
-      const refreshed = await tryRefreshAccessToken(cookieStore);
-      if (refreshed) {
-        return serverMutate<T>(path, { ...options, _retry: true });
-      }
-    }
-
-    const errorText = await response.text();
-    throw new ServerFetchError(response.status, errorText, path);
+    throw new ServerFetchError(response.status, await response.text(), path);
   }
 
   if (response.status === 204) {

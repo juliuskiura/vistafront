@@ -11,6 +11,7 @@ import {
 import { usePathname, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useSubscription } from "@/lib/context/SubscriptionContext";
+import { useApiFetch } from "@/lib/context/SessionRefreshContext";
 import ConnectAccountModal from "@/components/socialmanager/connect-account-modal";
 import type { SocialMediaPlatform, SocialPlatform } from "@/lib/api/types";
 
@@ -20,8 +21,10 @@ import type { SocialMediaPlatform, SocialPlatform } from "@/lib/api/types";
  */
 export interface ConnectIntent {
   /**
-   * Start on this platform instead of the picker. Instagram jumps straight to
-   * the "doors" step; every other platform highlights it in the picker.
+   * Start on this platform instead of the picker. Which step that means is
+   * decided by the platform's `auth_destination`: a destination reachable
+   * through several doors (Instagram, today) opens the "doors" step, everything
+   * else opens the picker.
    */
   preselectedPlatform?: SocialPlatform;
   /**
@@ -82,6 +85,7 @@ export function ConnectAccountProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { canUseFeature } = useSubscription();
+  const apiFetch = useApiFetch();
   const [isOpen, setIsOpen] = useState(false);
   const [intent, setIntent] = useState<ConnectIntent>({});
   // Bumped on every open and used as the modal's `key`. The modal keeps
@@ -122,10 +126,13 @@ export function ConnectAccountProvider({ children }: { children: ReactNode }) {
   // key so switching workspaces cannot serve another tenant's list.
   const { data: platforms } = useQuery<SocialMediaPlatform[]>({
     queryKey: ["socialmanager", "platforms", workspaceDomain],
+    // `apiFetch` throws SessionExpiredError on a dead token (after kicking off
+    // router.refresh()), so the query errors and TanStack retries it against
+    // the refreshed session instead of caching a permanent empty list.
     queryFn: () =>
-      fetch(
+      apiFetch(
         `/api/socialmanager/platforms?workspace=${encodeURIComponent(workspaceDomain)}`,
-      ).then((r) => (r.ok ? r.json() : [])),
+      ).then((r) => r.json()),
     enabled: isOpen && Boolean(workspaceDomain),
     staleTime: 5 * 60_000,
   });

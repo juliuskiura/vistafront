@@ -3,6 +3,22 @@ import { NextResponse } from "next/server";
 /**
  * Server-only redirects whose `Location` is a PATH, never an absolute URL.
  *
+ * ## DO NOT CALL THIS FROM `proxy.ts`
+ *
+ * Route Handlers and Server Components can use this. The proxy cannot. Next
+ * post-processes every `Location` the proxy returns:
+ *
+ * ```js
+ * // next/dist/server/web/adapter.js
+ * const redirectURL = new NextURL(redirect, { forceLocale: false, headers, nextConfig });
+ * ```
+ *
+ * No `base` is passed, so a relative `Location` reaches `new URL('/login',
+ * undefined)` and throws `ERR_INVALID_URL`. `next-server.js` catches it,
+ * logs `TypeError: Invalid URL`, and serves a **500** instead of your 307.
+ * Letting the page's own `redirect('/login')` guard handle the dead-session
+ * case avoids the whole problem — see the note in `proxy.ts`.
+ *
  * ## The trap
  *
  * The pattern Next.js documents is `NextResponse.redirect(new URL(path, request.url))`.

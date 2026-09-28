@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import type { SocialMediaPlatform, SocialPlatform } from "@/lib/api/types";
 import { oauthInitAction } from "@/app/(app)/[workspace]/dashboard/socialmanager/actions";
-import { buildPlatformOptions } from "./_components/platform-copy";
+import { buildPlatformOptions, needsDoorChoice } from "./_components/platform-copy";
 import { ModalHeader } from "./_components/modal-header";
 import { StepIndicator } from "./_components/step-indicator";
 import { StepSelect } from "./_components/step-select";
@@ -12,7 +12,7 @@ import { StepDoors } from "./_components/step-doors";
 import { StepConnecting } from "./_components/step-connecting";
 import { StepSuccess } from "./_components/step-success";
 import { StepError } from "./_components/step-error";
-import type { PlatformOption } from "./_components/platform-copy";
+import type { PlatformDoor, PlatformOption } from "./_components/platform-copy";
 
 export type ConnectStep = "select" | "doors" | "connecting" | "success" | "error";
 
@@ -35,9 +35,11 @@ export default function ConnectAccountModal({
   preselectedPlatform,
   rerequest,
 }: ConnectAccountModalProps) {
-  const [step, setStep] = useState<ConnectStep>(
-    preselectedPlatform === "instagram" ? "doors" : "select",
-  );
+  // `selectedPlatform` is a *destination* slug, not a door: the user picks a
+  // network from the grid, then (only when that destination has several ways
+  // in) a door from the doors step. `currentPlatformInfo` resolves both a
+  // destination slug and a door slug to the same card, so a preselected door
+  // behaves like a preselected destination.
   const [selectedPlatform, setSelectedPlatform] = useState<SocialPlatform>(
     preselectedPlatform || "facebook",
   );
@@ -45,6 +47,27 @@ export default function ConnectAccountModal({
     () => buildPlatformOptions(platforms),
     [platforms],
   );
+  const currentPlatformInfo = useMemo<PlatformOption | null>(
+    () =>
+      platformOptions.find((p) => p.id === selectedPlatform) ??
+      platformOptions.find((p) => p.doors.some((d) => d.id === selectedPlatform)) ??
+      platformOptions[0] ??
+      null,
+    [platformOptions, selectedPlatform],
+  );
+
+  // A preselected platform opens straight on its doors step when the
+  // destination it belongs to has more than one door; otherwise the grid is
+  // shown and the choice is made there. Resolved once on mount from the props,
+  // before `platformOptions` is memoized below.
+  const [step, setStep] = useState<ConnectStep>(() => {
+    const preselected = preselectedPlatform
+      ? buildPlatformOptions(platforms).find(
+          (p) => p.id === preselectedPlatform || p.doors.some((d) => d.id === preselectedPlatform),
+        )
+      : null;
+    return preselected && needsDoorChoice(preselected) ? "doors" : "select";
+  });
   const [errorMessage, setErrorMessage] = useState("");
   const popupRef = useRef<Window | null>(null);
   const listenerRef = useRef<((event: MessageEvent) => void) | null>(null);
@@ -129,14 +152,17 @@ export default function ConnectAccountModal({
   }, [step, handleMessage, onConnected]);
 
   const handleSelectPlatform = useCallback(
-    async (platform: SocialPlatform, route?: string) => {
+    async (platform: SocialPlatform) => {
       setSelectedPlatform(platform);
       setStep("connecting");
       setErrorMessage("");
 
       try {
+        // The platform slug alone identifies the handshake: each door is its
+        // own platform row on the backend, so no route/gateway parameter is
+        // sent.
         const result = await oauthInitAction(
-          { platform: platform as string, method: route, rerequest },
+          { platform: platform as string, rerequest },
           workspaceDomain,
         );
         if ("error" in result) {
@@ -169,15 +195,31 @@ export default function ConnectAccountModal({
     [workspaceDomain, rerequest],
   );
 
+  /**
+   * Picking a network in the grid. A destination with several doors (its
+   * `auth_destination` is shared by more than one platform row) asks which way
+   * in first; a destination with a single door goes straight to the handshake.
+   */
   const handlePlatformClick = useCallback(
     (platform: SocialPlatform) => {
-      if (platform === "instagram") {
-        setSelectedPlatform(platform);
+      setSelectedPlatform(platform);
+      const option = platformOptions.find((p) => p.id === platform) ?? null;
+      if (needsDoorChoice(option)) {
         setStep("doors");
         return;
       }
-      handleSelectPlatform(platform);
+      const door = option?.doors.find((d) => d.available);
+      if (door) handleSelectPlatform(door.id);
+      else {
+        setErrorMessage("That network has no sign-in method available yet. Please try another one.");
+        setStep("error");
+      }
     },
+    [platformOptions, handleSelectPlatform],
+  );
+
+  const handleDoorSelect = useCallback(
+    (door: PlatformDoor) => handleSelectPlatform(door.id),
     [handleSelectPlatform],
   );
 
@@ -186,8 +228,7 @@ export default function ConnectAccountModal({
     setErrorMessage("");
   };
 
-  const currentPlatformInfo =
-    platformOptions.find((p) => p.id === selectedPlatform) || platformOptions[0] || null;
+  const currentDoors = currentPlatformInfo?.doors ?? [];
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -201,8 +242,10 @@ export default function ConnectAccountModal({
 
         {step === "doors" && (
           <StepDoors
+            destinationName={currentPlatformInfo?.name || "this network"}
+            doors={currentDoors}
             onBack={() => setStep("select")}
-            onFacebookConnect={() => handleSelectPlatform("instagram", "facebook_page")}
+            onSelectDoor={handleDoorSelect}
           />
         )}
 
