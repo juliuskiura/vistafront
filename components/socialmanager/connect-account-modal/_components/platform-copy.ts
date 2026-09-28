@@ -41,6 +41,11 @@ export interface PlatformOption {
   bgColor: string;
   borderColor: string;
   doors: PlatformDoor[];
+  /**
+   * The door the "Recommended" badge belongs to, or `null` when the
+   * destination has a single door and there is nothing to recommend between.
+   */
+  recommendedDoorId: SocialPlatform | null;
 }
 
 interface PlatformDetails {
@@ -49,6 +54,32 @@ interface PlatformDetails {
   bgColor: string;
   borderColor: string;
 }
+
+/**
+ * Which door to recommend when a destination has more than one way in.
+ *
+ * Keyed by **destination** slug, and the value is a **door** slug — the row the
+ * user walks through. This is the single place a door's priority is declared,
+ * and it drives both the "Recommended" badge and the order the doors are listed
+ * in (see `orderDoors`). A destination with no entry keeps the old behaviour
+ * (the first available door), which is right for every network that has only
+ * one door, and wrong for the ones that have two.
+ *
+ * Instagram is the case that matters. The backend lists rows in whatever order
+ * the database returns them, and `instagram` happens to be inserted before
+ * `instagramfb`, so "first available" recommended the direct-login door. That
+ * door is not the one the product recommends: the catalogue documents
+ * `instagram` as "provider code present, not yet enabled in the UI", while
+ * `instagramfb` is the Facebook-Page door that actually publishes. Both the
+ * badge and the listing order have to say so explicitly rather than inherit an
+ * accident of row order.
+ *
+ * Adding an entry here is the whole fix for a new multi-door destination — no
+ * reordering of the API response, and nothing to change in the doors step.
+ */
+const PREFERRED_DOOR: Record<string, string> = {
+  instagram: "instagramfb",
+};
 
 const PLATFORM_DETAILS: Record<string, PlatformDetails> = {
   instagram: {
@@ -138,6 +169,32 @@ function resolve(value: string | null | undefined, fallback: string): SocialPlat
 }
 
 /**
+ * Put the recommended door at the top, leaving every other door in the order
+ * the API returned it.
+ *
+ * The "Recommended" badge and the position of the card used to be decided
+ * independently: the badge came from `PREFERRED_DOOR`, the position from
+ * whatever order the database listed the rows in. Those two could disagree,
+ * and for Instagram they did — the direct-login `instagram` row is inserted
+ * first, so the door the product does *not* recommend was rendered above the
+ * one it does. A badge under the first card reads as a correction of it.
+ *
+ * The recommendation is expressed once, in `PREFERRED_DOOR`, and everything
+ * downstream follows it: the badge (`recommendedDoorId`) and now the order.
+ * Adding a destination there is the whole fix for a new multi-door network.
+ *
+ * Stable and non-mutating: a door set that is already led by the recommended
+ * door is returned untouched, and doors the API happened to order are not
+ * reshuffled relative to one another.
+ */
+function orderDoors(doors: PlatformDoor[], recommended: PlatformDoor | undefined): PlatformDoor[] {
+  if (!recommended || doors.length < 2) return doors;
+  const head = doors.findIndex((d) => d.id === recommended.id);
+  if (head <= 0) return doors;
+  return [doors[head], ...doors.slice(0, head), ...doors.slice(head + 1)];
+}
+
+/**
  * Turn the flat platform rows from the API into one card per *destination*.
  *
  * Rows sharing an `auth_destination` are grouped together, so the `instagramfb`
@@ -177,7 +234,17 @@ export function buildPlatformOptions(platforms: SocialMediaPlatform[]): Platform
   const options: PlatformOption[] = [];
   for (const [destination, doors] of groups) {
     if (!doors.some((d) => d.available)) continue;
+    // ``lead`` is read off the *unsorted* doors so the card's fallback label is
+    // unchanged by the reordering below — it is only consulted when no platform
+    // row carries the destination's own name.
     const lead = doors.find((d) => d.available) ?? doors[0];
+    // The badge follows `PREFERRED_DOOR`, never the array order: a door that is
+    // not deployed yet cannot be recommended, so an inactive preferred door
+    // falls back to the first available one.
+    const preferred = PREFERRED_DOOR[destination];
+    const recommended =
+      doors.find((d) => d.available && d.id === preferred) ??
+      (doors.length > 1 ? lead : undefined);
     // Label the card after the destination itself when that row exists, and
     // otherwise after the door's dialog ("Instagram" rather than
     // "Instagram (via Facebook)").
@@ -190,7 +257,10 @@ export function buildPlatformOptions(platforms: SocialMediaPlatform[]): Platform
       color: details.color,
       bgColor: details.bgColor,
       borderColor: details.borderColor,
-      doors,
+      // The recommended door leads the list, so the badge and the first card
+      // always agree. Everything else keeps the order the API returned.
+      doors: orderDoors(doors, recommended),
+      recommendedDoorId: recommended?.id ?? null,
     });
   }
   return options;
@@ -202,4 +272,20 @@ export function buildPlatformOptions(platforms: SocialMediaPlatform[]): Platform
  */
 export function needsDoorChoice(option: PlatformOption | null): boolean {
   return (option?.doors.length ?? 0) > 1;
+}
+
+/**
+ * The door a destination should send the user through without asking: the one
+ * `buildPlatformOptions` marked recommended, else the first available door.
+ *
+ * `buildPlatformOptions` already dropped destinations with no available door,
+ * so this only ever returns `null` for a missing card.
+ */
+export function recommendedDoor(option: PlatformOption | null | undefined): PlatformDoor | null {
+  if (!option) return null;
+  const preferred = option.doors.find(
+    (d) => d.available && d.id === option.recommendedDoorId,
+  );
+  if (preferred) return preferred;
+  return option.doors.find((d) => d.available) ?? null;
 }
