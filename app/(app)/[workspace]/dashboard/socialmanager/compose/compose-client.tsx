@@ -43,6 +43,9 @@ interface Props {
   hashtags: Hashtag[];
   workspaceDomain: string;
   editPost: ScheduledPost | null;
+  /** ISO timestamp used when the post has no schedule of its own. Computed on
+   *  the server because `Date.now()` is impure during a client render. */
+  defaultScheduledAt: string;
 }
 
 export function ComposeClient({
@@ -53,6 +56,7 @@ export function ComposeClient({
   hashtags,
   workspaceDomain,
   editPost,
+  defaultScheduledAt,
 }: Props) {
   const ws = workspaceDomain.toLowerCase();
   // The previewed slug is a connect door; its label is the brand's.
@@ -77,7 +81,7 @@ export function ComposeClient({
   const [pickerPage, setPickerPage] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [scheduledAt, setScheduledAt] = useState(
-    editPost?.scheduled_at ?? new Date(Date.now() + 86400000).toISOString(),
+    editPost?.scheduled_at ?? defaultScheduledAt,
   );
   const [publishNow, setPublishNow] = useState(
     editPost ? editPost.status === "draft" : true,

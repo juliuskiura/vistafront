@@ -7,6 +7,7 @@ import {
   CalendarDays,
   LayoutDashboard,
   ListOrdered,
+  MessageSquare,
   PenLine,
   Send,
   Share2,
@@ -34,6 +35,7 @@ import type { SocialMediaPlatform } from "@/lib/api/types";
 
 const NAV_ITEMS: InnerNavItem[] = [
   { label: "Overview", href: "", end: true, icon: LayoutDashboard },
+  { label: "Inbox", href: "/inbox", icon: MessageSquare },
   { label: "Channels", href: "/channels", icon: Share2 },
   { label: "Calendar", href: "/calendar", icon: CalendarDays },
 ];

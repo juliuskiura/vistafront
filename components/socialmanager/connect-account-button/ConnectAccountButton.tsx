@@ -86,7 +86,7 @@ export function ConnectAccountButton({
       )}
     >
       <span className="text-base font-bold tracking-tight text-[var(--vs-on-fill)] [text-shadow:none]">
-        Connect Account
+        Click to Connect Account
       </span>
 
       {featured.length > 0 && (

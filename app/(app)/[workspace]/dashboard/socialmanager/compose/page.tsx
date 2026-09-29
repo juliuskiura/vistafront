@@ -42,6 +42,16 @@ export default async function ComposePage({
     editPost = await getPost(edit, ws).catch(() => null);
   }
 
+  // The composer's default schedule is "tomorrow", computed here rather than in
+  // the client. A Server Component may call `Date.now()` during render; a
+  // Client Component may not, and doing it on the client would also mean the
+  // server and client clocks could disagree about what "tomorrow" is, producing
+  // a hydration mismatch on the date input. This is an async Server Component,
+  // so this runs once per request and never re-renders on the client — which is
+  // exactly the condition the purity rule is protecting against.
+  // eslint-disable-next-line react-hooks/purity
+  const defaultScheduledAt = new Date(Date.now() + 86_400_000).toISOString();
+
   return (
     <ComposeClient
       pages={pages}
@@ -51,6 +61,7 @@ export default async function ComposePage({
       capabilities={capabilities}
       workspaceDomain={ws}
       editPost={editPost}
+      defaultScheduledAt={defaultScheduledAt}
     />
   );
 }

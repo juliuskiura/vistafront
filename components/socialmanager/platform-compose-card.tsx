@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Link } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 import SocialMediaTextEditor from "./social-media-text-editor";
@@ -13,7 +13,6 @@ import type {
   SocialMediaPlatform,
   Asset,
 } from "@/lib/api/types";
-import { Button } from "@/components/ui/button";
 
 interface PlatformComposeCardProps {
   slug: string;

@@ -214,6 +214,20 @@ export {
 } from "./socialmanager";
 
 export {
+  getConversation,
+  getInboxSummary,
+  listConversations,
+  replyToConversation,
+  type ListConversationsOptions,
+  type SocialConversation,
+  type SocialConversationDetail,
+  type SocialConversationPage,
+  type SocialInboxSummary,
+  type SocialMessage,
+  type SocialMessageAttachment,
+} from "./inbox";
+
+export {
   addAssetToCollection,
   addAssetToFolder,
   archiveAsset,

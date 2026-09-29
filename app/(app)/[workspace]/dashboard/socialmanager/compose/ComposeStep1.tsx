@@ -3,9 +3,17 @@
 import { useState, useCallback, useMemo } from "react";
 import { Plus, Layers, CheckCircle2, AlertCircle } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
-import type { ManagedChannel, SocialMediaPlatform, Hashtag, Asset, Campaign } from "@/lib/api/types";
+import type {
+  ManagedChannel,
+  ScheduledPost,
+  SocialMediaPlatform,
+  Hashtag,
+  Asset,
+  Campaign,
+} from "@/lib/api/types";
 import { verifyPageAction } from "../actions";
 import { useConnectAccount } from "@/lib/context";
+import type { CampaignActionState } from "../action-state";
 import SocialMediaTextEditor from "@/components/socialmanager/social-media-text-editor";
 import { PlatformGlyph, usePlatformStyleResolver } from "@/components/platform-icon";
 import { VSButton } from "@/components/shared/components/customUi/VSButton";
@@ -15,7 +23,7 @@ interface ComposeStep1Props {
   platforms: SocialMediaPlatform[];
   hashtags: Hashtag[];
   workspaceDomain: string;
-  editPost: any;
+  editPost: ScheduledPost | null;
   selectedPageIds: string[];
   setSelectedPageIds: React.Dispatch<React.SetStateAction<string[]>>;
   content: string;
@@ -38,8 +46,8 @@ interface ComposeStep1Props {
   setNewCampaignName: React.Dispatch<React.SetStateAction<string>>;
   newCampaignDesc: string;
   setNewCampaignDesc: React.Dispatch<React.SetStateAction<string>>;
-  campaignAction: any;
-  setCampaignAction: React.Dispatch<React.SetStateAction<any>>;
+  campaignAction: CampaignActionState;
+  setCampaignAction: React.Dispatch<React.SetStateAction<CampaignActionState>>;
   handleNext: () => void;
   canProceed: boolean;
   /** Open the asset picker for one channel. Takes the channel nanoid so the
