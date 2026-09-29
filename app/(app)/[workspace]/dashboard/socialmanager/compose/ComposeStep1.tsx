@@ -7,7 +7,7 @@ import type { ManagedChannel, SocialMediaPlatform, Hashtag, Asset, Campaign } fr
 import { verifyPageAction } from "../actions";
 import { useConnectAccount } from "@/lib/context";
 import SocialMediaTextEditor from "@/components/socialmanager/social-media-text-editor";
-import { PlatformGlyph, getPlatformStyle } from "@/components/platform-icon";
+import { PlatformGlyph, usePlatformStyleResolver } from "@/components/platform-icon";
 import { VSButton } from "@/components/shared/components/customUi/VSButton";
 
 interface ComposeStep1Props {
@@ -90,6 +90,10 @@ export function ComposeStep1({
   // The provider's onConnected also calls router.refresh(), which re-runs this
   // page's Server Component and pulls the newly connected channel into `pages`.
   const { open: openConnectAccount, canConnect } = useConnectAccount();
+
+  // Pages are grouped by the door they connected through; the group heading
+  // and glyph follow that door's `auth_destination` brand.
+  const styleOf = usePlatformStyleResolver();
 
   const pageToPlatformSlug = useMemo(() => {
     const map: Record<string, string> = {};
@@ -251,7 +255,9 @@ export function ComposeStep1({
         )}
         <div className="space-y-3">
           {Object.entries(pagesByPlatform).map(([slug, slugPages]) => {
-            const style = getPlatformStyle(slug);
+            // `slug` is the connect door the page was created through; the
+            // group heading and its glyph belong to the brand behind it.
+            const style = styleOf(slug);
             const selCount = selectedCountBySlug[slug] ?? 0;
             return (
               <div key={slug} className="overflow-hidden rounded-xl border border-slate-200">

@@ -1,8 +1,17 @@
 import { SocialIcon, hasSocialIcon } from "@/components/social-icons";
+import { usePlatformBrand } from "@/lib/social/platform-brand-context";
 
 /**
  * Per-platform badge styles shared across the social manager UI, matching
  * the original frontapp palettes.
+ *
+ * These are keyed by **brand** slug, never by a `SocialMediaPlatform.slug`.
+ * A platform row is a door; `instagram` and `instagramfb` are two doors onto
+ * one brand, and a connected channel reports the door it came through, so a
+ * lookup on the raw row slug would fall through to a neutral badge. Use
+ * `usePlatformStyleResolver()` (or `PlatformGlyph`) to resolve a slug through
+ * `auth_destination` first — both go through the brand map the
+ * `PlatformBrandProvider` supplies.
  */
 export const PLATFORM_STYLES: Record<string, { label: string; color: string; bg: string; border: string }> = {
   instagram: { label: "Instagram", color: "text-pink-600", bg: "bg-pink-50", border: "border-pink-200" },
@@ -19,21 +28,53 @@ export const PLATFORM_STYLES: Record<string, { label: string; color: string; bg:
   start_page: { label: "Start Page", color: "text-slate-600", bg: "bg-slate-100", border: "border-slate-200" },
 };
 
-export function getPlatformStyle(slug: string): { label: string; color: string; bg: string; border: string } {
-  return (
-    PLATFORM_STYLES[slug] ?? {
-      label: slug,
-      color: "text-neutral-600",
-      bg: "bg-neutral-100",
-      border: "border-neutral-200",
-    }
-  );
+export interface PlatformStyle {
+  label: string;
+  color: string;
+  bg: string;
+  border: string;
+}
+
+const FALLBACK_STYLE: PlatformStyle = {
+  label: "",
+  color: "text-neutral-600",
+  bg: "bg-neutral-100",
+  border: "border-neutral-200",
+};
+
+/**
+ * Brand style lookup. `slug` is a **brand** slug — resolve a door slug through
+ * `usePlatformStyleResolver()` first. An unknown slug falls back to a neutral
+ * badge carrying the slug itself as its label, so a newly seeded platform stays
+ * readable instead of rendering blank.
+ */
+export function getPlatformStyle(slug: string): PlatformStyle {
+  const style = PLATFORM_STYLES[slug];
+  if (style) return style;
+  return { ...FALLBACK_STYLE, label: slug };
+}
+
+/**
+ * Brand-aware style resolver for the social manager tree.
+ *
+ * Every value rendered in the UI is a `ManagedChannel.platform` / managed-page
+ * `platform`, which is the **door** the account connected through. Resolving
+ * that through `auth_destination` is what gives a channel connected via
+ * `instagramfb` the Instagram icon instead of an "IF" text badge.
+ *
+ * Call it once per component and use the returned function inside `.map()`
+ * callbacks — `usePlatformStyle()` would break the rules of hooks in a loop.
+ */
+export function usePlatformStyleResolver(): (slug: string | null | undefined) => PlatformStyle {
+  const { brandOf } = usePlatformBrand();
+  return (slug) => getPlatformStyle(brandOf(slug));
 }
 
 /**
  * Renders a platform's glyph: the real brand icon when available, otherwise a
- * compact text badge (e.g. "IG", "FB", "LI"). Mirrors the original frontapp
- * ChannelsPage/ChannelDetailPage behaviour.
+ * compact text badge (e.g. "IG", "FB", "LI"). The slug is resolved to its brand
+ * through `auth_destination` first, so `instagram` and `instagramfb` both wear
+ * the Instagram icon.
  */
 export function PlatformGlyph({
   platform,
@@ -46,16 +87,17 @@ export function PlatformGlyph({
   className?: string;
   fallbackIcon?: string;
 }) {
-  const raw = platform || "";
-  const style = getPlatformStyle(raw);
+  const { brandOf } = usePlatformBrand();
+  const brand = brandOf(platform);
+  const style = getPlatformStyle(brand);
   const dims =
     size === "lg" ? "h-5 w-5" : size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4";
 
-  if (hasSocialIcon(raw)) {
-    return <SocialIcon name={raw} className={`${dims} ${style.color} ${className ?? ""}`} />;
+  if (hasSocialIcon(brand)) {
+    return <SocialIcon name={brand} className={`${dims} ${style.color} ${className ?? ""}`} />;
   }
 
-  const fallback = fallbackIcon || (raw ? raw.slice(0, 2).toUpperCase() : "?");
+  const fallback = fallbackIcon || (brand ? brand.slice(0, 2).toUpperCase() : "?");
   return (
     <span
       className={`${dims} flex items-center justify-center rounded-md border text-[9px] font-bold ${style.bg} ${style.color} ${style.border} ${className ?? ""}`}

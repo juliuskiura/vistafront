@@ -3,7 +3,8 @@
 import { Clock, CloudDownload, ExternalLink, Heart, MessageCircle, Send, Sparkles } from "lucide-react";
 
 import type { ManagedChannel, ScheduledPost } from "@/lib/api/types";
-import { getPlatformStyle } from "@/components/platform-icon";
+import { usePlatformStyleResolver } from "@/components/platform-icon";
+import { usePlatformBrand } from "@/lib/social/platform-brand-context";
 import { SocialIconSolid } from "@/components/social-icons";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,10 +33,14 @@ export function PostCommentsSheet({
   open,
   onOpenChange,
 }: PostCommentsSheetProps) {
+  // Page `platform` is the connect door; the icon and gradient belong to the
+  // brand behind it, resolved through the door's `auth_destination`.
+  const { brandOf } = usePlatformBrand();
+  const styleOf = usePlatformStyleResolver();
   const recipients = post?.recipients ?? [];
   const primaryRecipient = recipients[0];
   const primaryPage = primaryRecipient ? pageById[primaryRecipient.managed_page] : undefined;
-  const primaryPlatform = (primaryPage?.platform ?? "").toLowerCase();
+  const primaryPlatform = brandOf(primaryPage?.platform);
   const statusMeta = post ? STATUS_META[post.status] ?? STATUS_META.draft : STATUS_META.draft;
 
   return (
@@ -97,8 +102,8 @@ export function PostCommentsSheet({
             <div className="space-y-2 border-b border-border bg-muted/40 px-5 py-3">
               {recipients.map((r) => {
                 const page = pageById[r.managed_page];
-                const platform = (page?.platform ?? "").toLowerCase();
-                const style = getPlatformStyle(platform);
+                const platform = brandOf(page?.platform);
+                const style = styleOf(page?.platform);
                 return (
                   <div
                     key={r.nanoid}

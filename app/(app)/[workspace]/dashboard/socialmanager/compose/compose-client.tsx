@@ -21,7 +21,7 @@ import {
   initialCampaignState,
   type CampaignActionState,
 } from "../action-state";
-import { getPlatformStyle } from "@/components/platform-icon";
+import { usePlatformStyleResolver } from "@/components/platform-icon";
 import { ComposeHeader } from "./ComposeHeader";
 import { ComposeStep1 } from "./ComposeStep1";
 import { ComposeStep2 } from "./ComposeStep2";
@@ -51,6 +51,8 @@ export function ComposeClient({
   editPost,
 }: Props) {
   const ws = workspaceDomain.toLowerCase();
+  // The previewed slug is a connect door; its label is the brand's.
+  const styleOf = usePlatformStyleResolver();
   const router = useRouter();
   const submittingRef = useRef(false);
 
@@ -456,7 +458,7 @@ export function ComposeClient({
           <div className="flex flex-col items-center justify-start space-y-4 overflow-y-auto bg-slate-100 p-6 lg:col-span-5">
             <div className="flex w-full items-center justify-between border-b border-slate-200 pb-3">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
-                Live Device Preview ({selectedSlugs[0] ? getPlatformStyle(selectedSlugs[0]).label : "None"})
+                Live Device Preview ({selectedSlugs[0] ? styleOf(selectedSlugs[0]).label : "None"})
               </span>
               <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
                 Preview Mode

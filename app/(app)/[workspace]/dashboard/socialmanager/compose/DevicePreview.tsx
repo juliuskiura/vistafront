@@ -1,6 +1,6 @@
 "use client";
 
-import { PlatformGlyph, getPlatformStyle } from "@/components/platform-icon";
+import { PlatformGlyph, usePlatformStyleResolver } from "@/components/platform-icon";
 import type { ManagedChannel, SocialMediaPlatform } from "@/lib/api/types";
 
 interface DevicePreviewProps {
@@ -24,6 +24,9 @@ export function DevicePreview({
   getPagePlatformSlug,
   getActiveContent,
 }: DevicePreviewProps) {
+  // The previewed slug is the connect door; its label belongs to the brand
+  // behind it, so an `instagramfb` page previews as Instagram.
+  const styleOf = usePlatformStyleResolver();
   const firstSlug = selectedSlugs[0];
   
   if (!firstSlug) {
@@ -37,7 +40,7 @@ export function DevicePreview({
   }
 
   const firstPage = selectedPages.find((p) => getPagePlatformSlug(p) === firstSlug);
-  const pageName = firstPage?.page_name || getPlatformStyle(firstSlug).label;
+  const pageName = firstPage?.page_name || styleOf(firstSlug).label;
   const previewContent = firstPage ? getActiveContent(firstPage.nanoid) : content;
   const tags = firstPage ? (hashtagsByPage[firstPage.nanoid] ?? []) : [];
 
@@ -61,7 +64,7 @@ export function DevicePreview({
             <p className="truncate text-[11px] font-bold leading-none text-slate-900">{pageName}</p>
             <div className="flex items-center gap-1 text-[9px] text-slate-500">
               <PlatformGlyph platform={firstSlug} size="sm" />
-              <span>{getPlatformStyle(firstSlug).label}</span>
+              <span>{styleOf(firstSlug).label}</span>
             </div>
           </div>
         </div>

@@ -68,11 +68,17 @@ interface PlatformDetails {
  * Instagram is the case that matters. The backend lists rows in whatever order
  * the database returns them, and `instagram` happens to be inserted before
  * `instagramfb`, so "first available" recommended the direct-login door. That
- * door is not the one the product recommends: the catalogue documents
- * `instagram` as "provider code present, not yet enabled in the UI", while
- * `instagramfb` is the Facebook-Page door that actually publishes. Both the
- * badge and the listing order have to say so explicitly rather than inherit an
- * accident of row order.
+ * door is not the one the product recommends: the catalogue documents Door 2
+ * (`instagram`, direct Instagram login) as pending enablement, while Door 1
+ * (`instagramfb`, the Facebook-Page door) is the one that actually publishes.
+ * Both the badge and the listing order have to say so explicitly rather than
+ * inherit an accident of row order.
+ *
+ * Once the `instagram` row is activated (`is_active=True` with its own
+ * `client_id` / `redirect_uri` / `INSTAGRAM_LOGIN_SECRET`), Door 2 becomes
+ * clickable with no code change here: its single professional account is
+ * synced as one mirror `ManagedChannel` (page-less — no `discoverChannels` /
+ * `syncChannelSelection` picker call, which only applies to page-based doors).
  *
  * Adding an entry here is the whole fix for a new multi-door destination — no
  * reordering of the API response, and nothing to change in the doors step.

@@ -3,7 +3,8 @@
 import { Heart, MessageCircle, Newspaper } from "lucide-react";
 
 import type { ManagedChannel, ScheduledPost } from "@/lib/api/types";
-import { getPlatformStyle } from "@/components/platform-icon";
+import { usePlatformStyleResolver } from "@/components/platform-icon";
+import { usePlatformBrand } from "@/lib/social/platform-brand-context";
 import { SocialIconSolid } from "@/components/social-icons";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -16,6 +17,10 @@ interface ChannelPostsProps {
 }
 
 export function ChannelPosts({ posts, pageById, onOpenPost }: ChannelPostsProps) {
+  // A page reports the door it connected through; its icon comes from that
+  // door's `auth_destination`, so an `instagramfb` page shows Instagram.
+  const { brandOf } = usePlatformBrand();
+  const styleOf = usePlatformStyleResolver();
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
@@ -71,8 +76,11 @@ export function ChannelPosts({ posts, pageById, onOpenPost }: ChannelPostsProps)
                           {post.recipients.length > 0 ? (
                             post.recipients.slice(0, 3).map((r) => {
                               const page = pageById[r.managed_page];
-                              const platform = (page?.platform || r.managed_page_name).toLowerCase();
-                              const ps = getPlatformStyle(platform);
+                              // Never fall back to the page *name* here: it is a
+                              // label like "Acme Studio", not a platform slug, so
+                              // it can only ever miss the icon registry.
+                              const platform = brandOf(page?.platform || "");
+                              const ps = styleOf(page?.platform);
                               return (
                                 <span key={r.nanoid} className="flex items-center gap-1.5">
                                   <span className="relative shrink-0">

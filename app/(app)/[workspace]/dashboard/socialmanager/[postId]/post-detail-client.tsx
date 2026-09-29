@@ -28,8 +28,9 @@ import {
   ChevronRight,
 } from "lucide-react";
 
-import type { ScheduledPost, PostComment, MetricSnapshot } from "@/lib/api/types";
-import { PlatformGlyph, getPlatformStyle } from "@/components/platform-icon";
+import type { ScheduledPost, PostComment, MetricSnapshot, ManagedChannel } from "@/lib/api/types";
+import { PlatformGlyph, usePlatformStyleResolver } from "@/components/platform-icon";
+import { usePlatformBrand } from "@/lib/social/platform-brand-context";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -423,11 +424,29 @@ interface Props {
   comments: PostComment[];
   metrics: MetricSnapshot[];
   workspaceDomain: string;
+  /**
+   * Managed channels, keyed by nanoid. A recipient carries only the page name,
+   * so this is the only way to reach the page's platform — and therefore the
+   * icon — for a post that targets channels on several networks.
+   */
+  pages: ManagedChannel[];
 }
 
-export function PostDetailClient({ post: initialPost, comments: initialComments, metrics, workspaceDomain }: Props) {
+export function PostDetailClient({
+  post: initialPost,
+  comments: initialComments,
+  metrics,
+  workspaceDomain,
+  pages,
+}: Props) {
   const router = useRouter();
   const basePath = `/${workspaceDomain}/dashboard/socialmanager`;
+  const { brandOf } = usePlatformBrand();
+  const styleOf = usePlatformStyleResolver();
+  const pageByNanoid = useMemo(
+    () => new Map(pages.map((p) => [p.nanoid, p] as const)),
+    [pages],
+  );
 
   const [post, setPost] = useState<ScheduledPost>(initialPost);
   const [comments, setComments] = useState<PostComment[]>(initialComments);
@@ -551,14 +570,20 @@ export function PostDetailClient({ post: initialPost, comments: initialComments,
               {post.recipients.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {post.recipients.map((r) => {
-                    const style = getPlatformStyle(r.managed_page_name);
+                    // The page carries the connect door; the chip is branded with
+                    // the brand behind it. `managed_page_name` is a display label,
+                    // never a platform slug — looking an icon up by it always missed.
+                    const page = pageByNanoid.get(r.managed_page);
+                    const style = styleOf(page?.platform);
                     return (
                       <span
                         key={r.nanoid}
                         className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[10px] font-semibold ${style.bg} ${style.border} ${style.color}`}
                       >
-                        <PlatformGlyph platform={r.managed_page_name} size="sm" />
-                        {r.managed_page_name}
+                        {page?.platform ? (
+                          <PlatformGlyph platform={brandOf(page.platform)} size="sm" />
+                        ) : null}
+                        {page?.platform_name || r.managed_page_name}
                       </span>
                     );
                   })}

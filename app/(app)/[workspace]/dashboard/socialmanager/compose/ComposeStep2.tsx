@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { CalendarIcon, AlertCircle } from "lucide-react";
 import type { ManagedChannel, SocialMediaPlatform, Asset } from "@/lib/api/types";
 import PlatformComposeCard from "@/components/socialmanager/platform-compose-card";
-import { getPlatformStyle } from "@/components/platform-icon";
+import { usePlatformStyleResolver } from "@/components/platform-icon";
 
 interface ComposeStep2Props {
   selectedPages: ManagedChannel[];
@@ -66,6 +66,9 @@ export function ComposeStep2({
   setPickerOpen,
 }: ComposeStep2Props) {
   const ws = workspaceDomain.toLowerCase();
+  // `slug` is the connect door; the card heading wears the brand behind it.
+  const styleOf = usePlatformStyleResolver();
+
 
   const addHashtag = useCallback((pageNanoid: string, tag: string) => {
     const clean = tag.startsWith("#") ? tag : `#${tag}`;
@@ -188,7 +191,7 @@ export function ComposeStep2({
               slug={slug}
               platform={platform}
               channel={page}
-              label={getPlatformStyle(slug).label}
+              label={styleOf(slug).label}
               content={getActiveContent(page.nanoid)}
               onContentChange={(text) => {
                 setVariants((prev) => ({

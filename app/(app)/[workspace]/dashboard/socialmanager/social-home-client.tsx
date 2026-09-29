@@ -27,7 +27,7 @@ import type {
   SocialMediaPlatform,
 } from "@/lib/api/types";
 import { syncPostsAction, getPostsSyncStatusAction } from "./actions";
-import { PlatformGlyph, getPlatformStyle } from "@/components/platform-icon";
+import { PlatformGlyph, usePlatformStyleResolver } from "@/components/platform-icon";
 import { Card } from "@/components/ui/card";
 
 /* ──────────────────────────────────────────────────────────────────────
@@ -73,6 +73,11 @@ function RecipientChip({
   managedPageName: string;
   channel?: ManagedChannel;
 }) {
+  // `channel.platform` is the door the account connected through, so the
+  // style has to be resolved through `auth_destination` — an `instagramfb`
+  // channel is an Instagram one and must not render a neutral "IF" badge.
+  // The hook runs before the `channel` guard so it is never called conditionally.
+  const styleOf = usePlatformStyleResolver();
   if (!channel) {
     return (
       <span className="rounded-md bg-neutral-100 px-1.5 py-0.5 text-[10px] font-medium text-neutral-600">
@@ -80,7 +85,7 @@ function RecipientChip({
       </span>
     );
   }
-  const style = getPlatformStyle(channel.platform);
+  const style = styleOf(channel.platform);
   const platformLabel = channel.platform_name || style.label;
   const displayName = channel.page_name || managedPageName;
   return (
@@ -157,6 +162,10 @@ export function SocialHomePageClient({
 
   /* ── Derived data ── */
   const connectedPages = useMemo(() => rawPages.filter((p) => p.is_active), [rawPages]);
+
+  // Page `platform` is the connect door, not the brand — resolved through
+  // `auth_destination` so `instagramfb` pages wear the Instagram icon/label.
+  const styleOf = usePlatformStyleResolver();
 
   const pagesByNanoid = useMemo(
     () => new Map(rawPages.map((p) => [p.nanoid, p] as const)),
@@ -289,7 +298,7 @@ export function SocialHomePageClient({
                           {post.recipients.slice(0, 3).map((r) => {
                             const page = pagesByNanoid.get(r.managed_page);
                             const platform = page?.platform || "";
-                            const style = getPlatformStyle(platform);
+                            const style = styleOf(platform);
                             const avatar = page?.profile_picture_url;
                             const displayName = page?.page_name || r.managed_page_name;
                             const platformLabel = page?.platform_name || style.label;
@@ -505,16 +514,17 @@ export function SocialHomePageClient({
           {connectedPages.length > 0 ? (
             <div className="space-y-3">
               {connectedPages.map((page) => {
+                const pageStyle = styleOf(page.platform);
                 return (
                   <Card key={page.nanoid} className="p-4">
                     <div className="flex items-center gap-3">
-                      <div className={`flex size-9 shrink-0 items-center justify-center rounded-xl border ${getPlatformStyle(page.platform).bg} ${getPlatformStyle(page.platform).border}`}>
+                      <div className={`flex size-9 shrink-0 items-center justify-center rounded-xl border ${pageStyle.bg} ${pageStyle.border}`}>
                         <PlatformGlyph platform={page.platform} size="md" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-neutral-900">{page.page_name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {page.platform_name || getPlatformStyle(page.platform).label}
+                          {page.platform_name || pageStyle.label}
                           {page.account_name && page.account_name !== page.page_name
                             ? ` · ${page.account_name}`
                             : ""}

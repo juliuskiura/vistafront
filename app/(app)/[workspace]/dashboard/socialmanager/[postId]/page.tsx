@@ -1,6 +1,6 @@
 import { requireWorkspace } from "@/lib/auth/server";
 import { requireFeature } from "@/lib/features/guard";
-import { getPost, listPostComments, listMetrics } from "@/lib/api";
+import { getPost, listPages, listPostComments, listMetrics } from "@/lib/api";
 import { PostDetailClient } from "./post-detail-client";
 
 export default async function PostDetailPage({
@@ -13,10 +13,13 @@ export default async function PostDetailPage({
   await requireFeature(active, "socialmanager.posts");
   const ws = active.domain;
 
-  const [post, comments, metrics] = await Promise.all([
+  const [post, comments, metrics, pages] = await Promise.all([
     getPost(postId, ws).catch(() => null),
     listPostComments({ postNanoid: postId, workspace: ws }).catch(() => []),
     listMetrics({ since: undefined, until: undefined, workspace: ws, managed_page: undefined, metric: undefined }).catch(() => []),
+    // A post recipient carries only the page name, so the channel list is what
+    // supplies the platform behind each recipient's icon.
+    listPages({ workspace: ws }).catch(() => []),
   ]);
 
   if (!post) {
@@ -33,6 +36,7 @@ export default async function PostDetailPage({
       post={post}
       comments={comments}
       metrics={metrics}
+      pages={pages}
       workspaceDomain={ws}
     />
   );

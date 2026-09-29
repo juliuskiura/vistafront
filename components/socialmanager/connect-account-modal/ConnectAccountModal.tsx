@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import type { SocialMediaPlatform, SocialPlatform } from "@/lib/api/types";
 import { oauthInitAction } from "@/app/(app)/[workspace]/dashboard/socialmanager/actions";
-import { buildPlatformOptions, needsDoorChoice } from "./_components/platform-copy";
+import { buildPlatformOptions, needsDoorChoice, recommendedDoor } from "./_components/platform-copy";
 import { ModalHeader } from "./_components/modal-header";
 import { StepIndicator } from "./_components/step-indicator";
 import { StepSelect } from "./_components/step-select";
@@ -208,7 +208,10 @@ export default function ConnectAccountModal({
         setStep("doors");
         return;
       }
-      const door = option?.doors.find((d) => d.available);
+      // One way in: take the door the picker would have recommended, so a
+      // destination whose recommended door is not the first listed still opens
+      // the door the doors step would have highlighted.
+      const door = recommendedDoor(option);
       if (door) handleSelectPlatform(door.id);
       else {
         setErrorMessage("That network has no sign-in method available yet. Please try another one.");
@@ -244,6 +247,7 @@ export default function ConnectAccountModal({
           <StepDoors
             destinationName={currentPlatformInfo?.name || "this network"}
             doors={currentDoors}
+            recommendedDoorId={currentPlatformInfo?.recommendedDoorId ?? null}
             onBack={() => setStep("select")}
             onSelectDoor={handleDoorSelect}
           />

@@ -1,11 +1,18 @@
-import { Clock } from "lucide-react";
+import { Clock } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { SocialIcon, hasSocialIcon } from "@/components/social-icons";
+import type { SocialPlatform } from "@/lib/api/types";
 import type { PlatformDoor } from "./platform-copy";
 
 interface StepDoorsProps {
   destinationName: string;
   doors: PlatformDoor[];
+  /**
+   * Slug of the door carrying the "Recommended" badge, decided by
+   * `buildPlatformOptions` from `PREFERRED_DOOR` — not by array order, which is
+   * whatever order the API happened to return the platform rows in.
+   */
+  recommendedDoorId: SocialPlatform | null;
   onBack: () => void;
   onSelectDoor: (door: PlatformDoor) => void;
 }
@@ -15,14 +22,22 @@ interface StepDoorsProps {
  *
  * Every entry is one platform row that lands on the same destination, rendered
  * with the branding of the platform that launches the dialog
- * (`door.dialog`) — so the Facebook door shows a Facebook icon. The first
- * available door is the recommended one; doors whose platform row is not
- * deployed yet (`door.available === false`) stay listed but cannot be clicked.
+ * (`door.dialog`) — so the Facebook door shows a Facebook icon. The badge
+ * follows `recommendedDoorId`; doors whose platform row is not deployed yet
+ * (`door.available === false`) stay listed but cannot be clicked.
+ *
+ * Door 2 (`instagram`, direct Instagram login) is page-less: once its row is
+ * active it opens the Instagram dialog directly and the backend syncs the
+ * single professional account as one mirror `ManagedChannel` — no channel
+ * picker step. Door 1 (`instagramfb`) is untouched by this copy.
  */
-export function StepDoors({ destinationName, doors, onBack, onSelectDoor }: StepDoorsProps) {
-  const available = doors.filter((d) => d.available);
-  const recommendedId = available[0]?.id;
-
+export function StepDoors({
+  destinationName,
+  doors,
+  recommendedDoorId,
+  onBack,
+  onSelectDoor,
+}: StepDoorsProps) {
   return (
     <div className="max-h-[min(60vh,480px)] space-y-5 overflow-y-auto px-6 py-6">
       <div>
@@ -81,17 +96,19 @@ export function StepDoors({ destinationName, doors, onBack, onSelectDoor }: Step
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <h5 className="text-sm font-bold text-slate-900 transition-colors group-hover:text-primary-600">
-                    Log in with {door.dialogName}
+                    {door.id === "instagram" ? `Connect with ${door.dialogName}` : `Log in with ${door.dialogName}`}
                   </h5>
-                  {door.id === recommendedId && (
+                  {door.id === recommendedDoorId && (
                     <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
                       Recommended
                     </span>
                   )}
                 </div>
                 <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
-                  Uses your {door.dialogName} login to bring in the {destinationName} account linked to it — usually the
-                  quickest way.
+                  {door.id === "instagram"
+                    ? `Sign in on ${door.dialogName} directly — no Facebook Page needed. Requires a Business or Creator account; your profile becomes one publishing channel.`
+                    : `Uses your ${door.dialogName} login to bring in the ${destinationName} account linked to it — usually the
+                  quickest way.`}
                 </p>
               </div>
             </Button>

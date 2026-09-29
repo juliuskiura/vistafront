@@ -5,17 +5,26 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SocialIcon, hasSocialIcon } from "@/components/social-icons";
-import { getPlatformStyle } from "@/components/platform-icon";
+import { usePlatformStyleResolver } from "@/components/platform-icon";
+import { usePlatformBrand } from "@/lib/social/platform-brand-context";
 import { useConnectAccount } from "@/lib/context";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { syncAccountAction, disconnectChannelAction } from "../actions";
-import type { ManagedChannel, SocialPlatform } from "@/lib/api/types";
-import { ShieldCheck, AlertCircle, Lock, Unlink, RefreshCw, ChevronRight, Plus } from "lucide-react";
+import type { ManagedChannel, SocialAccount, SocialPlatform } from "@/lib/api/types";
+import { ShieldCheck, AlertCircle, Lock, Unlink, RefreshCw, ChevronRight, Plus } from "@/lib/icons";
 
 interface Props {
   channels: ManagedChannel[];
   workspaceDomain: string;
   pageToAccountNanoid: Record<string, string>;
+  /**
+   * All connected accounts, used only to detect page-less Door 2
+   * (`instagram`) accounts whose backend sync produced zero channels
+   * (e.g. a Personal account). Those never enter the
+   * `discoverChannels`/`syncChannelSelection` picker — there is nothing
+   * to pick — so they surface as a guided Reconnect notice instead.
+   */
+  accounts?: SocialAccount[];
 }
 
 function getTokenStatus(expiresAt: string | null): { status: "active" | "expiring_soon" | "expired"; days: number | null } {
@@ -39,18 +48,33 @@ function toLocaleDateTime(value: string): string {
   });
 }
 
-export function ChannelsClient({ channels, workspaceDomain, pageToAccountNanoid }: Props) {
+export function ChannelsClient({ channels, workspaceDomain, pageToAccountNanoid, accounts = [] }: Props) {
   const ws = workspaceDomain.toLowerCase();
   // The connect flow belongs to ConnectAccountProvider — one modal instance for
   // the whole app. This page just states *what* it wants: a bare open for the
   // header button, and a preselected platform + rerequest for Reconnect.
   const { open: openConnectAccount, canConnect } = useConnectAccount();
+  // A channel reports the door it connected through (`instagramfb`); its icon
+  // and label come from that door's `auth_destination` (`instagram`).
+  const { brandOf } = usePlatformBrand();
+  const styleOf = usePlatformStyleResolver();
   const [disconnectTarget, setDisconnectTarget] = useState<ManagedChannel | null>(null);
   const [disconnecting, setDisconnecting] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const router = useRouter();
 
   const activeCount = channels.filter((page) => page.is_active).length;
+
+  // Page-less Door 2 (`instagram`) accounts with no synced channels: the
+  // backend keeps the `SocialAccount` row but writes no `ManagedChannel`
+  // (Personal account type, or a sync that produced nothing). There is no
+  // picker for these — one account maps to one mirror channel — so guide
+  // the user to switch to Business/Creator and Reconnect the same door.
+  const instagramPendingAccounts = accounts.filter(
+    (account) =>
+      account.platform === "instagram" &&
+      (account.managed_pages ?? []).length === 0,
+  );
 
   const handleSync = useCallback(
     async (page: ManagedChannel) => {
@@ -110,6 +134,39 @@ export function ChannelsClient({ channels, workspaceDomain, pageToAccountNanoid 
         </Button>
       </div>
 
+      {instagramPendingAccounts.length > 0 && (
+        <Card className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-amber-900">
+                Instagram needs a Business or Creator account
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                {instagramPendingAccounts.length === 1
+                  ? `“${instagramPendingAccounts[0].account_name || instagramPendingAccounts[0].short_name || "Your Instagram account"}” connected, but Instagram only allows publishing from Business or Creator accounts. Switch the account type in the Instagram app, then reconnect — no Facebook Page needed.`
+                  : `${instagramPendingAccounts.length} Instagram accounts connected, but Instagram only allows publishing from Business or Creator accounts. Switch the account type in the Instagram app, then reconnect — no Facebook Page needed.`}
+              </p>
+              <div className="mt-3">
+                <Button
+                  size="sm"
+                  onClick={() =>
+                    openConnectAccount({
+                      preselectedPlatform: "instagram" as SocialPlatform,
+                      rerequest: true,
+                    })
+                  }
+                  disabled={!canConnect}
+                  className="bg-amber-600 text-white hover:bg-amber-700"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" /> Reconnect Instagram
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+
       {channels.length === 0 ? (
         <Card className="p-12 text-center rounded-3xl border border-slate-200">
           <p className="text-sm text-slate-500">No social channels connected yet.</p>
@@ -118,7 +175,7 @@ export function ChannelsClient({ channels, workspaceDomain, pageToAccountNanoid 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {channels.map((page) => {
             const isConnected = page.is_active;
-            const style = getPlatformStyle(page.platform);
+            const style = styleOf(page.platform);
             const token = getTokenStatus(page.token_expires_at);
             return (
               <Card
@@ -129,13 +186,13 @@ export function ChannelsClient({ channels, workspaceDomain, pageToAccountNanoid 
                   <span
                     className={`px-2.5 py-1 rounded-lg text-xs font-bold border flex items-center gap-1.5 ${style.bg} ${style.border} ${style.color}`}
                   >
-                    {hasSocialIcon(page.platform) ? (
-                      <SocialIcon name={page.platform} className={`h-3.5 w-3.5 ${style.color}`} />
+                    {hasSocialIcon(brandOf(page.platform)) ? (
+                      <SocialIcon name={brandOf(page.platform)} className={`h-3.5 w-3.5 ${style.color}`} />
                       ) : (
                         <span
                           className={`w-3.5 h-3.5 rounded-md flex items-center justify-center text-[9px] font-bold ${style.bg} ${style.color} border ${style.border}`}
                         >
-                          {page.platform.slice(0, 2).toUpperCase()}
+                          {style.label.slice(0, 2).toUpperCase()}
                         </span>
                       )}
                     <span className="capitalize">{style.label}</span>
@@ -166,13 +223,13 @@ export function ChannelsClient({ channels, workspaceDomain, pageToAccountNanoid 
                       </div>
                     )}
                     <div className="absolute -bottom-1 -right-1 bg-white p-0.5 rounded-full shadow-xs">
-                      {hasSocialIcon(page.platform) ? (
-                        <SocialIcon name={page.platform} className={`w-4 h-4 ${style.color}`} />
+                      {hasSocialIcon(brandOf(page.platform)) ? (
+                        <SocialIcon name={brandOf(page.platform)} className={`w-4 h-4 ${style.color}`} />
                       ) : (
                         <span
                           className={`w-4 h-4 rounded-md flex items-center justify-center text-[9px] font-bold ${style.bg} ${style.color} border ${style.border}`}
                         >
-                          {page.platform.slice(0, 2).toUpperCase()}
+                          {style.label.slice(0, 2).toUpperCase()}
                         </span>
                       )}
                     </div>

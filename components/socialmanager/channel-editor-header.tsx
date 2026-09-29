@@ -1,7 +1,6 @@
 "use client";
 
 import type { ManagedChannel, SocialMediaPlatform } from "@/lib/api/types";
-import { PlatformGlyph, getPlatformStyle } from "@/components/platform-icon";
 
 interface ChannelEditorHeaderProps {
   channel: ManagedChannel;

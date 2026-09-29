@@ -26,5 +26,5 @@ export default async function ChannelsPage({
     return map;
   }, {});
 
-  return <ChannelsClient channels={channels} workspaceDomain={ws} pageToAccountNanoid={pageToAccountNanoid} />;
+  return <ChannelsClient channels={channels} workspaceDomain={ws} pageToAccountNanoid={pageToAccountNanoid} accounts={accounts} />;
 }

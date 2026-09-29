@@ -4,7 +4,8 @@ import Link from "next/link";
 import { AlertCircle, BarChart3, Lock, PenLine, RefreshCw, ShieldCheck, Users } from "lucide-react";
 
 import type { ManagedChannel, SocialMediaPlatform } from "@/lib/api/types";
-import { getPlatformStyle, PlatformGlyph } from "@/components/platform-icon";
+import { PlatformGlyph, usePlatformStyleResolver } from "@/components/platform-icon";
+import { usePlatformBrand } from "@/lib/social/platform-brand-context";
 import { hasSocialIcon, SocialIcon } from "@/components/social-icons";
 import { cn } from "@/lib/utils";
 import { getPlatformGradient, type TokenHealth } from "./platform-gradients";
@@ -47,15 +48,24 @@ export function ChannelHero({
   basePath,
   platforms,
 }: ChannelHeroProps) {
-  const style = getPlatformStyle(channel.platform);
-  const platform = platforms.find((p) => p.slug === channel.platform);
+  // `channel.platform` is the connect door. Everything visual here — gradient,
+  // badge, icon — belongs to the brand behind it, so it is resolved through the
+  // door's `auth_destination` first: an `instagramfb` channel is an Instagram
+  // one and must not wear a fallback badge.
+  const { brandOf } = usePlatformBrand();
+  const styleOf = usePlatformStyleResolver();
+  const brand = brandOf(channel.platform);
+  const style = styleOf(channel.platform);
+  // The badge names the brand, not the door: "Instagram", not
+  // "Instagram (via Facebook)".
+  const platform = platforms.find((p) => p.slug === brand);
   const tokenPill = TOKEN_PILL[token.status];
 
   return (
     <div
       className={cn(
         "relative overflow-hidden rounded-3xl bg-gradient-to-br shadow-xl ring-1 ring-white/10",
-        getPlatformGradient(channel.platform),
+        getPlatformGradient(brand),
       )}
     >
       {channel.cover_photo_url && (
@@ -80,8 +90,8 @@ export function ChannelHero({
               style.border,
             )}
           >
-            {hasSocialIcon(channel.platform) ? (
-              <SocialIcon name={channel.platform} className={cn("h-3.5 w-3.5", style.color)} />
+            {hasSocialIcon(brand) ? (
+              <SocialIcon name={brand} className={cn("h-3.5 w-3.5", style.color)} />
             ) : (
               <PlatformGlyph platform={channel.platform} size="sm" />
             )}
@@ -128,8 +138,8 @@ export function ChannelHero({
                 </div>
               )}
               <div className="absolute -bottom-1 -right-1 flex size-6 items-center justify-center rounded-full bg-white shadow ring-1 ring-black/5">
-                {hasSocialIcon(channel.platform) ? (
-                  <SocialIcon name={channel.platform} className={cn("size-3.5", style.color)} />
+                {hasSocialIcon(brand) ? (
+                  <SocialIcon name={brand} className={cn("size-3.5", style.color)} />
                 ) : (
                   <PlatformGlyph platform={channel.platform} size="sm" />
                 )}
