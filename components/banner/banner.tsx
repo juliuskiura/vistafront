@@ -1,16 +1,40 @@
 "use client";
 
 import Link from "next/link";
+import { Fragment } from "react";
 import { cn } from "@/lib/utils";
 import { LucideIcon } from "lucide-react";
 
-export interface BannerAction {
-  label: string;
-  icon: LucideIcon;
-  href?: string;
-  onClick?: () => void;
-  variant?: "primary" | "secondary";
-}
+/**
+ * An action rendered in the banner's action slot.
+ *
+ * Two shapes, because not every action is a label plus an icon. The default
+ * renders the banner's own link/button; a feature that needs a *rich* trigger —
+ * a card with its own layout, an icon row, a dropdown — passes `node` and owns
+ * the markup entirely. Modelling them as one union rather than one bag with
+ * seven optionals is what stops `icon`/`href`/`node` from being supplied
+ * together, which TypeScript would otherwise accept and the renderer would
+ * silently ignore two thirds of.
+ */
+export type BannerAction =
+  | {
+      label: string;
+      icon: LucideIcon;
+      href?: string;
+      onClick?: () => void;
+      variant?: "primary" | "secondary";
+      node?: never;
+    }
+  | {
+      /** Used for the React key and the fallback accessible name. */
+      label: string;
+      /** Rendered verbatim in place of the default link/button. */
+      node: React.ReactNode;
+      icon?: never;
+      href?: never;
+      onClick?: never;
+      variant?: never;
+    };
 
 interface BannerProps {
   title: string;
@@ -74,8 +98,12 @@ export function Banner({
       </div>
       
       {actions && actions.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {actions.map((action) => {
+            if ("node" in action) {
+              return <Fragment key={action.label}>{action.node}</Fragment>;
+            }
+
             const Icon = action.icon;
             const baseClasses =
               "inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all";

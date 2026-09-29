@@ -32,6 +32,7 @@
     --color-secondary: var(--secondary);
     --color-primary-foreground: var(--primary-foreground);
     --color-primary: var(--primary);
+    --color-primary-0: var(--primary-0);
     --color-primary-50: var(--primary-50);
     --color-primary-100: var(--primary-100);
     --color-primary-200: var(--primary-200);
@@ -129,6 +130,7 @@
 
 :root {
   /* Brand violet ramp (OKLCH) — 500 is the original custom violet #3F00FF */
+  --primary-0:  oklch(100% 0.00011 271.152);
   --primary-50:  oklch(93.52% 0.036 298.01);
   --primary-100: oklch(87.24% 0.071 296.58);
   --primary-200: oklch(74.66% 0.145 294.33);

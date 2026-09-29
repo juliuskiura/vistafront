@@ -3,23 +3,24 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard,
-  Share2,
-  CalendarDays,
-  PenLine,
-  ListOrdered,
-  Upload,
   BarChart3,
-  Plus,
+  CalendarDays,
+  LayoutDashboard,
+  ListOrdered,
+  PenLine,
   Send,
-} from "lucide-react";
+  Share2,
+  Upload,
+} from "@/lib/icons";
 import {
   WorkspaceInnerNav,
   type InnerNavItem,
   type InnerNavGroup,
 } from "@/components/workspace/workspace-inner-nav";
 import { Banner, type BannerAction } from "@/components/banner";
+import { ConnectAccountButton } from "@/components/socialmanager/connect-account-button";
 import { useConnectAccount } from "@/lib/context";
+import type { SocialMediaPlatform } from "@/lib/api/types";
 
 /* ──────────────────────────────────────────────────────────────────────
  * Social Manager Layout
@@ -53,14 +54,22 @@ interface SocialManagerLayoutProps {
   children: React.ReactNode;
   /** Active workspace domain, injected by the parent Server Component. */
   workspaceDomain: string;
+  /**
+   * Platform catalogue for the workspace, listed server-side by the parent
+   * layout. The "Connect Account" card draws a disc per connectable network
+   * from it, so the card ships complete with the page instead of asking for
+   * the list once it mounts.
+   */
+  platforms: SocialMediaPlatform[];
 }
 
 export function SocialManagerLayout({
   children,
   workspaceDomain,
+  platforms,
 }: SocialManagerLayoutProps) {
   const pathname = usePathname();
-  const { open: openConnectAccount, canConnect } = useConnectAccount();
+  const { canConnect } = useConnectAccount();
 
   const basePath = `/${workspaceDomain}/dashboard/socialmanager`;
 
@@ -76,9 +85,7 @@ export function SocialManagerLayout({
   if (canConnect) {
     actions.push({
       label: "Connect Account",
-      icon: Plus,
-      onClick: () => openConnectAccount(),
-      variant: "secondary",
+      node: <ConnectAccountButton platforms={platforms} />,
     });
   }
 

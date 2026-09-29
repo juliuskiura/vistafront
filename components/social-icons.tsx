@@ -342,6 +342,19 @@ export function HamburgerRightIcon(props: SocialIconProps) {
   );
 }
 
+/**
+ * Whether a platform key has a *solid* glyph registered.
+ *
+ * The solid family is a subset of the outline one — `start_page` has no filled
+ * variant — so a caller that wants a filled mark first (it reads as a logo at
+ * small sizes) needs to be able to ask before it renders and end up with
+ * `null`. `SocialIconSolid` returning null is not a usable signal on its own,
+ * because it is the same return value an unknown platform produces.
+ */
+export function hasSocialIconSolid(name?: string): boolean {
+  return !!name && name.toLowerCase() in socialIconSolidComponents;
+}
+
 /** Renders the solid (filled) social icon for a platform key, or null when unknown. */
 export function SocialIconSolid({ name, ...rest }: SocialIconRendererProps) {
   const Component = name ? socialIconSolidComponents[name.toLowerCase()] : undefined;

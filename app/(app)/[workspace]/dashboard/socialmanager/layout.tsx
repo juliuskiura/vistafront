@@ -16,6 +16,11 @@ import { SocialManagerLayout } from "./social-manager-layout";
  * `instagramfb` door reports that slug, and only `auth_destination` says it is
  * really an Instagram channel. One fetch for the whole section — a per-page
  * client fetch would be a request for data the server already resolved.
+ *
+ * The same list is handed to `SocialManagerLayout` because the "Connect Account"
+ * card in the banner draws a disc per connectable network. It renders from the
+ * list the server already has rather than opening its own request, so the card
+ * is complete on first paint instead of filling in after a round trip.
  */
 export default async function Layout({
   children,
@@ -34,7 +39,7 @@ export default async function Layout({
 
   return (
     <PlatformBrandProvider platforms={platforms}>
-      <SocialManagerLayout workspaceDomain={active.domain}>
+      <SocialManagerLayout workspaceDomain={active.domain} platforms={platforms}>
         {children}
       </SocialManagerLayout>
     </PlatformBrandProvider>
