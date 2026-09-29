@@ -1207,6 +1207,22 @@ export interface ManagedChannel {
   platform: string;
   platform_name: string;
   account_name: string;
+  /** Which door the owning account signed in through: `direct`,
+   *  `facebook_page`, or `instagram_login`. This — not `platform` — is how a
+   *  channel connected through a Facebook Page is told apart from one the user
+   *  signed into directly, since both present as "Instagram". */
+  login_type?: string;
+  /** The door this channel publishes through — its own platform slug. For
+   *  Instagram that is `instagram` (direct login) or `instagramfb` (via a
+   *  Facebook Page). This is the value that selects the provider and the API
+   *  host at publish time. */
+  door?: string;
+  /** The platform whose branding this channel carries. Both Instagram doors
+   *  share the brand but not the door, so a UI can show one icon and still
+   *  distinguish the connections. */
+  brand?: string;
+  /** The platform whose sign-in dialog the user went through. */
+  auth_dialog?: string;
   page_id: string;
   page_name: string;
   username: string;
@@ -1223,6 +1239,44 @@ export interface ManagedChannel {
   updated_at: string;
 }
 
+/** A channel plus everything the composer needs to build and validate against
+ *  it, in one payload. See `GET /apis/socialmanager/pages/capabilities/`. */
+export interface ChannelCapabilities extends ManagedChannel {
+  formats: FormatCapability[];
+}
+
+export interface ChannelCapabilitiesResponse {
+  channels: ChannelCapabilities[];
+}
+
+/** What a platform enforces for one content format on one channel. */
+export interface FormatCapability {
+  format: string;
+  code: string;
+  display_name: string;
+  is_default: boolean;
+  character_limit: number | null;
+  max_hashtags: number | null;
+  /** Stories and similar: the post disappears on its own. */
+  is_ephemeral: boolean;
+  /** The media rules for this format. Empty means the backend has no
+   *  constraints recorded, so the composer must not invent limits. */
+  media: FormatMediaConstraint[];
+}
+
+export interface FormatMediaConstraint {
+  media_type: "image" | "video" | "text";
+  aspect_ratio: string;
+  min_duration: number | null;
+  max_duration: number | null;
+  min_width: number | null;
+  max_width: number | null;
+  min_height: number | null;
+  max_height: number | null;
+  max_file_size: number | null;
+  allowed_formats: string[];
+}
+
 export interface SocialAccount {
   nanoid: string;
   platform: string;
@@ -1231,6 +1285,9 @@ export interface SocialAccount {
   account_first_name: string;
   account_last_name: string;
   short_name: string;
+  /** Which door this identity signed in through — see
+   *  {@link ManagedChannel.login_type}. */
+  login_type?: string;
   profile_picture_url: string;
   token_expires_at: string | null;
   is_active: boolean;
@@ -1251,7 +1308,39 @@ export interface Campaign {
   updated_at: string;
 }
 
-export type PostRecipientStatus = "pending" | "published" | "failed";
+export type PostRecipientStatus =
+  | "pending"
+  /** Waiting on the platform to finish processing the media (video, reels).
+   *  Terminal-pending: the provider blocks on this, and it can take minutes. */
+  | "processing"
+  | "published"
+  | "failed";
+
+/**
+ * Why a delivery failed, using the backend's `providers.base.ProviderError`
+ * vocabulary. The categories are not interchangeable, so a UI must not treat
+ * them as one "something went wrong" bucket:
+ *
+ * - `auth` — the token is gone or expired. Only reconnecting helps.
+ * - `validation` — the platform rejected the content (wrong aspect ratio, too
+ *   short, a reel with no video). Retrying the same payload cannot help.
+ * - `connection` — the platform was still working, or we timed out waiting.
+ *   Retrying usually does help.
+ * - `rate_limit` — back off, then retry.
+ * - `not_supported` — the channel cannot do this at all. Change the format.
+ */
+export type DeliveryErrorType =
+  | ""
+  | "auth"
+  | "rate_limit"
+  | "connection"
+  | "parse"
+  | "validation"
+  | "not_supported"
+  | "config"
+  | "not_found"
+  | "provider_error"
+  | "unknown";
 
 export interface PostRecipient {
   id: string;
@@ -1262,10 +1351,22 @@ export interface PostRecipient {
   content: string | null;
   media_urls: string[];
   media_image_urls?: string[];
+  /** Nanoids of the assets actually attached, in publish order. The write
+   *  field `media_assets` is write-only, so without this an editor has no way
+   *  to know what a post already carries. */
+  media_asset_nanoids?: string[];
   link_url: string;
+  /** The resolved format key, e.g. `"reel"`. Read-only on the wire; the
+   *  composer writes `format` and reads this back. */
+  format_key?: string;
   status: PostRecipientStatus;
   external_post_id: string;
   error_message: string;
+  /** Category of the last failure. See {@link DeliveryErrorType}. */
+  error_type?: DeliveryErrorType;
+  /** When the current attempt started, so "in flight for 3 minutes" is
+   *  answerable from the row rather than guessed at by the UI. */
+  attempted_at?: string | null;
   published_at: string | null;
 }
 
@@ -1305,10 +1406,20 @@ export interface ScheduledPost {
   content: string;
   media_urls: string[];
   media_image_urls?: string[];
+  /** Nanoids of the base assets attached, in publish order. */
+  media_asset_nanoids?: string[];
+  /** Post-level format key. The per-recipient `format_key` is what actually
+   *  decides delivery; this is the fallback for a post with no per-recipient
+   *  override. */
+  format?: string;
   scheduled_at: string;
   status: ScheduledPostStatus;
   external_post_id: string;
   error_message: string;
+  /** Category of the post-level failure, aggregated from the recipients. A
+   *  post that failed everywhere may still list per-recipient categories that
+   *  are more specific. See {@link DeliveryErrorType}. */
+  error_type?: DeliveryErrorType;
   published_at: string | null;
   is_queue_item: boolean;
   synced_from_channel: boolean;

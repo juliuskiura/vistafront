@@ -4,11 +4,11 @@ import {
   listPages,
   listCampaigns,
   listPlatforms,
-  listAccounts,
   listHashtags,
+  listChannelCapabilities,
   getPost,
 } from "@/lib/api";
-import type { ScheduledPost } from "@/lib/api/types";
+import type { ChannelCapabilities, ScheduledPost } from "@/lib/api/types";
 import { ComposeClient } from "./compose-client";
 
 export default async function ComposePage({
@@ -24,12 +24,17 @@ export default async function ComposePage({
   await requireFeature(active, "socialmanager.posts");
   const ws = active.domain;
 
-  const [pages, campaigns, platforms, accounts, hashtags] = await Promise.all([
+  const [pages, campaigns, platforms, hashtags, capabilities] = await Promise.all([
     listPages({ workspace: ws }).catch(() => []),
     listCampaigns(ws).catch(() => []),
     listPlatforms({ all: true, workspace: ws }).catch(() => []),
-    listAccounts(ws).catch(() => []),
     listHashtags(ws).catch(() => []),
+    // One call replaces a per-channel join of content-formats + constraints +
+    // media-specs, which the composer used to do from a client-side effect —
+    // twice per selected channel, and again on every format change.
+    listChannelCapabilities(ws)
+      .then((res) => res.channels)
+      .catch((): ChannelCapabilities[] => []),
   ]);
 
   let editPost: ScheduledPost | null = null;
@@ -42,8 +47,8 @@ export default async function ComposePage({
       pages={pages}
       campaigns={campaigns}
       platforms={platforms}
-      accounts={accounts}
       hashtags={hashtags}
+      capabilities={capabilities}
       workspaceDomain={ws}
       editPost={editPost}
     />

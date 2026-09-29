@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type {
   Campaign,
+  ChannelCapabilities,
   Hashtag,
   ManagedChannel,
   ScheduledPost,
@@ -35,7 +36,10 @@ interface Props {
   pages: ManagedChannel[];
   campaigns: Campaign[];
   platforms: SocialMediaPlatform[];
-  accounts: { nanoid: string; platform: string; managed_pages?: ManagedChannel[] }[];
+  /** Per-channel publishing rules, fetched once on the server. Replaces the
+   *  per-channel content-formats + constraints + media-specs fan-out the
+   *  format picker used to do from a client effect. */
+  capabilities: ChannelCapabilities[];
   hashtags: Hashtag[];
   workspaceDomain: string;
   editPost: ScheduledPost | null;
@@ -45,7 +49,7 @@ export function ComposeClient({
   pages,
   campaigns: initialCampaigns,
   platforms,
-  accounts,
+  capabilities,
   hashtags,
   workspaceDomain,
   editPost,
@@ -62,10 +66,15 @@ export function ComposeClient({
     return [];
   });
   const [content, setContent] = useState(editPost?.content ?? "");
-  const [mediaUrls, setMediaUrls] = useState<string[]>([]);
-  const [mediaAssetNanoids, setMediaAssetNanoids] = useState<string[]>([]);
+  // Rehydrate the media the post already carries. Without this the tray renders
+  // empty on an existing post, and saving sends no media — silently detaching a
+  // reel's video while the format still says "reel".
+  const [mediaUrls, setMediaUrls] = useState<string[]>(editPost?.media_urls ?? []);
+  const [mediaAssetNanoids, setMediaAssetNanoids] = useState<string[]>(
+    editPost?.media_asset_nanoids ?? [],
+  );
   const [baseAssets, setBaseAssets] = useState<Asset[]>([]);
-  const [pickerSlug, setPickerSlug] = useState<string | null>(null);
+  const [pickerPage, setPickerPage] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [scheduledAt, setScheduledAt] = useState(
     editPost?.scheduled_at ?? new Date(Date.now() + 86400000).toISOString(),
@@ -87,7 +96,11 @@ export function ComposeClient({
     for (const r of editPost.recipients) {
       init[r.managed_page] = {
         content: r.content ?? editPost.content,
-        format: "post",
+        // Read the format the backend stored. This used to be hardcoded to
+        // "post", which meant opening a saved reel and pressing save silently
+        // converted it to a feed post — the video stayed attached, so nothing
+        // looked wrong until it published.
+        format: r.format_key || editPost.format || "post",
         linkUrl: r.link_url ?? "",
         firstComment: "",
       };
@@ -120,31 +133,65 @@ export function ComposeClient({
   const [connectErrors, setConnectErrors] = useState<Record<string, string>>({});
   const [publishError, setPublishError] = useState("");
 
-  const pageToPlatformSlug = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const a of accounts) {
-      if (a.platform) {
-        for (const p of a.managed_pages ?? []) {
-          map[p.nanoid] = a.platform;
-        }
-      }
-    }
-    return map;
-  }, [accounts]);
-
   const platformBySlug = useMemo(() => {
     const map: Record<string, SocialMediaPlatform> = {};
     for (const p of platforms) map[p.slug] = p;
     return map;
   }, [platforms]);
 
+  /** The door a channel publishes through, keyed by channel nanoid.
+   *
+   * `ManagedChannel.door` is the channel's own platform row. Falling back to
+   * `platform` keeps channels from a backend that has not deployed the field
+   * yet, rather than rendering them with no slug at all. */
+  const doorByPage = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const c of capabilities) {
+      if (c.door) map[c.nanoid] = c.door;
+    }
+    for (const p of pages) {
+      if (!map[p.nanoid] && p.platform) map[p.nanoid] = p.platform;
+    }
+    return map;
+  }, [capabilities, pages]);
+
+  const capabilitiesByPage = useMemo(() => {
+    const map: Record<string, ChannelCapabilities> = {};
+    for (const c of capabilities) map[c.nanoid] = c;
+    return map;
+  }, [capabilities]);
+
   const getPagePlatformSlug = useCallback(
-    (page: ManagedChannel): string => {
-      if (page.platform) return page.platform;
-      return pageToPlatformSlug[page.nanoid] || "";
-    },
-    [pageToPlatformSlug],
+    (page: ManagedChannel): string => doorByPage[page.nanoid] || page.platform || "",
+    [doorByPage],
   );
+
+  /** Open the picker for a channel, scoped to what its current format takes.
+   *
+   * An empty `pageNanoid` means the shared media tray in step 1, where no
+   * format has been chosen yet — the picker then shows every type, which is the
+   * only honest answer before one is picked. */
+  const openPicker = useCallback((pageNanoid: string) => {
+    setPickerPage(pageNanoid || null);
+    setPickerOpen(true);
+  }, []);
+
+  const pickerAllowedTypes = useMemo(() => {
+    if (!pickerPage) return [];
+    const format = variants[pickerPage]?.format ?? "";
+    const capability = capabilitiesByPage[pickerPage];
+    const rules = capability?.formats.find((f) => f.format === format)?.media ?? [];
+    if (!rules.length) return [];
+    // Distinct because a format can accept both, and an empty list would
+    // silently mean "no restriction" rather than "nothing fits".
+    return [
+      ...new Set(
+        rules
+          .map((m) => m.media_type)
+          .filter((t) => Boolean(t) && t !== "text"),
+      ),
+    ];
+  }, [pickerPage, variants, capabilitiesByPage]);
 
   const activePages = useMemo(() => pages.filter((p) => p.is_active), [pages]);
 
@@ -387,7 +434,6 @@ export function ComposeClient({
             {step === 1 && (
               <ComposeStep1
                 pages={pages}
-                accounts={accounts}
                 platforms={platforms}
                 hashtags={hashtags}
                 workspaceDomain={ws}
@@ -418,15 +464,14 @@ export function ComposeClient({
                 setCampaignAction={setCampaignAction}
                 handleNext={handleNext}
                 canProceed={canProceed}
-                setPickerSlug={setPickerSlug}
-                setPickerOpen={setPickerOpen}
+                onOpenPicker={openPicker}
               />
             )}
             {step === 2 && (
               <ComposeStep2
                 selectedPages={selectedPages}
                 platforms={platforms}
-                workspaceDomain={ws}
+                capabilitiesByPage={capabilitiesByPage}
                 scheduledAt={scheduledAt}
                 setScheduledAt={setScheduledAt}
                 publishNow={publishNow}
@@ -441,8 +486,7 @@ export function ComposeClient({
                 setMediaAssetNanoids={setMediaAssetNanoids}
                 baseAssets={baseAssets}
                 setBaseAssets={setBaseAssets}
-                setPickerSlug={setPickerSlug}
-                setPickerOpen={setPickerOpen}
+                onOpenPicker={openPicker}
                 hashtagsByPage={hashtagsByPage}
                 setHashtagsByPage={setHashtagsByPage}
                 firstCommentByPage={firstCommentByPage}
@@ -516,7 +560,8 @@ export function ComposeClient({
           }}
           title="Attach Media Assets"
           workspaceDomain={ws}
-          platformSlug={pickerSlug}
+          platformSlug={pickerPage ? doorByPage[pickerPage] ?? null : null}
+          allowedAssetTypes={pickerAllowedTypes}
         />
 
         <ToastNotifications

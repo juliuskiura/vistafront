@@ -1,15 +1,21 @@
 "use client";
 
 import { useCallback } from "react";
-import { CalendarIcon, AlertCircle } from "lucide-react";
-import type { ManagedChannel, SocialMediaPlatform, Asset } from "@/lib/api/types";
+import { CalendarIcon, AlertCircle } from "@/lib/icons";
+import type {
+  ChannelCapabilities,
+  ManagedChannel,
+  SocialMediaPlatform,
+  Asset,
+} from "@/lib/api/types";
 import PlatformComposeCard from "@/components/socialmanager/platform-compose-card";
 import { usePlatformStyleResolver } from "@/components/platform-icon";
 
 interface ComposeStep2Props {
   selectedPages: ManagedChannel[];
   platforms: SocialMediaPlatform[];
-  workspaceDomain: string;
+  /** Per-channel publishing rules, already fetched on the server. */
+  capabilitiesByPage: Record<string, ChannelCapabilities>;
   scheduledAt: string;
   setScheduledAt: React.Dispatch<React.SetStateAction<string>>;
   publishNow: boolean;
@@ -32,14 +38,15 @@ interface ComposeStep2Props {
   platformBySlug: Record<string, SocialMediaPlatform>;
   getActiveContent: (pageNanoid: string) => string;
   handleAttachRendition: (asset: { nanoid: string; original_file: string }) => void;
-  setPickerSlug: React.Dispatch<React.SetStateAction<string | null>>;
-  setPickerOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  /** Open the asset picker for one channel, so media types can be scoped to
+   *  the format that channel is currently set to. */
+  onOpenPicker: (pageNanoid: string) => void;
 }
 
 export function ComposeStep2({
   selectedPages,
   platforms,
-  workspaceDomain,
+  capabilitiesByPage,
   scheduledAt,
   setScheduledAt,
   publishNow,
@@ -62,13 +69,10 @@ export function ComposeStep2({
   platformBySlug,
   getActiveContent,
   handleAttachRendition,
-  setPickerSlug,
-  setPickerOpen,
+  onOpenPicker,
 }: ComposeStep2Props) {
-  const ws = workspaceDomain.toLowerCase();
   // `slug` is the connect door; the card heading wears the brand behind it.
   const styleOf = usePlatformStyleResolver();
-
 
   const addHashtag = useCallback((pageNanoid: string, tag: string) => {
     const clean = tag.startsWith("#") ? tag : `#${tag}`;
@@ -87,10 +91,12 @@ export function ComposeStep2({
     });
   }, [setHashtagsByPage]);
 
-  const handleAddMedia = useCallback((slug: string) => {
-    setPickerSlug(slug);
-    setPickerOpen(true);
-  }, [setPickerSlug, setPickerOpen]);
+  const handleAddMedia = useCallback(
+    (pageNanoid: string) => {
+      onOpenPicker(pageNanoid);
+    },
+    [onOpenPicker],
+  );
 
   const handleRemoveMedia = useCallback((i: number) => {
     setMediaUrls((prev) => prev.filter((_, idx) => idx !== i));
@@ -181,9 +187,16 @@ export function ComposeStep2({
           const slug = getPagePlatformSlug(page);
           const platform = platformBySlug[slug];
           if (!platform) return null;
+          const capability = capabilitiesByPage[page.nanoid];
           const v = variants[page.nanoid] ?? { content, format: "post", linkUrl: "", firstComment: "" };
           const tags = hashtagsByPage[page.nanoid] ?? [];
-          const showLinkPost = slug === "facebook" && v.format === "link_post";
+          // Whether a link field belongs here is a property of the formats the
+          // channel actually has, not of a hardcoded slug. Comparing against
+          // "facebook" meant an `instagramfb` channel never got the UI for a
+          // format its own platform row offers.
+          const showLinkPost = (capability?.formats ?? []).some(
+            (f) => f.format === "link_post",
+          );
 
           return (
             <PlatformComposeCard
@@ -200,7 +213,7 @@ export function ComposeStep2({
                 }));
               }}
               mediaUrls={mediaUrls}
-              onAddMedia={() => handleAddMedia(slug)}
+              onAddMedia={() => handleAddMedia(page.nanoid)}
               onRemoveMedia={handleRemoveMedia}
               hashtags={tags}
               onAddHashtag={(t) => addHashtag(page.nanoid, t)}
@@ -227,7 +240,7 @@ export function ComposeStep2({
               mediaAssets={baseAssets}
               platformSlug={slug}
               onAttachRendition={handleAttachRendition}
-              workspaceDomain={ws}
+              capability={capability}
             />
           );
         })}

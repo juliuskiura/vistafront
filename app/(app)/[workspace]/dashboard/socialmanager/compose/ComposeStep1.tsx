@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
-import { Plus, Layers, CheckCircle2, AlertCircle } from "lucide-react";
+import { Plus, Layers, CheckCircle2, AlertCircle } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import type { ManagedChannel, SocialMediaPlatform, Hashtag, Asset, Campaign } from "@/lib/api/types";
 import { verifyPageAction } from "../actions";
@@ -12,7 +12,6 @@ import { VSButton } from "@/components/shared/components/customUi/VSButton";
 
 interface ComposeStep1Props {
   pages: ManagedChannel[];
-  accounts: { nanoid: string; platform: string; managed_pages?: ManagedChannel[] }[];
   platforms: SocialMediaPlatform[];
   hashtags: Hashtag[];
   workspaceDomain: string;
@@ -43,13 +42,14 @@ interface ComposeStep1Props {
   setCampaignAction: React.Dispatch<React.SetStateAction<any>>;
   handleNext: () => void;
   canProceed: boolean;
-  setPickerSlug: React.Dispatch<React.SetStateAction<string | null>>;
-  setPickerOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  /** Open the asset picker for one channel. Takes the channel nanoid so the
+   *  picker can scope the media types to what that channel's format accepts,
+   *  rather than to a hardcoded list of platform slugs. */
+  onOpenPicker: (pageNanoid: string) => void;
 }
 
 export function ComposeStep1({
   pages,
-  accounts,
   platforms,
   hashtags,
   workspaceDomain,
@@ -80,8 +80,7 @@ export function ComposeStep1({
   setCampaignAction,
   handleNext,
   canProceed,
-  setPickerSlug,
-  setPickerOpen,
+  onOpenPicker,
 }: ComposeStep1Props) {
   const ws = workspaceDomain.toLowerCase();
 
@@ -95,24 +94,9 @@ export function ComposeStep1({
   // and glyph follow that door's `auth_destination` brand.
   const styleOf = usePlatformStyleResolver();
 
-  const pageToPlatformSlug = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const a of accounts) {
-      if (a.platform) {
-        for (const p of a.managed_pages ?? []) {
-          map[p.nanoid] = a.platform;
-        }
-      }
-    }
-    return map;
-  }, [accounts]);
-
   const getPagePlatformSlug = useCallback(
-    (page: ManagedChannel): string => {
-      if (page.platform) return page.platform;
-      return pageToPlatformSlug[page.nanoid] || "";
-    },
-    [pageToPlatformSlug],
+    (page: ManagedChannel): string => page.door || page.platform || "",
+    [],
   );
 
   const activePages = useMemo(() => pages.filter((p) => p.is_active), [pages]);
@@ -179,9 +163,8 @@ export function ComposeStep1({
   );
 
   const handleAddMedia = useCallback(() => {
-    setPickerSlug(null);
-    setPickerOpen(true);
-  }, [setPickerSlug, setPickerOpen]);
+    onOpenPicker("");
+  }, [onOpenPicker]);
 
   const handleRemoveMedia = useCallback((i: number) => {
     setMediaUrls((prev) => prev.filter((_, idx) => idx !== i));

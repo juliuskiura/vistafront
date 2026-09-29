@@ -1,13 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Link } from "lucide-react";
+import { useRef, useState } from "react";
+import { Link } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 import SocialMediaTextEditor from "./social-media-text-editor";
 import AiOptimizerSheet from "./ai-optimizer-sheet";
 import ChannelEditorHeader from "./channel-editor-header";
-import type { ManagedChannel, SocialMediaPlatform, Asset } from "@/lib/api/types";
-import { getProviderConstraints, listContentFormats } from "@/lib/api/socialmanager";
+import type {
+  ChannelCapabilities,
+  FormatCapability,
+  ManagedChannel,
+  SocialMediaPlatform,
+  Asset,
+} from "@/lib/api/types";
 import { Button } from "@/components/ui/button";
 
 interface PlatformComposeCardProps {
@@ -34,7 +39,9 @@ interface PlatformComposeCardProps {
   platformSlug?: string;
   contentFormat?: string;
   onAttachRendition?: (asset: { nanoid: string; original_file: string }) => void;
-  workspaceDomain: string;
+  /** This channel's formats and media rules, fetched once on the server.
+   *  Replaces an effect that refetched per channel on every format change. */
+  capability?: ChannelCapabilities;
 }
 
 export default function PlatformComposeCard({
@@ -61,47 +68,19 @@ export default function PlatformComposeCard({
   platformSlug = slug,
   contentFormat,
   onAttachRendition,
-  workspaceDomain,
+  capability,
 }: PlatformComposeCardProps) {
-  const [formats, setFormats] = useState<Array<{ format: string; display_name: string }>>([]);
-  const [charLimit, setCharLimit] = useState<number | null>(null);
   const [aiCommentOpen, setAiCommentOpen] = useState(false);
-  const onFormatChangeRef = useRef(onFormatChange);
 
-  useEffect(() => {
-    onFormatChangeRef.current = onFormatChange;
-  }, [onFormatChange]);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        const [fmt, constraints] = await Promise.all([
-          listContentFormats({ platform: platform.nanoid, workspace: workspaceDomain }),
-          getProviderConstraints(slug, workspaceDomain),
-        ]);
-        if (cancelled) return;
-        const activeFormats = fmt.filter((f) => f.is_active);
-        setFormats(activeFormats.map((f) => ({ format: f.format, display_name: f.display_name })));
-        setCharLimit(constraints[0]?.character_limit ?? null);
-        if (activeFormats.length > 0 && !activeFormats.some((f) => f.format === format)) {
-          onFormatChangeRef.current(activeFormats[0].format);
-        }
-      } catch {
-        // fallback to hardcoded formats
-        setFormats([
-          { format: "post", display_name: "Post" },
-          { format: "image", display_name: "Image" },
-          { format: "video", display_name: "Video" },
-          { format: "link_post", display_name: "Link Post" },
-        ]);
-      }
-    }
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [platform.nanoid, slug, format, workspaceDomain]);
+  // Formats and limits come from the server-fetched capability, so there is
+  // nothing to load here. This component used to fetch them itself, with the
+  // selected format in its dependency array — so changing format re-fired two
+  // requests per channel — and fell back on failure to a hardcoded list
+  // containing "image" and "video", which are not Instagram content formats
+  // and are not the ones Instagram actually offers ("reel", "story",
+  // "carousel"). On a failed fetch it hid the reel.
+  const formats: FormatCapability[] = capability?.formats ?? [];
+  const charLimit = formats.find((f) => f.format === format)?.character_limit ?? null;
 
   return (
     <div className="rounded-2xl border border-primary-300 bg-white p-6 space-y-4">

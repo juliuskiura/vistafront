@@ -22,6 +22,22 @@ export interface AssetPickerProps {
   title?: string;
   workspaceDomain: string;
   platformSlug?: string | null;
+  /**
+   * What media the target format actually accepts, so the type filter follows
+   * the platform's own rules instead of a hardcoded list of slugs.
+   *
+   * The previous slug list had two problems: it was missing slugs that are
+   * doors rather than brands (`instagramfb`, so the Facebook-Page Instagram
+   * door fell through to a default by accident), and it named `twitter`, a
+   * slug the platform union no longer uses. More fundamentally it answered a
+   * per-platform question when the real question is per-format — a reel takes
+   * video only, a feed post takes either — and the platform row already knows
+   * the difference.
+   *
+   * Omit it to show every type, which is the right default for a picker that is
+   * not being opened for a specific format.
+   */
+  allowedAssetTypes?: string[];
 }
 
 export default function AssetPicker({
@@ -34,6 +50,7 @@ export default function AssetPicker({
   title = "Select Asset",
   workspaceDomain,
   platformSlug,
+  allowedAssetTypes = [],
 }: AssetPickerProps) {
   const [searchText, setSearchText] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -41,20 +58,6 @@ export default function AssetPicker({
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(24);
   const [assetType, setAssetType] = useState<string>("");
-
-  const allowedAssetTypes = useMemo(() => {
-    if (!platformSlug) return [];
-    const videoPlatforms = ["facebook", "instagram", "twitter", "linkedin", "tiktok", "youtube", "pinterest"];
-    const imagePlatforms = ["facebook", "instagram", "twitter", "linkedin", "pinterest"];
-
-    if (videoPlatforms.includes(platformSlug)) {
-      return ["image", "video"];
-    }
-    if (imagePlatforms.includes(platformSlug)) {
-      return ["image"];
-    }
-    return ["image", "video"];
-  }, [platformSlug]);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchText), 300);

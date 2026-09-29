@@ -10,10 +10,12 @@ import {
   Edit3,
   ExternalLink,
   Heart,
+  Info,
   MessageCircle,
   MoreVertical,
   Pause,
   RefreshCcw,
+  RefreshCw,
   Send,
   Share2,
   Trash2,
@@ -26,7 +28,7 @@ import {
   AlertTriangle,
   Loader2,
   ChevronRight,
-} from "lucide-react";
+} from "@/lib/icons";
 
 import type { ScheduledPost, PostComment, MetricSnapshot, ManagedChannel } from "@/lib/api/types";
 import { PlatformGlyph, usePlatformStyleResolver } from "@/components/platform-icon";
@@ -34,8 +36,11 @@ import { usePlatformBrand } from "@/lib/social/platform-brand-context";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DeliveryOutcomes } from "@/components/socialmanager/delivery-outcomes";
+import { retryAvailability } from "@/lib/social/delivery-error";
 import {
   publishPostAction,
+  retryPostAction,
   cancelPostAction,
   deletePostAction,
   duplicatePostAction,
@@ -361,9 +366,14 @@ function MetricChart({ metrics }: { metrics: MetricSnapshot[] }) {
 function PostActionsMenu({
   post,
   onAction,
+  hasFailedRecipients,
 }: {
   post: ScheduledPost;
   onAction: (action: string) => void;
+  /** Whether a retry is worth offering. Driven by the recipients rather than
+   *  the post status, because a retry with nothing to retry is a 400 — and a
+   *  post can be `failed` with every channel already delivered. */
+  hasFailedRecipients: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -373,6 +383,14 @@ function PostActionsMenu({
     { label: "View on platform", icon: ExternalLink, action: "view" },
     { label: "Share", icon: Share2, action: "share" },
     post.status === "scheduled" ? { label: "Pause", icon: Pause, action: "cancel" } : null,
+    // Retry is offered only when there is genuinely something to re-attempt.
+    // A post can reach one channel and fail another, so the failed post already
+    // has a "Publish now" above — but publishing it again would re-post to the
+    // channel that worked. Retry re-attempts only the failures, so it is the
+    // action that actually helps, and it disappears once there are none left.
+    hasFailedRecipients
+      ? { label: "Retry failed channels", icon: RefreshCw, action: "retry" }
+      : null,
     post.status === "failed" || post.status === "draft"
       ? { label: "Publish now", icon: Send, action: "publish" }
       : null,
@@ -487,7 +505,9 @@ export function PostDetailClient({
           case "duplicate": {
             const res = await duplicatePostAction(post.nanoid, workspaceDomain);
             if ("post" in res) {
-              router.push(`${basePath}/[postId]?postId=${res.post.nanoid}`);
+              // `postId` is a path segment, not a query param. Pushing it
+              // literally sent the user to a URL containing "[postId]".
+              router.push(`${basePath}/${res.post.nanoid}`);
             }
             break;
           }
@@ -504,6 +524,15 @@ export function PostDetailClient({
             const res = await cancelPostAction(post.nanoid, workspaceDomain);
             if ("post" in res) {
               setPost(res.post);
+            }
+            break;
+          }
+          case "retry": {
+            const res = await retryPostAction(post.nanoid, workspaceDomain);
+            if (res.status === "success" && "post" in res) {
+              setPost(res.post);
+            } else if (res.status === "error") {
+              setError(res.message || "Retry failed.");
             }
             break;
           }
@@ -528,6 +557,24 @@ export function PostDetailClient({
     [post, workspaceDomain, router, basePath],
   );
 
+  /** Route a menu entry: destructive ones open the dialog instead of firing.
+   *
+   * The overflow menu called `handleAction("delete")` directly, so deleting
+   * from the menu skipped the confirmation the button row requires. */
+  const requestAction = useCallback(
+    (action: string) => {
+      if (action === "delete") {
+        setDeleteDialogOpen(true);
+        return;
+      }
+      void handleAction(action);
+    },
+    [handleAction],
+  );
+
+  const retryCheck = retryAvailability(post);
+  const retryBlockedReason = retryCheck.available ? null : retryCheck.reason;
+
   const statusCfg = STATUS_STYLES[post.status] ?? STATUS_STYLES.draft;
   const StatusIcon = statusCfg.icon;
 
@@ -546,7 +593,11 @@ export function PostDetailClient({
           <ChevronRight className="size-3.5 text-neutral-400" />
           <span className="font-medium text-neutral-900">Post detail</span>
         </div>
-        <PostActionsMenu post={post} onAction={handleAction} />
+        <PostActionsMenu
+          post={post}
+          onAction={requestAction}
+          hasFailedRecipients={retryCheck.available}
+        />
       </div>
 
       {error && (
@@ -619,12 +670,22 @@ export function PostDetailClient({
               </div>
             </div>
 
-            {post.error_message && (
-              <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">
-                <p className="font-semibold">Error</p>
-                <p className="mt-0.5">{post.error_message}</p>
-              </div>
-            )}
+            {/* Per-channel outcomes replace the single aggregate message.
+                A multi-channel post's `error_message` is just "One or more
+                recipients failed" — the reason a channel failed, and whether
+                another attempt helps, only exist on the recipient rows. */}
+            <div className="rounded-xl border border-neutral-200 bg-neutral-50/60 p-3">
+              <DeliveryOutcomes recipients={post.recipients} />
+              {!post.recipients.length && post.error_message && (
+                <p className="text-xs text-red-700">{post.error_message}</p>
+              )}
+              {retryBlockedReason && (
+                <p className="mt-2 flex items-start gap-1.5 text-[11px] leading-relaxed text-amber-700">
+                  <Info className="mt-0.5 size-3 shrink-0" />
+                  {retryBlockedReason}
+                </p>
+              )}
+            </div>
 
             <div className="flex flex-wrap gap-2">
               <Button
@@ -659,6 +720,15 @@ export function PostDetailClient({
                   onClick={() => handleAction("cancel")}
                 >
                   <Pause className="size-3.5" /> Pause
+                </Button>
+              )}
+              {retryCheck.available && (
+                <Button
+                  size="sm"
+                  className="gap-1.5 bg-gradient-to-r from-primary-600 to-violet-600 text-white hover:from-primary-500 hover:to-violet-500"
+                  onClick={() => handleAction("retry")}
+                >
+                  <RefreshCw className="size-3.5" /> Retry failed channels
                 </Button>
               )}
               {(post.status === "failed" || post.status === "draft") && (

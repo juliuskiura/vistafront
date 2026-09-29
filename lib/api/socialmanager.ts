@@ -4,6 +4,7 @@ import type {
   AnalyticsSyncStatusResult,
   Campaign,
   CampaignForm,
+  ChannelCapabilitiesResponse,
   ConnectedInstagramResult,
   ContentConstraint,
   DiscoverChannelsResult,
@@ -359,6 +360,26 @@ export function listPages(
   ).then((payload) => unwrapAll(payload, workspace));
 }
 
+/**
+ * Every active channel in the workspace, each with the formats it accepts and
+ * the media rules for those formats — the door, the brand, the login type, the
+ * character and hashtag limits, and per format the media type, aspect ratio,
+ * duration and dimension bounds.
+ *
+ * One call replaces joining `content-formats`, `constraints` and `media-specs`
+ * per channel, which a client cannot do without first fetching each channel to
+ * learn which platform its rules belong to. Per-channel fan-out is also what
+ * forced the composer to refetch on every format change.
+ */
+export function listChannelCapabilities(
+  workspace: string,
+): Promise<ChannelCapabilitiesResponse> {
+  return serverFetch<ChannelCapabilitiesResponse>(
+    "/apis/socialmanager/pages/capabilities/",
+    wsOpts(workspace),
+  );
+}
+
 export function verifyPage(
   nanoid: string,
   workspace: string,
@@ -479,6 +500,23 @@ export function deletePost(nanoid: string, workspace: string): Promise<void> {
 
 export function publishPost(nanoid: string, workspace: string): Promise<ScheduledPost> {
   return serverMutate<ScheduledPost>(`/apis/socialmanager/posts/${nanoid}/publish/`, {
+    body: {},
+    workspace,
+  });
+}
+
+/**
+ * Re-attempt delivery to the channels that failed, leaving the ones that
+ * already published alone.
+ *
+ * Not the same as `publishPost` on a failed post. A post can land on one channel
+ * and fail on another — the normal shape of a multi-channel post — and
+ * republishing the whole thing would duplicate the one that worked. The backend
+ * refuses a retry with nothing to retry, and returns 400 when the post is not
+ * `failed`.
+ */
+export function retryPost(nanoid: string, workspace: string): Promise<ScheduledPost> {
+  return serverMutate<ScheduledPost>(`/apis/socialmanager/posts/${nanoid}/retry/`, {
     body: {},
     workspace,
   });

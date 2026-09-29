@@ -10,6 +10,7 @@ import {
   createPost,
   updatePost,
   publishPost,
+  retryPost,
   cancelPost,
   duplicatePost,
   deletePost,
@@ -79,17 +80,64 @@ const CampaignSchema = z.object({
   is_active: z.coerce.boolean().default(true),
 });
 
+/** One recipient entry, as the composer builds it. Mirrors the backend's
+ *  `PostRecipientSerializer` write shape and `ScheduledPostRecipientInput`. */
+const RecipientInputSchema = z.object({
+  managed_page: z.string().min(1, "Pick a channel for every entry."),
+  content: z.string().optional(),
+  media_urls: z.array(z.string()).optional(),
+  media_assets: z.array(z.string()).optional(),
+  link_url: z.string().optional(),
+  format: z.string().optional(),
+});
+
+/** A JSON string that must actually parse, and must parse into `shape`.
+ *
+ * The composer sends its nested lists as JSON strings inside `FormData`, so
+ * without this the only guard is `JSON.parse` throwing — which surfaces as a
+ * 500 rather than a field error the composer can show. */
+function jsonField<T extends z.ZodType>(shape: T, label: string) {
+  return z
+    .string()
+    .optional()
+    .transform((raw, ctx) => {
+      if (!raw) return undefined;
+      let value: unknown;
+      try {
+        value = JSON.parse(raw);
+      } catch {
+        ctx.addIssue({ code: "custom", message: `${label} is not valid JSON.` });
+        return z.NEVER;
+      }
+      const result = shape.safeParse(value);
+      if (!result.success) {
+        for (const issue of result.error.issues) {
+          ctx.addIssue({ code: "custom", message: `${label}: ${issue.message}` });
+        }
+        return z.NEVER;
+      }
+      return result.data;
+    });
+}
+
 const PostSchema = z.object({
   content: z.string().min(1, "Post content is required."),
   campaign: z.string().nullable().optional(),
   scheduled_at: z.string().optional(),
   status: z.string().optional(),
   format: z.string().optional(),
-  media_urls: z.string().optional(),
-  media_assets: z.string().optional(),
-  recipients_json: z.string().optional(),
-  first_comments_json: z.string().optional(),
+  media_urls: jsonField(z.array(z.string()), "Media URLs"),
+  media_assets: jsonField(z.array(z.string()), "Media"),
+  recipients: jsonField(z.array(RecipientInputSchema), "Channels"),
+  first_comments: jsonField(z.record(z.string(), z.string()), "First comments"),
 });
+
+/** The same contract as {@link PostSchema}, for the edit path.
+ *
+ * `content` is optional here because an edit may only be moving a schedule or
+ * swapping a channel; requiring it would block the partial saves the calendar
+ * drag makes. */
+const PostPatchSchema = PostSchema.partial();
 
 const HashtagSchema = z.object({
   tag: z.string().min(1, "Tag is required."),
@@ -195,8 +243,8 @@ export async function createPostAction(
     format: formData.get("format") || undefined,
     media_urls: formData.get("media_urls") || undefined,
     media_assets: formData.get("media_assets") || undefined,
-    recipients_json: formData.get("recipients_json") || undefined,
-    first_comments_json: formData.get("first_comments_json") || undefined,
+    recipients: formData.get("recipients_json") || undefined,
+    first_comments: formData.get("first_comments_json") || undefined,
   });
 
   if (!parsed.success) {
@@ -211,22 +259,47 @@ export async function createPostAction(
       scheduled_at: parsed.data.scheduled_at || undefined,
       status: parsed.data.status || undefined,
       format: parsed.data.format || undefined,
-      media_urls: parsed.data.media_urls ? JSON.parse(parsed.data.media_urls) : undefined,
-      media_assets: parsed.data.media_assets ? JSON.parse(parsed.data.media_assets) : undefined,
-      recipients: parsed.data.recipients_json
-        ? JSON.parse(parsed.data.recipients_json)
-        : undefined,
-      first_comments: parsed.data.first_comments_json
-        ? JSON.parse(parsed.data.first_comments_json)
-        : undefined,
+      media_urls: parsed.data.media_urls,
+      media_assets: parsed.data.media_assets,
+      recipients: parsed.data.recipients,
+      first_comments: parsed.data.first_comments,
     };
 
     const post = await createPost(payload, workspace);
     revalidatePath(`/${workspace}/dashboard/socialmanager`);
     return { status: "success", post };
-  } catch {
-    return { status: "error", message: "Failed to create post." };
+  } catch (error) {
+    // The backend owns the rules the client cannot know — that a reel needs a
+    // video, that two channels are the same account. When it refuses, say what
+    // it said instead of replacing it with "Failed to create post".
+    return { status: "error", message: describePostError(error) };
   }
+}
+
+/**
+ * Turn a failed post call into something worth showing.
+ *
+ * The backend returns `drf_standardized_errors` bodies, so a validation refusal
+ * arrives as `errors: [{attr, detail}]`. Those details name the actual problem
+ * ("A reel needs a video file attached."), which is far more useful than a
+ * generic failure — and it is the only place the user learns why.
+ */
+function describePostError(error: unknown): string {
+  const body = (error as { body?: unknown } | null)?.body;
+  if (body && typeof body === "object") {
+    const errors = (body as { errors?: unknown }).errors;
+    if (Array.isArray(errors)) {
+      const details = errors
+        .map((entry) =>
+          entry && typeof entry === "object"
+            ? String((entry as { detail?: unknown }).detail ?? "")
+            : String(entry ?? ""),
+        )
+        .filter(Boolean);
+      if (details.length) return details.join(" ");
+    }
+  }
+  return "Failed to save post.";
 }
 
 export async function updatePostAction(
@@ -234,10 +307,23 @@ export async function updatePostAction(
   body: Partial<ScheduledPostForm>,
   workspace: string,
 ): Promise<PostActionState> {
+  // Validated here because this is the path an edit takes, and an edit is the
+  // one that reconciles a delivered post's channels — a malformed recipient
+  // list reaching that code could drop a channel the user did not touch.
+  const parsed = PostPatchSchema.safeParse(body);
+  if (!parsed.success) {
+    const { fieldErrors } = flattenError(parsed.error);
+    return {
+      status: "error",
+      message: "Please fix the highlighted fields.",
+      fieldErrors,
+    };
+  }
+
   try {
-    await updatePost(nanoid, body, workspace);
-  } catch {
-    return { status: "error", message: "Failed to update post." };
+    await updatePost(nanoid, parsed.data, workspace);
+  } catch (error) {
+    return { status: "error", message: describePostError(error) };
   }
 
   revalidatePath(`/${workspace}/dashboard/socialmanager`);
@@ -253,6 +339,24 @@ export async function publishPostAction(
     post = await publishPost(nanoid, workspace);
   } catch {
     return { status: "error", message: "Failed to publish post." };
+  }
+
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
+  return { status: "success", post };
+}
+
+export async function retryPostAction(
+  nanoid: string,
+  workspace: string,
+): Promise<PostActionState | { status: "success"; post: ScheduledPost }> {
+  let post: ScheduledPost;
+  try {
+    post = await retryPost(nanoid, workspace);
+  } catch (error) {
+    // The backend refuses a retry with nothing to retry, and says why in the
+    // body. Pass that through: "this post has no failed channels" is a very
+    // different thing for the user to read than "Failed to retry post."
+    return { status: "error", message: describePostError(error) };
   }
 
   revalidatePath(`/${workspace}/dashboard/socialmanager`);
