@@ -28,6 +28,7 @@ export default async function ComposePage({
   let initialTo = "";
   let initialSubject = "";
   let initialBody = "";
+  let initialBodyHtml = "";
 
   if (draftId || replyTo) {
     const source = await getEmail(draftId ?? replyTo ?? "", ws, mailbox).catch(
@@ -47,6 +48,9 @@ export default async function ComposePage({
           .join(", ");
         initialSubject = source.subject ?? "";
         initialBody = source.body_text ?? "";
+        // Continue from the stored HTML when there is one, so a draft resumes
+        // with its formatting rather than flattened to plain text.
+        initialBodyHtml = source.body_html ?? "";
       }
     }
   }
@@ -58,12 +62,12 @@ export default async function ComposePage({
 
   return (
     <>
-      <div className="flex items-center gap-3 border-b border-slate-200 px-4 py-2.5 dark:border-slate-800">
-        <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+      <div className="flex shrink-0 items-center gap-3 border-b border-border px-5 py-3">
+        <h2 className="text-sm font-semibold text-foreground">
           New message
         </h2>
         {signatures[0]?.signature_html && (
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-muted-foreground">
             Your signature will be appended automatically.
           </span>
         )}
@@ -81,6 +85,7 @@ export default async function ComposePage({
         initialTo={initialTo}
         initialSubject={initialSubject}
         initialBody={initialBody}
+        initialBodyHtml={initialBodyHtml}
       />
     </>
   );

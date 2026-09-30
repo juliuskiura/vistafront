@@ -48,28 +48,36 @@ export default async function MailboxFolderPage({
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-border bg-muted/30 px-5 py-3">
         <div>
-          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+          <h2 className="text-sm font-semibold tracking-tight text-foreground">
             {folder.name}
           </h2>
-          <p className="text-xs text-slate-500">
+          <p className="text-[11px] text-muted-foreground">
             {emails.length} message{emails.length === 1 ? "" : "s"}
             {unread > 0 && ` · ${unread} unread`}
           </p>
         </div>
 
-        <form className="ml-auto" action={`/${ws}/dashboard/mailbox/${mailbox}/${folderSlug}`}>
+        <form
+          className="ml-auto"
+          action={`/${ws}/dashboard/mailbox/${mailbox}/${folderSlug}`}
+        >
           <input
             type="search"
             name="q"
             defaultValue={typeof query.q === "string" ? query.q : ""}
             placeholder="Search subject or sender"
-            className="w-56 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm outline-none focus:border-primary-500 dark:border-slate-700 dark:bg-slate-900"
+            aria-label="Search this folder"
+            className="w-60 rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:ring-2 focus:ring-primary/15"
           />
         </form>
 
-        <div className="flex items-center gap-1">
+        <div
+          className="flex items-center gap-0.5 rounded-lg border border-border bg-card p-0.5"
+          role="group"
+          aria-label="Filter messages"
+        >
           {[
             { key: "", label: "All" },
             { key: "unread", label: "Unread" },
@@ -79,14 +87,18 @@ export default async function MailboxFolderPage({
             if (f.key) params.set(f.key, "true");
             if (typeof query.q === "string") params.set("q", query.q);
             const qs = params.toString();
+            const isOn = f.key
+              ? query[f.key] === "true"
+              : !query.unread && !query.starred;
             return (
               <Link
                 key={f.key}
                 href={`/${ws}/dashboard/mailbox/${mailbox}/${folderSlug}${qs ? `?${qs}` : ""}`}
-                className={`rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors ${
-                  (query[f.key] === "true" && f.key) || (!f.key && !query.unread && !query.starred)
-                    ? "bg-primary-50 text-primary-700 dark:bg-primary-950/60 dark:text-primary-300"
-                    : "text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                aria-current={isOn ? "true" : undefined}
+                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  isOn
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {f.label}

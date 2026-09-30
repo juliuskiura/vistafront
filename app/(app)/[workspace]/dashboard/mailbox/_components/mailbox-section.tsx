@@ -58,13 +58,14 @@ export function MailboxSection({
   const [open, setOpen] = useState(true);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
-  const [, startTransition] = useTransition();
+  const [isOpenMailbox, startTransition] = useTransition();
   const router = useRouter();
 
   // A collapsed rail has no room for a disclosure triangle, so the active
   // mailbox's folders show as a flat icon column. Hiding them entirely would
   // leave a collapsed rail that cannot navigate anywhere.
   const showFolders = collapsed ? activeMailbox === mailbox.nanoid : open;
+  const isActive = activeMailbox === mailbox.nanoid;
 
   function onDrop(index: number) {
     if (!dragId || dragId === folders[index]?.nanoid) return;
@@ -96,21 +97,33 @@ export function MailboxSection({
           setOpen((prev) => !prev);
         }}
         title={mailbox.email_address}
-        className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm font-medium text-slate-700 hover:bg-slate-200/70 dark:text-slate-300 dark:hover:bg-slate-800"
+        className={`group flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-medium transition-colors ${
+          isActive && collapsed
+            ? "bg-primary/10 text-primary"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+        }`}
       >
         {!collapsed && (
           <ChevronDown
-            className={`h-3 w-3 shrink-0 transition-transform ${
+            className={`h-3 w-3 shrink-0 text-muted-foreground transition-transform duration-200 ${
               open ? "" : "-rotate-90"
             }`}
+            aria-hidden
           />
         )}
-        <Mail className="h-4 w-4 shrink-0" />
+        <Mail
+          className={`h-4 w-4 shrink-0 ${
+            isActive ? "text-primary" : "text-muted-foreground"
+          }`}
+          aria-hidden
+        />
         {!collapsed && <span className="truncate">{mailbox.email_address}</span>}
       </button>
 
       {showFolders && (
-        <div className={collapsed ? "mt-0.5 space-y-0.5" : "ml-4 mt-0.5 space-y-0.5"}>
+        <div
+          className={`mt-0.5 space-y-0.5 ${collapsed ? "" : "ml-5 border-l border-border/70 pl-2"}`}
+        >
           {folders.map((folder, index) => {
             const Icon = ICONS[folder.icon] ?? FileText;
             const slug = folder.name.toLowerCase();
@@ -127,13 +140,13 @@ export function MailboxSection({
                   title={folder.name}
                   aria-label={folder.name}
                   aria-current={active ? "page" : undefined}
-                  className={`flex items-center justify-center rounded-lg py-1.5 transition-colors ${
+                  className={`flex items-center justify-center rounded-lg py-2 transition-colors ${
                     active
-                      ? "bg-primary-50 text-primary-700 dark:bg-primary-950/60 dark:text-primary-300"
-                      : "text-slate-600 hover:bg-slate-200/70 dark:text-slate-400 dark:hover:bg-slate-800"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   }`}
                 >
-                  <Icon className="h-4 w-4 shrink-0" />
+                  <Icon className="h-4 w-4 shrink-0" aria-hidden />
                 </Link>
               );
             }
@@ -141,7 +154,7 @@ export function MailboxSection({
             return (
               <div key={folder.nanoid}>
                 {dropIndex === index && (
-                  <div className="mx-2 h-0.5 rounded bg-primary-500" />
+                  <div className="mx-2 my-0.5 h-0.5 rounded-full bg-primary" />
                 )}
                 <div
                   draggable
@@ -160,22 +173,33 @@ export function MailboxSection({
                     setDropIndex(null);
                   }}
                   className={
-                    dragId === folder.nanoid ? "opacity-50" : undefined
+                    dragId === folder.nanoid ? "opacity-40" : undefined
                   }
                 >
                   <Link
                     href={href}
                     aria-current={active ? "page" : undefined}
-                    className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors ${
+                    className={`group relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors ${
                       active
-                        ? "bg-primary-50 font-medium text-primary-700 dark:bg-primary-950/60 dark:text-primary-300"
-                        : "text-slate-600 hover:bg-slate-200/70 dark:text-slate-400 dark:hover:bg-slate-800"
+                        ? "bg-primary/10 font-medium text-primary"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     }`}
                   >
-                    <Icon className="h-4 w-4 shrink-0" />
+                    <Icon
+                      className={`h-4 w-4 shrink-0 ${
+                        active ? "text-primary" : "text-muted-foreground/80"
+                      }`}
+                      aria-hidden
+                    />
                     <span className="flex-1 truncate">{folder.name}</span>
                     {folder.unread_count > 0 && (
-                      <span className="rounded bg-primary-100 px-1.5 py-0.5 text-[11px] font-semibold text-primary-700 dark:bg-primary-950 dark:text-primary-300">
+                      <span
+                        className={`rounded-full px-1.5 py-0.5 text-[11px] font-semibold tabular-nums ${
+                          active
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-primary/10 text-primary"
+                        }`}
+                      >
                         {folder.unread_count}
                       </span>
                     )}
@@ -186,6 +210,8 @@ export function MailboxSection({
           })}
         </div>
       )}
+
+      {isOpenMailbox && <span className="sr-only">Saving folder order…</span>}
     </div>
   );
 }

@@ -49,13 +49,22 @@ export default async function MailboxLayout({
       {mailboxes.length === 0 ? (
         <div className="mt-6 flex-1">{children}</div>
       ) : (
-        <div className="mt-6 flex min-h-[70vh] flex-1 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <div className="mt-6 flex h-[clamp(560px,74vh,900px)] flex-1 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+          {/* A DEFINITE height, not `min-h`. The compose body and the message
+              list rely on `flex-1 + overflow-y-auto` to scroll internally,
+              which only works when the flex container is height-bounded. With
+              `min-h-[72vh]` the content simply grew past the box and this
+              container's `overflow-hidden` clipped the bottom — which is
+              exactly where the attachment tray lives. `clamp` keeps the height
+              sensible on both short and tall viewports. */}
           <MailboxRail
             mailboxes={mailboxes}
             foldersByMailbox={foldersByMailbox}
             workspace={ws}
           />
-          <div className="flex min-w-0 flex-1 flex-col">{children}</div>
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-card">
+            {children}
+          </div>
         </div>
       )}
     </div>

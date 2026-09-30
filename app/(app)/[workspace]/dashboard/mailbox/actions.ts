@@ -4,19 +4,16 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { flattenError } from "zod";
 
-import * as api from "@/lib/api/mailbox";
+import * as composeApi from "@/lib/api/mailbox-compose";
+import { screenFiles } from "@/lib/mailbox/attachment-rules";
+import { uploadAttachment } from "@/lib/api/mailbox-attachments";
 
 import {
-  DomainConfigSchema,
-  MailboxCreateSchema,
-  MailboxUpdateSchema,
   MoveEmailSchema,
   ReorderFoldersSchema,
   SaveDraftSchema,
   SendEmailSchema,
-  SignatureSchema,
 } from "./schemas";
-
 import type { MailboxActionState } from "./action-state";
 
 /** Revalidate the whole mailbox section so folder counts and lists refresh. */
@@ -63,23 +60,65 @@ export async function sendEmailAction(
 
   const { workspace, ...payload } = parsed.data;
   const scheduledAt = payload.scheduled_at?.trim() || null;
+  const bodyHtml = payload.body_html || textToHtml(payload.body_text);
+
+  // Attachments hang off an already-saved email (`POST /emails/{nanoid}/attachments/`
+  // is a detail route), so a message with files must be drafted first, given
+  // the files, and only then sent. A message with no files skips the draft
+  // entirely and goes straight out in one request.
+  const files = formData
+    .getAll("attachments")
+    .filter((entry): entry is File => entry instanceof File && entry.size > 0);
+  const { accepted, rejected } = screenFiles(files);
+
+  if (rejected.length > 0) {
+    return {
+      status: "error",
+      message: `${rejected[0].filename}: ${rejected[0].reason}`,
+    };
+  }
 
   try {
-    await api.sendEmail(
-      {
-        mailbox_id: payload.mailbox_id,
-        to: payload.to,
-        cc: payload.cc,
-        bcc: payload.bcc,
-        subject: payload.subject,
-        body_text: payload.body_text,
-        body_html: payload.body_html || textToHtml(payload.body_text),
-        in_reply_to: payload.in_reply_to || null,
-        signature_included: payload.signature_included,
-        scheduled_at: scheduledAt,
-      },
-      workspace,
-    );
+    if (accepted.length > 0) {
+      const draft = await composeApi.saveDraft(
+        {
+          mailbox_id: payload.mailbox_id,
+          to: payload.to,
+          cc: payload.cc,
+          bcc: payload.bcc,
+          subject: payload.subject,
+          body_text: payload.body_text,
+          body_html: bodyHtml,
+          in_reply_to: payload.in_reply_to || null,
+        },
+        workspace,
+      );
+
+      // Sequential, not Promise.all: each upload is a multipart round-trip and
+      // firing them together against one draft is needless pressure on the
+      // worker that has to read each file into memory.
+      for (const file of accepted) {
+        await uploadAttachment(draft.nanoid, file, workspace);
+      }
+
+      await composeApi.sendDraftNow(draft.nanoid, workspace);
+    } else {
+      await composeApi.sendEmail(
+        {
+          mailbox_id: payload.mailbox_id,
+          to: payload.to,
+          cc: payload.cc,
+          bcc: payload.bcc,
+          subject: payload.subject,
+          body_text: payload.body_text,
+          body_html: bodyHtml,
+          in_reply_to: payload.in_reply_to || null,
+          signature_included: payload.signature_included,
+          scheduled_at: scheduledAt,
+        },
+        workspace,
+      );
+    }
   } catch (error) {
     return fail(error, "The message could not be sent. Check the recipients and try again.");
   }
@@ -100,7 +139,7 @@ export async function saveDraftAction(
 
   const { workspace, ...payload } = parsed.data;
   try {
-    await api.saveDraft(
+    await composeApi.saveDraft(
       {
         mailbox_id: payload.mailbox_id,
         email_id: payload.email_id || null,
@@ -127,7 +166,7 @@ export async function sendDraftNowAction(
   nanoid: string,
   workspace: string,
 ): Promise<void> {
-  await api.sendDraftNow(nanoid, workspace);
+  await composeApi.sendDraftNow(nanoid, workspace);
   revalidateMailbox(workspace);
   redirect(`/${workspace}/dashboard/mailbox/${mailboxId}/sent`);
 }
@@ -137,7 +176,7 @@ export async function resendEmailAction(
   nanoid: string,
   workspace: string,
 ): Promise<void> {
-  await api.resendEmail(nanoid, workspace);
+  await composeApi.resendEmail(nanoid, workspace);
   revalidateMailbox(workspace);
   redirect(`/${workspace}/dashboard/mailbox/${mailboxId}/queued`);
 }
@@ -153,7 +192,7 @@ export async function moveEmailAction(
 ): Promise<void> {
   const parsed = MoveEmailSchema.safeParse({ workspace, nanoid, folder });
   if (!parsed.success) return;
-  await api.moveEmail(nanoid, folder, workspace);
+  await composeApi.moveEmail(nanoid, folder, workspace);
   revalidateMailbox(workspace);
 }
 
@@ -161,7 +200,7 @@ export async function toggleReadAction(
   nanoid: string,
   workspace: string,
 ): Promise<void> {
-  await api.toggleRead(nanoid, workspace);
+  await composeApi.toggleRead(nanoid, workspace);
   revalidateMailbox(workspace);
 }
 
@@ -169,7 +208,7 @@ export async function toggleStarAction(
   nanoid: string,
   workspace: string,
 ): Promise<void> {
-  await api.toggleStar(nanoid, workspace);
+  await composeApi.toggleStar(nanoid, workspace);
   revalidateMailbox(workspace);
 }
 
@@ -177,7 +216,7 @@ export async function deleteEmailAction(
   nanoid: string,
   workspace: string,
 ): Promise<void> {
-  await api.deleteEmail(nanoid, workspace);
+  await composeApi.deleteEmail(nanoid, workspace);
   revalidateMailbox(workspace);
 }
 
@@ -192,173 +231,6 @@ export async function reorderFoldersAction(
     ordered_ids: orderedIds,
   });
   if (!parsed.success) return;
-  await api.reorderFolders(parsed.data.mailbox_id, parsed.data.ordered_ids, workspace);
+  await composeApi.reorderFolders(parsed.data.mailbox_id, parsed.data.ordered_ids, workspace);
   revalidateMailbox(workspace);
-}
-
-/* ------------------------------------------------------------------ *
- * Mailbox + domain-config CRUD
- * ------------------------------------------------------------------ */
-
-export async function createMailboxAction(
-  _prev: MailboxActionState,
-  formData: FormData,
-): Promise<MailboxActionState> {
-  const parsed = MailboxCreateSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) {
-    const { fieldErrors } = flattenError(parsed.error);
-    return { status: "error", fieldErrors };
-  }
-
-  const { workspace, ...payload } = parsed.data;
-  try {
-    await api.createMailbox(
-      {
-        email_address: payload.email_address,
-        domain: payload.domain,
-        domain_config: payload.domain_config || null,
-        display_name: payload.display_name,
-        password: payload.password,
-        confirm_password: payload.confirm_password,
-        email_template: payload.email_template,
-      },
-      workspace,
-    );
-  } catch (error) {
-    return fail(error, "The mailbox could not be created. The address may already exist.");
-  }
-
-  revalidateMailbox(workspace);
-  return { status: "success", message: `Mailbox ${payload.email_address} created.` };
-}
-
-export async function updateMailboxAction(
-  _prev: MailboxActionState,
-  formData: FormData,
-): Promise<MailboxActionState> {
-  const parsed = MailboxUpdateSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) {
-    const { fieldErrors } = flattenError(parsed.error);
-    return { status: "error", fieldErrors };
-  }
-
-  const { workspace, nanoid, ...payload } = parsed.data;
-  try {
-    await api.updateMailbox(
-      nanoid,
-      {
-        display_name: payload.display_name,
-        email_template: payload.email_template,
-        ...(payload.password
-          ? { password: payload.password, confirm_password: payload.confirm_password }
-          : {}),
-      },
-      workspace,
-    );
-  } catch (error) {
-    return fail(error, "The mailbox could not be updated.");
-  }
-
-  revalidateMailbox(workspace);
-  return { status: "success", message: "Mailbox updated." };
-}
-
-export async function deleteMailboxAction(
-  nanoid: string,
-  workspace: string,
-): Promise<void> {
-  await api.deleteMailbox(nanoid, workspace);
-  revalidateMailbox(workspace);
-  redirect(`/${workspace}/dashboard/mailbox/settings`);
-}
-
-export async function createDomainConfigAction(
-  _prev: MailboxActionState,
-  formData: FormData,
-): Promise<MailboxActionState> {
-  const parsed = DomainConfigSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) {
-    const { fieldErrors } = flattenError(parsed.error);
-    return { status: "error", fieldErrors };
-  }
-
-  const { workspace, ...payload } = parsed.data;
-  try {
-    await api.createDomainConfig(payload, workspace);
-  } catch (error) {
-    return fail(error, "The domain configuration could not be saved.");
-  }
-
-  revalidateMailbox(workspace);
-  return { status: "success", message: `Domain ${payload.domain} configured.` };
-}
-
-export async function deleteDomainConfigAction(
-  nanoid: string,
-  workspace: string,
-): Promise<void> {
-  await api.deleteDomainConfig(nanoid, workspace);
-  revalidateMailbox(workspace);
-}
-
-export async function testS3ConnectionAction(
-  nanoid: string,
-  workspace: string,
-): Promise<MailboxActionState> {
-  try {
-    const result = await api.testS3Connection(nanoid, workspace);
-    return {
-      status: result.status === "ok" ? "success" : "error",
-      message: result.message,
-    };
-  } catch (error) {
-    return fail(error, "The S3 connection test could not be completed.");
-  }
-}
-
-export async function syncMailsAction(
-  nanoid: string,
-  workspace: string,
-): Promise<MailboxActionState> {
-  try {
-    const result = await api.syncMails(nanoid, workspace);
-    revalidateMailbox(workspace);
-    return {
-      status: "success",
-      message: `Sync finished — ${result.processed} processed, ${result.skipped} skipped, ${result.errors} error(s).`,
-    };
-  } catch (error) {
-    return fail(error, "The mail sync could not be completed.");
-  }
-}
-
-/* ------------------------------------------------------------------ *
- * Signature
- * ------------------------------------------------------------------ */
-
-export async function saveSignatureAction(
-  _prev: MailboxActionState,
-  formData: FormData,
-): Promise<MailboxActionState> {
-  const parsed = SignatureSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) {
-    const { fieldErrors } = flattenError(parsed.error);
-    return { status: "error", fieldErrors };
-  }
-
-  const { workspace, ...payload } = parsed.data;
-  const existing = await api.listSignatures(payload.mailbox, workspace);
-
-  try {
-    if (existing.length > 0) {
-      await api.updateSignature(existing[0].nanoid, payload, workspace);
-    } else {
-      await api.createSignature(payload, workspace);
-    }
-  } catch (error) {
-    return fail(error, "The signature could not be saved.");
-  }
-
-  revalidateMailbox(workspace);
-  return { status: "success", message: "Signature saved." };
 }

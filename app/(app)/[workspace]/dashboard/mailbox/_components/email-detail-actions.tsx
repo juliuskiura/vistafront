@@ -45,17 +45,17 @@ export function EmailDetailActions({
         type="button"
         aria-label="Message actions"
         onClick={() => setOpen((o) => !o)}
-        className="rounded p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+        className="rounded p-1.5 text-muted-foreground/70 hover:bg-muted hover:text-foreground/80"
       >
         <MoreVertical className="h-4 w-4" />
       </button>
 
       {open && (
-        <div className="absolute right-4 top-16 z-30 w-52 rounded-lg border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+        <div className="absolute right-4 top-16 z-30 w-52 rounded-lg border border-border bg-card p-1 shadow-lg">
           {isDraft && (
             <Link
               href={`/${workspace}/dashboard/mailbox/${mailbox}/compose?draft=${nanoid}`}
-              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-foreground/80 hover:bg-muted"
             >
               <Send className="h-4 w-4" />
               Edit draft
@@ -72,7 +72,7 @@ export function EmailDetailActions({
                 router.refresh();
               })
             }
-            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-foreground/80 hover:bg-muted"
           >
             <Star className="h-4 w-4" />
             Toggle star
@@ -87,7 +87,7 @@ export function EmailDetailActions({
                   void sendDraftNowAction(mailbox, nanoid, workspace);
                 })
               }
-              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-foreground/80 hover:bg-muted"
             >
               <Send className="h-4 w-4" />
               Send now
@@ -96,7 +96,7 @@ export function EmailDetailActions({
 
           {targets.length > 0 && (
             <>
-              <p className="px-2 pb-1 pt-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              <p className="px-2 pb-1 pt-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
                 Move to
               </p>
               {targets.map((folder) => (
@@ -111,7 +111,7 @@ export function EmailDetailActions({
                       router.refresh();
                     })
                   }
-                  className="flex w-full items-center rounded px-2 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                  className="flex w-full items-center rounded px-2 py-1.5 text-left text-sm text-foreground/80 hover:bg-muted"
                 >
                   {folder.name}
                 </button>
@@ -126,7 +126,7 @@ export function EmailDetailActions({
               setOpen(false);
               setConfirming(true);
             }}
-            className="mt-1 flex w-full items-center gap-2 border-t border-slate-200 px-2 py-1.5 text-left text-sm text-red-600 hover:bg-red-50 dark:border-slate-700 dark:hover:bg-red-950/40"
+            className="mt-1 flex w-full items-center gap-2 border-t border-border px-2 py-1.5 text-left text-sm text-destructive hover:bg-red-50:bg-red-950/40"
           >
             <Trash2 className="h-4 w-4" />
             Delete

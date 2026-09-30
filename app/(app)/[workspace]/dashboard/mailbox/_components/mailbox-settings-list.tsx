@@ -6,37 +6,20 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
-  createDomainConfigAction,
   createMailboxAction,
   deleteDomainConfigAction,
   deleteMailboxAction,
   syncMailsAction,
   testS3ConnectionAction,
-} from "../actions";
+} from "../admin-actions";
 import { IDLE } from "../action-state";
+import { DomainConfigForm } from "./domain-config-form";
+import { FieldErrors } from "./field-errors";
 import type { DomainConfig, Mailbox } from "@/lib/api/mailbox";
 
 const FIELD =
-  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-primary-500 dark:border-slate-700 dark:bg-slate-900";
+  "w-full rounded-lg border border-border bg-card px-3 py-2 text-sm outline-none focus:border-primary";
 
-function FieldErrors({ errors }: { errors?: Record<string, string[] | undefined> }) {
-  if (!errors) return null;
-  const entries = Object.entries(errors).filter(
-    (entry): entry is [string, string[]] => Array.isArray(entry[1]),
-  );
-  if (entries.length === 0) return null;
-  return (
-    <>
-      {entries.map(([field, messages]) =>
-        messages.map((msg) => (
-          <p key={`${field}-${msg}`} className="mt-1 text-xs text-red-600">
-            {msg}
-          </p>
-        )),
-      )}
-    </>
-  );
-}
 
 /** Mailbox list: create, delete (with confirmation), and per-domain sync. */
 export function MailboxSettingsList({
@@ -60,23 +43,23 @@ export function MailboxSettingsList({
   return (
     <div className="space-y-6">
       <section>
-        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+        <h3 className="text-sm font-semibold text-foreground">
           Mailboxes
         </h3>
         {mailboxes.length === 0 ? (
-          <p className="mt-1 text-xs text-slate-500">No mailboxes yet.</p>
+          <p className="mt-1 text-xs text-muted-foreground">No mailboxes yet.</p>
         ) : (
-          <ul className="mt-2 divide-y divide-slate-200 rounded-lg border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
+          <ul className="mt-2 divide-y divide-border rounded-lg border border-border-800 border-border">
             {mailboxes.map((m) => (
               <li
                 key={m.nanoid}
                 className="flex flex-wrap items-center gap-3 px-3 py-2.5"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                  <p className="truncate text-sm font-medium text-foreground">
                     {m.email_address}
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     {m.display_name || "No display name"} · {m.domain}
                     {m.email_template === "premium" && " · premium template"}
                   </p>
@@ -95,7 +78,7 @@ export function MailboxSettingsList({
       </section>
 
       <section>
-        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+        <h3 className="text-sm font-semibold text-foreground">
           Add a mailbox
         </h3>
         <form action={createAction} className="mt-2 grid max-w-xl gap-3">
@@ -153,10 +136,10 @@ export function MailboxSettingsList({
             }
           />
           {createState.status === "error" && createState.message && (
-            <p className="text-xs text-red-600">{createState.message}</p>
+            <p className="text-xs text-destructive">{createState.message}</p>
           )}
           {createState.status === "success" && (
-            <p className="text-xs text-emerald-600">{createState.message}</p>
+            <p className="text-xs text-primary">{createState.message}</p>
           )}
           <div>
             <Button type="submit" size="sm" disabled={creating}>
@@ -167,16 +150,16 @@ export function MailboxSettingsList({
       </section>
 
       <section>
-        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+        <h3 className="text-sm font-semibold text-foreground">
           Sending domains
         </h3>
-        <p className="mt-1 text-xs text-slate-500">
+        <p className="mt-1 text-xs text-muted-foreground">
           Each domain maps an SES identity to the S3 bucket that stores raw
           inbound mail.
         </p>
         {status && (
           <p
-            className={`mt-2 text-xs ${status.ok ? "text-emerald-600" : "text-red-600"}`}
+            className={`mt-2 text-xs ${status.ok ? "text-primary" : "text-destructive"}`}
           >
             {status.text}
           </p>
@@ -185,13 +168,13 @@ export function MailboxSettingsList({
           {domainConfigs.map((dc) => (
             <li
               key={dc.nanoid}
-              className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 px-3 py-2.5 dark:border-slate-800"
+              className="flex flex-wrap items-center gap-3 rounded-lg border border-border px-3 py-2.5 border-border"
             >
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                <p className="truncate text-sm font-medium text-foreground">
                   {dc.domain}
                 </p>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   {dc.provider} · {dc.aws_ses_region_name} · {dc.s3_bucket} ·{" "}
                   {dc.mailbox_count} mailbox{dc.mailbox_count === 1 ? "" : "es"}
                 </p>
@@ -259,52 +242,5 @@ export function MailboxSettingsList({
         }}
       />
     </div>
-  );
-}
-
-function DomainConfigForm({ workspace }: { workspace: string }) {
-  const [state, action, pending] = useActionState(createDomainConfigAction, IDLE);
-
-  return (
-    <form action={action} className="mt-3 grid max-w-xl gap-3">
-      <input type="hidden" name="workspace" value={workspace} />
-      <div className="grid gap-3 sm:grid-cols-2">
-        <input name="domain" required placeholder="example.com" className={FIELD} />
-        <input name="provider" required placeholder="ses" className={FIELD} />
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <input name="aws_ses_region_name" required placeholder="eu-west-1" className={FIELD} />
-        <input name="s3_bucket" required placeholder="my-mail-bucket" className={FIELD} />
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <input
-          name="aws_access_key_id"
-          required
-          placeholder="Access key ID"
-          autoComplete="off"
-          className={FIELD}
-        />
-        <input
-          name="aws_secret_access_key"
-          required
-          type="password"
-          placeholder="Secret access key"
-          autoComplete="new-password"
-          className={FIELD}
-        />
-      </div>
-      <FieldErrors errors={state.fieldErrors} />
-      {state.status === "error" && state.message && (
-        <p className="text-xs text-red-600">{state.message}</p>
-      )}
-      {state.status === "success" && (
-        <p className="text-xs text-emerald-600">{state.message}</p>
-      )}
-      <div>
-        <Button type="submit" size="sm" disabled={pending}>
-          {pending ? "Saving..." : "Add domain"}
-        </Button>
-      </div>
-    </form>
   );
 }

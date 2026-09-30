@@ -33,16 +33,16 @@ export default async function EmailDetailPage({
 
   return (
     <>
-      <div className="border-b border-slate-200 px-4 py-2.5 dark:border-slate-800">
+      <div className="shrink-0 border-b border-border px-4 py-2.5">
         <Link
           href={`/${ws}/dashboard/mailbox/${mailbox}/${folderSlug}`}
-          className="text-xs font-medium text-primary-600 hover:underline dark:text-primary-400"
+          className="text-xs font-medium text-primary hover:underline"
         >
           ← Back to {folder.name}
         </Link>
       </div>
 
-      <div className="relative flex min-h-0 flex-1 flex-col">
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
         <EmailMessage
           email={email}
           attachments={email.attachments ?? []}
