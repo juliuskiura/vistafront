@@ -107,6 +107,11 @@ export const navLandingPaths: Partial<Record<string, string>> = {
   deals: "/dashboard/deals",
   subscriptions: "/dashboard/subscriptions",
   platform: "/dashboard/platform",
+  // Inbound webhook registrations (`socialmanager/navigation.py` →
+  // `id = "webhooks"`). Console-admin-only like Platform Config, and re-checks
+  // that on the page itself rather than trusting the nav gate: an unmapped id
+  // would render as a dead link, and a mapped one is guessable by URL.
+  webhooks: "/dashboard/webhooks",
   // Mailbox (`mailbox/navigation.py` → `id = "mails"`). The route lives under
   // the standard dashboard tree; the backend hides the link from non-admins.
   mails: "/dashboard/mailbox",
