@@ -12,6 +12,7 @@ import PlatformComposeCard from "@/components/socialmanager/platform-compose-car
 import { usePlatformStyleResolver } from "@/components/platform-icon";
 
 interface ComposeStep2Props {
+  workspace: string;
   selectedPages: ManagedChannel[];
   platforms: SocialMediaPlatform[];
   /** Per-channel publishing rules, already fetched on the server. */
@@ -44,6 +45,7 @@ interface ComposeStep2Props {
 }
 
 export function ComposeStep2({
+  workspace,
   selectedPages,
   platforms,
   capabilitiesByPage,
@@ -201,6 +203,7 @@ export function ComposeStep2({
           return (
             <PlatformComposeCard
               key={page.nanoid}
+              workspace={workspace}
               slug={slug}
               platform={platform}
               channel={page}

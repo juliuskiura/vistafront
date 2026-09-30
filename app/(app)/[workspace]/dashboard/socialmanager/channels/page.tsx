@@ -1,8 +1,18 @@
 import { requireWorkspace } from "@/lib/auth/server";
 import { requireFeature } from "@/lib/features/guard";
-import { listAccounts } from "@/lib/api";
+import { listAccounts, verifyPage } from "@/lib/api";
 import type { SocialAccount } from "@/lib/api/types";
 import { ChannelsClient } from "./channels-client";
+import type { VerifyVerdict } from "./_components/channel-health-label";
+
+/**
+ * How many active channels we ask Meta about on one page render. Each check is
+ * one outbound Graph call (`GET /{page_id}?fields=id` with the token publishing
+ * would use), so an unbounded list would make opening this screen slower than
+ * the work it reports on. Past the cap a card reads "Not checked" rather than
+ * claiming a health nobody measured.
+ */
+const VERIFY_BUDGET = 12;
 
 export default async function ChannelsPage({
   params,
@@ -26,5 +36,37 @@ export default async function ChannelsPage({
     return map;
   }, {});
 
-  return <ChannelsClient channels={channels} workspaceDomain={ws} pageToAccountNanoid={pageToAccountNanoid} accounts={accounts} />;
+  // A card that only reads its own row cannot tell a working token from a
+  // missing one: `token_expires_at` is null for every healthy Facebook page
+  // token, so the old code rendered "Active" for channels that had no token at
+  // all. Ask Meta instead, before first paint, so the first frame is truthful.
+  // A disconnected channel needs no check — nothing will be published to it.
+  const toVerify = channels
+    .filter((page) => page.is_active)
+    .slice(0, VERIFY_BUDGET)
+    .map((page) => page.nanoid);
+
+  const settled = await Promise.allSettled(
+    toVerify.map((nanoid) => verifyPage(nanoid, ws)),
+  );
+
+  const verdicts: Record<string, VerifyVerdict> = {};
+  settled.forEach((result, index) => {
+    // A rejected check is still an answer: the platform could not confirm the
+    // channel, which is exactly what the card needs to say.
+    verdicts[toVerify[index]] =
+      result.status === "fulfilled"
+        ? result.value
+        : { ok: false, error: result.reason?.message ?? "Check failed" };
+  });
+
+  return (
+    <ChannelsClient
+      channels={channels}
+      workspaceDomain={ws}
+      pageToAccountNanoid={pageToAccountNanoid}
+      verdicts={verdicts}
+      accounts={accounts}
+    />
+  );
 }

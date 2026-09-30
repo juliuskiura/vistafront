@@ -1,10 +1,12 @@
 "use client";
 
 import type { ManagedChannel, SocialMediaPlatform } from "@/lib/api/types";
+import { ChannelAvatar } from "@/components/socialmanager/channel-avatar";
 
 interface ChannelEditorHeaderProps {
   channel: ManagedChannel;
   platform: SocialMediaPlatform;
+  workspace: string;
 }
 
 function initials(name: string): string {
@@ -17,6 +19,7 @@ function initials(name: string): string {
 }
 
 export default function ChannelEditorHeader({
+  workspace,
   channel,
   platform,
 }: ChannelEditorHeaderProps) {
@@ -24,17 +27,17 @@ export default function ChannelEditorHeader({
   return (
     <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5">
       <div className="relative shrink-0">
-        {channel.profile_picture_url ? (
-          <img
-            src={channel.profile_picture_url}
-            alt=""
-            className="h-10 w-10 rounded-full object-cover shadow-sm"
-          />
-        ) : (
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-tr from-amber-500 to-pink-500 text-sm font-bold text-white shadow-sm">
-            {initials(channel.page_name)}
-          </div>
-        )}
+        <ChannelAvatar
+          nanoid={channel.nanoid}
+          pictureUrl={channel.profile_picture_url}
+          workspace={workspace}
+          className="h-10 w-10 rounded-full object-cover shadow-sm"
+          fallback={
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-tr from-amber-500 to-pink-500 text-sm font-bold text-white shadow-sm">
+              {initials(channel.page_name)}
+            </div>
+          }
+        />
         <span
           className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-white"
           style={{ backgroundColor: brandColor }}

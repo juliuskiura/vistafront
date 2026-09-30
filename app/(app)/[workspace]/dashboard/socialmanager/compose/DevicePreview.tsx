@@ -2,8 +2,10 @@
 
 import { PlatformGlyph, usePlatformStyleResolver } from "@/components/platform-icon";
 import type { ManagedChannel, SocialMediaPlatform } from "@/lib/api/types";
+import { ChannelAvatar } from "@/components/socialmanager/channel-avatar";
 
 interface DevicePreviewProps {
+  workspace: string;
   selectedPages: ManagedChannel[];
   selectedSlugs: string[];
   content: string;
@@ -15,6 +17,7 @@ interface DevicePreviewProps {
 }
 
 export function DevicePreview({
+  workspace,
   selectedPages,
   selectedSlugs,
   content,
@@ -49,17 +52,17 @@ export function DevicePreview({
       <div className="mx-auto mb-3 h-4 w-24 rounded-b-xl bg-slate-200" />
       <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-900">
         <div className="flex items-center gap-2">
-          {firstPage?.profile_picture_url ? (
-            <img
-              src={firstPage.profile_picture_url}
-              alt=""
-              className="h-7 w-7 shrink-0 rounded-full object-cover bg-slate-100"
-            />
-          ) : (
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-amber-500 to-pink-500 text-[10px] font-bold text-white">
-              {pageName.slice(0, 2).toUpperCase()}
-            </div>
-          )}
+          <ChannelAvatar
+            nanoid={firstPage?.nanoid ?? ""}
+            pictureUrl={firstPage?.profile_picture_url ?? ""}
+            workspace={workspace}
+            className="h-7 w-7 shrink-0 rounded-full object-cover bg-slate-100"
+            fallback={
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-amber-500 to-pink-500 text-[10px] font-bold text-white">
+                {pageName.slice(0, 2).toUpperCase()}
+              </div>
+            }
+          />
           <div className="min-w-0">
             <p className="truncate text-[11px] font-bold leading-none text-slate-900">{pageName}</p>
             <div className="flex items-center gap-1 text-[9px] text-slate-500">

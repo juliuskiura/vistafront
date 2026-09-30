@@ -15,6 +15,7 @@ import type {
 } from "@/lib/api/types";
 
 interface PlatformComposeCardProps {
+  workspace: string;
   slug: string;
   platform: SocialMediaPlatform;
   channel: ManagedChannel;
@@ -44,6 +45,7 @@ interface PlatformComposeCardProps {
 }
 
 export default function PlatformComposeCard({
+  workspace,
   slug,
   platform,
   channel,
@@ -83,7 +85,11 @@ export default function PlatformComposeCard({
 
   return (
     <div className="rounded-2xl border border-primary-300 bg-white p-6 space-y-4">
-      <ChannelEditorHeader channel={channel} platform={platform} />
+      <ChannelEditorHeader
+        workspace={workspace}
+        channel={channel}
+        platform={platform}
+      />
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-1">
         {formats.map((f) => {

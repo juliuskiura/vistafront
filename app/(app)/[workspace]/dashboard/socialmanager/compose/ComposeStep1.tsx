@@ -13,6 +13,7 @@ import type {
 } from "@/lib/api/types";
 import { verifyPageAction } from "../actions";
 import { useConnectAccount } from "@/lib/context";
+import { ChannelAvatar } from "@/components/socialmanager/channel-avatar";
 import type { CampaignActionState } from "../action-state";
 import SocialMediaTextEditor from "@/components/socialmanager/social-media-text-editor";
 import { PlatformGlyph, usePlatformStyleResolver } from "@/components/platform-icon";
@@ -284,17 +285,17 @@ export function ComposeStep1({
                           >
                             {checked && <CheckCircle2 className="h-3.5 w-3.5" />}
                           </span>
-                          {page.profile_picture_url ? (
-                            <img
-                              src={page.profile_picture_url}
-                              alt=""
-                              className="h-7 w-7 shrink-0 rounded-full object-cover bg-slate-100"
-                            />
-                          ) : (
-                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-amber-500 to-pink-500 text-[10px] font-bold text-white">
-                              {page.page_name.slice(0, 2).toUpperCase()}
-                            </span>
-                          )}
+                          <ChannelAvatar
+                            nanoid={page.nanoid}
+                            pictureUrl={page.profile_picture_url}
+                            workspace={ws}
+                            className="h-7 w-7 shrink-0 rounded-full object-cover bg-slate-100"
+                            fallback={
+                              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-amber-500 to-pink-500 text-[10px] font-bold text-white">
+                                {page.page_name.slice(0, 2).toUpperCase()}
+                              </span>
+                            }
+                          />
                           <div className="min-w-0">
                             <p className="truncate text-xs font-medium text-slate-800">{page.page_name}</p>
                             {page.username && (

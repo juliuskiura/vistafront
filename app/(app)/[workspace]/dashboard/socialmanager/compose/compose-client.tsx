@@ -473,6 +473,7 @@ export function ComposeClient({
             )}
             {step === 2 && (
               <ComposeStep2
+                workspace={ws}
                 selectedPages={selectedPages}
                 platforms={platforms}
                 capabilitiesByPage={capabilitiesByPage}
@@ -513,6 +514,7 @@ export function ComposeClient({
               </span>
             </div>
             <DevicePreview
+              workspace={ws}
               selectedPages={selectedPages}
               selectedSlugs={selectedSlugs}
               content={content}

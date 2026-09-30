@@ -138,6 +138,7 @@ export function ChannelDetailClient({
       </Link>
 
       <ChannelHero
+        workspace={ws}
         channel={channel}
         token={token}
         isSyncing={isSyncingPending}
@@ -173,6 +174,7 @@ export function ChannelDetailClient({
       />
 
       <ChannelPosts
+        workspace={ws}
         posts={posts}
         pageById={pageById}
         onOpenPost={handleOpenPost}

@@ -27,6 +27,7 @@ import type {
   SocialMediaPlatform,
 } from "@/lib/api/types";
 import { syncPostsAction, getPostsSyncStatusAction } from "./actions";
+import { ChannelAvatar } from "@/components/socialmanager/channel-avatar";
 import { PlatformGlyph, usePlatformStyleResolver } from "@/components/platform-icon";
 import { Card } from "@/components/ui/card";
 
@@ -305,19 +306,19 @@ export function SocialHomePageClient({
                             return (
                               <span key={r.nanoid} className="flex items-center gap-1.5">
                                 <span className="relative shrink-0">
-                                  {avatar ? (
-                                    <img
-                                      src={avatar}
-                                      alt=""
-                                      className="size-8 rounded-full object-cover shadow ring-1 ring-black/5"
-                                    />
-                                  ) : (
-                                    <span
-                                      className={`flex size-8 items-center justify-center rounded-full text-[10px] font-bold shadow ring-1 ring-black/5 ${style.bg} ${style.color}`}
-                                    >
-                                      {displayName.slice(0, 1).toUpperCase()}
-                                    </span>
-                                  )}
+                                  <ChannelAvatar
+                                    nanoid={page?.nanoid ?? r.nanoid}
+                                    pictureUrl={avatar ?? ""}
+                                    workspace={ws}
+                                    className="size-8 rounded-full object-cover shadow ring-1 ring-black/5"
+                                    fallback={
+                                      <span
+                                        className={`flex size-8 items-center justify-center rounded-full text-[10px] font-bold shadow ring-1 ring-black/5 ${style.bg} ${style.color}`}
+                                      >
+                                        {displayName.slice(0, 1).toUpperCase()}
+                                      </span>
+                                    }
+                                  />
                                   {platform && (
                                     <span className="absolute bottom-0 right-0 flex size-4 translate-x-1/4 translate-y-1/4 items-center justify-center rounded-full bg-white shadow ring-1 ring-black/5">
                                       <PlatformGlyph platform={platform} size="sm" />

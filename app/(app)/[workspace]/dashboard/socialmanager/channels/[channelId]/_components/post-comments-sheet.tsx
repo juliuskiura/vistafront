@@ -4,6 +4,7 @@ import { Clock, CloudDownload, ExternalLink, Heart, MessageCircle, Send, Sparkle
 
 import type { ManagedChannel, ScheduledPost } from "@/lib/api/types";
 import { usePlatformStyleResolver } from "@/components/platform-icon";
+import { ChannelAvatar } from "@/components/socialmanager/channel-avatar";
 import { usePlatformBrand } from "@/lib/social/platform-brand-context";
 import { SocialIconSolid } from "@/components/social-icons";
 import { Button } from "@/components/ui/button";
@@ -110,17 +111,17 @@ export function PostCommentsSheet({
                     className="flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2 shadow-sm"
                   >
                     <span className="relative shrink-0">
-                      {page?.profile_picture_url ? (
-                        <img
-                          src={page.profile_picture_url}
-                          alt=""
-                          className="size-9 rounded-full object-cover ring-1 ring-black/5"
-                        />
-                      ) : (
-                        <span className="flex size-9 items-center justify-center rounded-full bg-muted text-xs font-bold text-slate-500 ring-1 ring-black/5">
-                          {r.managed_page_name.slice(0, 1).toUpperCase()}
-                        </span>
-                      )}
+                      <ChannelAvatar
+                        nanoid={page?.nanoid ?? r.nanoid}
+                        pictureUrl={page?.profile_picture_url ?? ""}
+                        workspace={workspace}
+                        className="size-9 rounded-full object-cover ring-1 ring-black/5"
+                        fallback={
+                          <span className="flex size-9 items-center justify-center rounded-full bg-muted text-xs font-bold text-slate-500 ring-1 ring-black/5">
+                            {r.managed_page_name.slice(0, 1).toUpperCase()}
+                          </span>
+                        }
+                      />
                       <span
                         className={`absolute -bottom-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full bg-white shadow ring-1 ring-black/5 ${style.color}`}
                       >

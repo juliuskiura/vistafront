@@ -1,5 +1,7 @@
 "use client";
 
+import { ChannelAvatar } from "@/components/socialmanager/channel-avatar";
+
 import Link from "next/link";
 import { AlertCircle, BarChart3, Lock, PenLine, RefreshCw, ShieldCheck, Users } from "lucide-react";
 
@@ -11,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { getPlatformGradient, type TokenHealth } from "./platform-gradients";
 
 interface ChannelHeroProps {
+  workspace: string;
   channel: ManagedChannel;
   token: TokenHealth;
   isSyncing: boolean;
@@ -38,6 +41,7 @@ const TOKEN_PILL: Record<TokenHealth["status"], { label: (d: number | null) => s
 };
 
 export function ChannelHero({
+  workspace,
   channel,
   token,
   isSyncing,
@@ -126,17 +130,18 @@ export function ChannelHero({
         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div className="flex min-w-0 items-center gap-4">
             <div className="relative shrink-0">
-              {channel.profile_picture_url ? (
-                <img
-                  src={channel.profile_picture_url}
-                  alt={channel.page_name}
-                  className="size-20 rounded-2xl border border-white/30 object-cover shadow-lg ring-4 ring-white/25"
-                />
-              ) : (
-                <div className="flex size-20 items-center justify-center rounded-2xl border border-white/30 bg-white/20 text-lg font-bold text-white backdrop-blur-sm ring-4 ring-white/25">
-                  {channel.page_name?.slice(0, 2).toUpperCase()}
-                </div>
-              )}
+              <ChannelAvatar
+                nanoid={channel.nanoid}
+                pictureUrl={channel.profile_picture_url}
+                workspace={workspace}
+                alt={channel.page_name}
+                className="size-20 rounded-2xl border border-white/30 object-cover shadow-lg ring-4 ring-white/25"
+                fallback={
+                  <div className="flex size-20 items-center justify-center rounded-2xl border border-white/30 bg-white/20 text-lg font-bold text-white backdrop-blur-sm ring-4 ring-white/25">
+                    {channel.page_name?.slice(0, 2).toUpperCase()}
+                  </div>
+                }
+              />
               <div className="absolute -bottom-1 -right-1 flex size-6 items-center justify-center rounded-full bg-white shadow ring-1 ring-black/5">
                 {hasSocialIcon(brand) ? (
                   <SocialIcon name={brand} className={cn("size-3.5", style.color)} />

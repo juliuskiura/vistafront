@@ -1,5 +1,7 @@
 "use client";
 
+import { ChannelAvatar } from "@/components/socialmanager/channel-avatar";
+
 import { Heart, MessageCircle, Newspaper } from "lucide-react";
 
 import type { ManagedChannel, ScheduledPost } from "@/lib/api/types";
@@ -11,12 +13,13 @@ import { cn } from "@/lib/utils";
 import { formatDate, STATUS_STYLES } from "./platform-gradients";
 
 interface ChannelPostsProps {
+  workspace: string;
   posts: ScheduledPost[];
   pageById: Record<string, ManagedChannel>;
   onOpenPost: (post: ScheduledPost) => void;
 }
 
-export function ChannelPosts({ posts, pageById, onOpenPost }: ChannelPostsProps) {
+export function ChannelPosts({ workspace, posts, pageById, onOpenPost }: ChannelPostsProps) {
   // A page reports the door it connected through; its icon comes from that
   // door's `auth_destination`, so an `instagramfb` page shows Instagram.
   const { brandOf } = usePlatformBrand();
@@ -84,17 +87,17 @@ export function ChannelPosts({ posts, pageById, onOpenPost }: ChannelPostsProps)
                               return (
                                 <span key={r.nanoid} className="flex items-center gap-1.5">
                                   <span className="relative shrink-0">
-                                    {page?.profile_picture_url ? (
-                                      <img
-                                        src={page.profile_picture_url}
-                                        alt=""
-                                        className="size-8 rounded-full object-cover shadow-md ring-1 ring-black/5"
-                                      />
-                                    ) : (
-                                      <span className="flex size-8 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-slate-500 shadow-md ring-1 ring-black/5">
-                                        {r.managed_page_name.slice(0, 1).toUpperCase()}
-                                      </span>
-                                    )}
+                                    <ChannelAvatar
+                                      nanoid={page?.nanoid ?? r.nanoid}
+                                      pictureUrl={page?.profile_picture_url ?? ""}
+                                      workspace={workspace}
+                                      className="size-8 rounded-full object-cover shadow-md ring-1 ring-black/5"
+                                      fallback={
+                                        <span className="flex size-8 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-slate-500 shadow-md ring-1 ring-black/5">
+                                          {r.managed_page_name.slice(0, 1).toUpperCase()}
+                                        </span>
+                                      }
+                                    />
                                     <span
                                       className={cn(
                                         "absolute bottom-0 right-0 flex size-4 translate-x-1/4 translate-y-1/4 items-center justify-center rounded-full bg-white shadow ring-1 ring-black/5",
