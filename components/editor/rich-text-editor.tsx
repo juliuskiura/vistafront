@@ -6,12 +6,16 @@ import {
   useEditor,
 } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
+import { dropPoint } from "@tiptap/pm/transform";
+import type { Slice } from "@tiptap/pm/model";
+import type { EditorView } from "@tiptap/pm/view";
 
 import { sanitizeNoteHtml } from "@/lib/api/sanitize-note-html";
 import { cn } from "@/lib/utils";
 
 import { EditorToolbar } from "./_components/editor-toolbar";
 import { EditorDragHandle } from "./_components/editor-drag-handle";
+import { blockDrag } from "./block-drag";
 import { createEditorExtensions } from "./extensions";
 
 /**
@@ -45,6 +49,61 @@ function firstImage(files: FileList | null | undefined): File | null {
     if (ACCEPTED_IMAGE_TYPES.test(file.type)) return file;
   }
   return null;
+}
+
+/**
+ * Move the dragged block to where it was dropped.
+ *
+ * `slice` is ProseMirror's own: it was read out of `view.dragging` and run
+ * through `transformPasted` before being handed to `handleDrop`, so it is the
+ * same content the drop indicator was drawn for. `moved` is false when a copy
+ * modifier is held, in which case the source is left where it is.
+ *
+ * A transcription of ProseMirror's own `handleDrop` (`dropPoint` → delete the
+ * source → `replaceRangeWith` at the mapped position). Three details are
+ * load-bearing, and each is a way this silently fails:
+ *
+ * 1. `dropPoint` resolves the drop coordinates to the nearest position the
+ *    slice actually fits at. Using the raw pointer position instead lands the
+ *    block *next to* where the drop cursor was drawn whenever the gap between
+ *    two blocks is too small for the dragged one, which is most of the time.
+ * 2. The insert position is mapped through the delete step. Removing a block
+ *    shifts every position after it, so an unmapped position drops the block
+ *    one slot too high as soon as the drag moves upward.
+ * 3. A drop back onto the dragged block is rejected. `dropPoint` will happily
+ *    return a position inside the source, and the delete-then-insert pair
+ *    would then duplicate it.
+ */
+function moveDraggedBlock(
+  view: EditorView,
+  event: DragEvent,
+  pos: number,
+  slice: Slice,
+  moved: boolean,
+): void {
+  const node = view.state.doc.nodeAt(pos);
+  const content = slice.content.firstChild;
+  if (!content) return;
+
+  const dropCoords = view.posAtCoords({ left: event.clientX, top: event.clientY });
+  if (!dropCoords) return;
+
+  const tr = view.state.tr;
+
+  // Inside the block being dragged: nothing to do, and going ahead would
+  // duplicate it.
+  if (node && dropCoords.pos > pos && dropCoords.pos < pos + node.nodeSize) return;
+
+  const insertAt = dropPoint(view.state.doc, dropCoords.pos, slice) ?? dropCoords.pos;
+
+  if (moved && node) tr.delete(pos, pos + node.nodeSize);
+  const target = moved ? tr.mapping.map(insertAt) : insertAt;
+
+  tr.replaceRangeWith(target, target, content);
+  tr.setMeta("uiEvent", "drop");
+
+  view.dispatch(tr.scrollIntoView());
+  view.focus();
 }
 
 export type SaveStatus = "idle" | "editing" | "saving" | "saved";
@@ -111,9 +170,37 @@ export function RichTextEditor({
       },
       transformPastedHTML: (html) => sanitizeNoteHtml(html),
 
-      // Drop an image straight into the document. Without this ProseMirror
-      // would insert the filename as text, which is what users hit before.
-      handleDrop: (view, event) => {
+      // A `move` drop cursor while a block drag is in flight, so the pointer
+      // reports "this will be moved here" over the whole canvas. ProseMirror
+      // already calls `preventDefault()` on `dragover`, which is what makes
+      // the editor a drop target at all; without `dropEffect` the browser
+      // shows the default no-drop cursor over most of the surface.
+      handleDOMEvents: {
+        dragover: (_view, event) => {
+          if (!blockDrag.current) return false;
+          const dragEvent = event as DragEvent;
+          if (dragEvent.dataTransfer) dragEvent.dataTransfer.dropEffect = "move";
+          return false;
+        },
+      },
+
+      // The block move, then dropped images.
+      //
+      // Installing a `handleDrop` takes ownership of the drop transaction away
+      // from ProseMirror's built-in path, so the move is done here. The slice
+      // and the move/copy flag arrive as arguments — ProseMirror read them out
+      // of `view.dragging`, which the grip set, so the block lands exactly
+      // where the drop indicator was drawn. See `block-drag.ts`.
+      handleDrop: (view, event, slice, moved) => {
+        const drag = blockDrag.current;
+        if (drag) {
+          blockDrag.current = null;
+          view.dragging = null;
+          moveDraggedBlock(view, event as DragEvent, drag.pos, slice, moved);
+          event.preventDefault();
+          return true;
+        }
+
         const file = firstImage(event.dataTransfer?.files);
         if (!file) return false;
 
@@ -210,27 +297,35 @@ export function RichTextEditor({
   return (
     <div
       className={cn(
-        "relative flex flex-col border-t border-b border-[var(--nb-rule)]",
+        "nb-editor-shell relative flex flex-col",
         className,
       )}
     >
-      {editor ? <EditorToolbar editor={editor} className="border-b px-1.5 py-1" /> : null}
+      {editor ? (
+        <EditorToolbar
+          editor={editor}
+          className="border-b px-1.5 py-1"
+        />
+      ) : null}
 
       {/*
-        `pl-10` reserves a gutter for the drag handle, which is portalled and
-        positioned just left of the block's edge. Without it the grip would
-        render on top of the page outside the editor.
+        Content area, ported from the frontapp's
+        `features/shared/editor/RichTextEditor.tsx` at `4c97c34^`: a
+        `p-2 sm:p-4` inset around a `max-w-[720px]` centred column, with a
+        `min-h-[150px]` floor so an empty note is still a click target.
       */}
       <div
-        className="cursor-text py-3 pl-10 pr-4"
+        className="cursor-text p-2 sm:p-4"
         onClick={() => editor?.chain().focus().run()}
       >
         {editor ? <EditorDragHandle editor={editor} /> : null}
-        <EditorContent editor={editor} />
+        <div className="mx-auto w-full max-w-[720px]">
+          <EditorContent editor={editor} />
+        </div>
       </div>
 
       {showFooter ? (
-        <div className="flex items-center gap-3 border-t px-3 py-1.5 text-[11px] text-muted-foreground">
+        <div className="flex items-center gap-3 border-t border-[color-mix(in_srgb,var(--nb-ink)_7%,transparent)] px-3.5 py-2 text-[11px] text-muted-foreground">
           <span>{counts.words} words</span>
           <span aria-hidden="true" className="opacity-40">
             |
@@ -254,12 +349,12 @@ export function RichTextEditor({
       {editor ? (
         <BubbleMenu
           editor={editor}
-          options={{ placement: "top", offset: 8 }}
+          options={{ placement: "top", offset: 10 }}
           shouldShow={({ editor: instance, from, to }) =>
             from !== to && !instance.isActive("image") && !instance.isActive("codeBlock")
           }
         >
-          <div className="flex items-center gap-0.5 rounded-lg border bg-popover p-1 text-popover-foreground shadow-md">
+          <div className="nb-bubble">
             <EditorToolbar
               editor={editor}
               mode="bubble"

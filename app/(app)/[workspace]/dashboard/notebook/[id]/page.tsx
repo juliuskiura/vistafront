@@ -11,18 +11,16 @@ import { requireWorkspace } from "@/lib/auth/server";
 import { requireFeature } from "@/lib/features/guard";
 
 import { NoteAttachments, NoteRelations } from "./_components/note-attachments";
-import { NoteContentEditor } from "./_components/note-content-editor";
+import { NoteBody } from "./_components/note-body";
 import { NoteHeader } from "./_components/note-header";
 import { NoteMetaPanel } from "./_components/note-meta-panel";
-import { NoteReader } from "./_components/note-reader";
 
 /**
  * Note detail (Server Component).
  *
- * A two-column reading layout: the note body in a measured column on the
- * left, and a sticky properties rail on the right carrying the editable
- * metadata, attachments, and relations. The rail is sticky so the file list
- * stays reachable in a long note without scrolling the prose away.
+ * A single-column reading layout: the note body takes the full window width so
+ * the editor has room to work. The editable metadata, attachments, and
+ * relations sit below the body rather than in a side rail.
  *
  * The interactive slices — metadata edit, content edit, star/archive/delete —
  * are Client Component islands bound to Server Actions. Everything else,
@@ -75,43 +73,26 @@ export default async function NoteDetailPage({
   const type = noteTypes.find((t) => String(t.key) === String(note.note_type)) ?? null;
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6">
+    <div className="nb-page-glass flex min-h-full w-full flex-col gap-7 px-5 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-10">
       <NoteHeader note={note} type={type} workspaceDomain={active.domain} />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
-        {/* ── Reading column ──────────────────────────────────── */}
-        <div className="min-w-0 border-t border-[var(--nb-rule)] pt-6">
-          <NoteReader note={note} />
+      <NoteBody note={note} type={type} workspaceDomain={active.domain} />
 
-          <div className="mt-8 border-t pt-6">
-            <NoteContentEditor
-              note={note}
-              workspaceDomain={active.domain}
-            />
-          </div>
-        </div>
+      {/*
+        Metadata and files, stacked under the body now that the rail is gone.
+        The definition list stays in a measured column: it is a list of short
+        values, and stretched across a wide window the labels drift too far
+        from the values they describe.
+      */}
+      <div className="max-w-3xl space-y-6 border-t border-[var(--nb-rule)] pt-6">
+        <NoteMetaPanel
+          note={note}
+          noteTypes={noteTypes}
+          workspaceDomain={active.domain}
+        />
 
-        {/* ── Properties rail ─────────────────────────────────── */}
-        {/*
-          A vertical rule separates the rail from the reading column on wide
-          screens rather than a card edge — the flat equivalent of the two
-          boxed panels this replaced. Below `lg` the rail stacks under the
-          note, where the rule would read as an orphan, so it drops out.
-        */}
-        <aside className="space-y-6 lg:sticky lg:top-6 lg:self-start lg:border-l lg:border-[var(--nb-rule)] lg:pl-6">
-          <div className="border-t border-[var(--nb-rule)] pt-5">
-            <NoteMetaPanel
-              note={note}
-              noteTypes={noteTypes}
-              workspaceDomain={active.domain}
-            />
-          </div>
-
-          <div className="border-t border-[var(--nb-rule)] pt-5">
-            <NoteAttachments attachments={attachments} />
-            <NoteRelations relations={note.relations} />
-          </div>
-        </aside>
+        <NoteAttachments attachments={attachments} />
+        <NoteRelations relations={note.relations} />
       </div>
     </div>
   );

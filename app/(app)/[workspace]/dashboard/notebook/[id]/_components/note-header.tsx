@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft } from "@/lib/icons";
+import { ArrowLeft, PenLine } from "@/lib/icons";
 import { formatMediumDate } from "@/lib/dates";
 import type { Note, NoteTypeOption } from "@/lib/api";
 
@@ -28,7 +28,7 @@ export function NoteHeader({
   const words = countWords(html);
 
   return (
-    <header className="space-y-4">
+    <header className="space-y-5">
       <Link
         href={`/${workspaceDomain}/dashboard/notebook`}
         className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
@@ -51,21 +51,33 @@ export function NoteHeader({
             ) : null}
           </div>
 
-          <h1 className="mt-2 text-2xl font-bold leading-tight tracking-tight text-foreground">
+          {/*
+            Set at display size rather than as an `h1` inside the body: the
+            title is page furniture, and a document that opens with its own
+            `h1` would have two competing first lines.
+          */}
+          <h1 className="mt-3 text-balance text-3xl font-bold leading-[1.15] tracking-[-0.03em] text-foreground">
             {note.title}
           </h1>
 
-          <p className="mt-1.5 text-xs text-muted-foreground">
-            <time dateTime={note.updated_at}>
-              Updated {formatMediumDate(note.updated_at)}
-            </time>
-            <span aria-hidden="true"> · </span>
-            {words > 0 ? `${words} words` : "Empty"}
-            <span aria-hidden="true"> · </span>
+          <div className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1 border-l-2 border-[var(--nb-rule)] pl-3 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5">
+              <PenLine size={12} />
+              <time dateTime={note.updated_at}>
+                Updated {formatMediumDate(note.updated_at)}
+              </time>
+            </span>
+            <span aria-hidden="true" className="opacity-40">
+              ·
+            </span>
+            <span>{words > 0 ? `${words} words` : "Empty"}</span>
+            <span aria-hidden="true" className="opacity-40">
+              ·
+            </span>
             <time dateTime={note.created_at}>
               Created {formatMediumDate(note.created_at)}
             </time>
-          </p>
+          </div>
         </div>
 
         <NoteCardActions

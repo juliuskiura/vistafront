@@ -3,37 +3,77 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Editor } from "@tiptap/react";
-import { NodeSelection } from "@tiptap/pm/state";
 import type { Node as PMNode } from "@tiptap/pm/model";
 
-import { Copy, GripVertical, Trash2 } from "@/lib/icons";
+import { GripVertical } from "@/lib/icons";
+
+import { blockDrag } from "../block-drag";
+import { BlockMenu } from "./editor-block-menu";
 
 interface Target {
   pos: number;
   node: PMNode;
+  /** The hovered block's element — carries the `editor-block-active` class. */
+  dom: HTMLElement;
   /** Viewport coordinates — the handle is portalled with `position: fixed`. */
   rect: DOMRect;
 }
 
 /**
- * A hover grip that reorders the block under the pointer.
+ * The block rail: an insert button, a drag grip, and the block menu.
  *
- * Restores the drag-and-drop the Notebook port dropped when the legacy
- * frontapp editor was deleted.
+ * ## Ported from the frontapp
  *
- * Two things differ from the legacy implementation, both deliberate:
+ * This reproduces `features/shared/editor/DragHandle.tsx` as it stood at
+ * `4c97c34^`, the commit that deleted the old frontend. Three behaviours came
+ * across with it and had been lost in the Next.js port:
  *
- * 1. **Fixed, not absolute.** The original positioned itself with
- *    `position: absolute` plus `window.scrollY`. That cannot work in the
- *    dashboard, which scrolls an inner `<main>` rather than the window — the
- *    handle would drift away from its block on the first scroll. This reads
- *    `getBoundingClientRect()` (viewport relative) and portals with
- *    `position: fixed`, so it stays glued regardless of which ancestor scrolls.
+ * 1. **Hover, not mousemove.** The rail attaches to the block under the
+ *    pointer via `mouseover` and the nearest `.ProseMirror > *`, so it appears
+ *    the moment the pointer enters a block rather than only once the pointer
+ *    has resolved a document position inside one.
+ * 2. **The `+` insert button**, sitting to the left of the grip. It inserts an
+ *    empty paragraph directly after the hovered block — the fastest way to
+ *    keep writing without leaving the keyboard.
+ * 3. **The block highlight** (`.editor-block-active` in `globals.css`), a faint
+ *    wash behind the block the rail is attached to, so it is obvious which
+ *    block a subsequent drag or menu action will hit.
  *
- * 2. **`view.dragging`, not a hand-built `dataTransfer` payload.** That field
- *    is what ProseMirror's own drop handler reads, so the drop lands through
- *    the same code path as a native drag instead of a parallel one that can
- *    disagree with it about the slice.
+ * The drag image is also restored: without it the browser drags a
+ * near-transparent snapshot of the grip, so the drop reads as the handle
+ * itself moving rather than the block.
+ *
+ * ## What deliberately did *not* come across
+ *
+ * The frontapp positioned the rail with `position: absolute` plus
+ * `window.scrollY`. That cannot work here: the dashboard scrolls an inner
+ * `<main>`, not the window, so the rail drifted away from its block on the
+ * first scroll. It is portalled with `position: fixed` and driven from
+ * `getBoundingClientRect()` instead — same geometry, but viewport-relative.
+ *
+ * Likewise the frontapp closed the menu on any scroll. Here a scroll just
+ * re-reads the rect, so the rail stays attached to its block while a long
+ * document moves underneath it, and the menu stays open until dismissed.
+ *
+ * The grip remains the only drag affordance — see the note below on why
+ * nothing else is `draggable`.
+ */
+
+/**
+ * ## The grip is the only drag affordance
+ *
+ * An earlier version made every block node `draggable`, which sets
+ * `draggable="true"` on the rendered DOM. Browsers only begin a native HTML5
+ * drag from a draggable element, so that made *press-and-move over text*
+ * reorder the block — which is exactly the gesture people use to select a
+ * sentence. Selecting text became impossible anywhere inside a paragraph.
+ * `extensions.ts` therefore registers no draggable blocks; the grip is the
+ * single place a drag can start, and clicking and holding the six dots is the
+ * gesture that moves a block.
+ *
+ * The grip stays `draggable` because that is what gives it real `dragstart` /
+ * `dragover` / `drop` events with a live `DataTransfer`, and those are what
+ * ProseMirror's own drop handler reads.
  */
 export function EditorDragHandle({ editor }: { editor: Editor | null }) {
   const [target, setTarget] = useState<Target | null>(null);
@@ -43,42 +83,39 @@ export function EditorDragHandle({ editor }: { editor: Editor | null }) {
   // Pointer position is a ref, not state: `mousemove` fires far more often
   // than React should re-render, and it is only ever read inside the handler.
   const pointer = useRef({ x: 0, y: 0 });
-  // The ProseMirror view is an imperative handle we assign to
-  // (`view.dragging = …`) inside DOM event handlers. Holding it in a ref is
-  // what makes that legal React — mutating a value captured during render is
-  // not, and the handle genuinely outlives any single render.
-  const viewRef = useRef<Editor["view"] | null>(null);
+
+  // The ProseMirror view, held in a ref because `handleDragStart` writes to
+  // `view.dragging` from a DOM event handler. Reading `editor.view` there
+  // would be a property access on a prop captured during an earlier render,
+  // which React is free to have replaced; the view object itself is stable
+  // for the editor's lifetime.
+  const editorRef = useRef<Editor["view"] | null>(null);
 
   useEffect(() => {
-    viewRef.current = editor?.view ?? null;
+    editorRef.current = editor?.view ?? null;
   }, [editor]);
 
   const refreshRect = useCallback(
-    (pos: number, node: PMNode, prev: Target | null): Target | null => {
-      const dom = editor?.view.nodeDOM(pos);
-      if (!(dom instanceof HTMLElement)) return null;
+    (pos: number, node: PMNode, dom: HTMLElement, prev: Target | null): Target | null => {
+      const rect = dom.getBoundingClientRect();
       // Reuse the previous object when nothing moved so React can skip the
       // re-render on every mouse event.
-      if (prev && prev.pos === pos && prev.rect.top === dom.getBoundingClientRect().top) {
+      if (prev && prev.pos === pos && prev.dom === dom && prev.rect.top === rect.top) {
         return prev;
       }
-      return { pos, node, rect: dom.getBoundingClientRect() };
+      return { pos, node, dom, rect };
     },
-    [editor],
+    [],
   );
 
-  const resolve = useCallback(() => {
+  const resolve = useCallback((target0: EventTarget | null) => {
     if (!editor || dragging.current) return;
 
-    const hit = editor.view.posAtCoords({
-      left: pointer.current.x,
-      top: pointer.current.y,
-    });
+    const dom0 = target0 instanceof Element ? target0 : null;
+    const blockDom = dom0?.closest(".ProseMirror > *") as HTMLElement | null;
+    if (!blockDom) return;
 
-    if (!hit || hit.inside < 0) {
-      setTarget(null);
-      return;
-    }
+    const view = editor.view;
 
     // Snap to the top-level block so a list or a table drags as one unit
     // rather than tearing off an inner row.
@@ -91,68 +128,82 @@ export function EditorDragHandle({ editor }: { editor: Editor | null }) {
     // constantly, so this has to be handled rather than assumed away: at depth
     // 0 the position itself is the start of the following block, and if there
     // is no following block there is nothing to target.
-    const $pos = editor.state.doc.resolve(hit.inside);
-    const pos = $pos.depth >= 1 ? $pos.before(1) : hit.inside;
-    const node = editor.state.doc.nodeAt(pos);
-
-    if (!node || !node.isBlock) {
-      setTarget(null);
-      return;
+    let pos: number;
+    try {
+      pos = view.state.doc.resolve(view.posAtDOM(blockDom, 0)).before(1);
+    } catch {
+      pos = view.posAtCoords({ left: pointer.current.x, top: pointer.current.y })?.inside ?? -1;
+      if (pos < 0) return;
     }
 
-    setTarget((prev) => refreshRect(pos, node, prev));
+    const node = view.state.doc.nodeAt(pos);
+    if (!node || !node.isBlock) return;
+
+    setTarget((prev) => refreshRect(pos, node, blockDom, prev));
   }, [editor, refreshRect]);
 
   useEffect(() => {
     if (!editor) return;
     const dom = editor.view.dom as HTMLElement;
 
+    const onOver = (e: MouseEvent) => {
+      pointer.current = { x: e.clientX, y: e.clientY };
+      if (menuOpen || dragging.current) return;
+      resolve(e.target);
+    };
+
+    // `mouseleave` on the editor is not enough on its own: moving from the
+    // editor out through the rail's own gutter counts as leaving, and the
+    // rail would vanish before it could be used. The rect check below allows
+    // for the ~100px the rail occupies to the left of the text.
+    const onLeave = (e: MouseEvent) => {
+      if (menuOpen || dragging.current) return;
+      const rect = dom.getBoundingClientRect();
+      const inRail =
+        e.clientX >= rect.left - 110 && e.clientX <= rect.right + 24 &&
+        e.clientY >= rect.top - 24 && e.clientY <= rect.bottom + 24;
+      if (inRail) return;
+      setTarget(null);
+    };
+
     const onMove = (e: MouseEvent) => {
       pointer.current = { x: e.clientX, y: e.clientY };
-      resolve();
     };
 
-    const onLeave = () => {
-      if (!dragging.current) setTarget(null);
-    };
-
-    // Re-read the rect on scroll so the handle stays attached to its block
+    // Re-read the rect on scroll so the rail stays attached to its block
     // rather than hanging where it was drawn.
     const onViewportChange = () => {
       if (dragging.current) return;
       setTarget((prev) => {
         if (!prev) return null;
-        const dom2 = editor.view.nodeDOM(prev.pos);
-        if (!(dom2 instanceof HTMLElement)) return null;
-        const rect = dom2.getBoundingClientRect();
-        if (prev.rect.top === rect.top && prev.rect.bottom === rect.bottom) {
-          return prev;
-        }
-        return { ...prev, rect };
+        if (!prev.dom.isConnected) return null;
+        return refreshRect(prev.pos, prev.node, prev.dom, null);
       });
     };
 
+    dom.addEventListener("mouseover", onOver);
     dom.addEventListener("mousemove", onMove);
     dom.addEventListener("mouseleave", onLeave);
     window.addEventListener("scroll", onViewportChange, true);
     window.addEventListener("resize", onViewportChange);
 
     return () => {
+      dom.removeEventListener("mouseover", onOver);
       dom.removeEventListener("mousemove", onMove);
       dom.removeEventListener("mouseleave", onLeave);
       window.removeEventListener("scroll", onViewportChange, true);
       window.removeEventListener("resize", onViewportChange);
     };
-  }, [editor, resolve]);
+  }, [editor, menuOpen, resolve, refreshRect]);
 
+  // Highlight the block the rail is attached to. A class rather than a React
+  // prop because the element belongs to ProseMirror, which owns its own DOM.
   useEffect(() => {
-    if (!menuOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMenuOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [menuOpen]);
+    const dom = target?.dom;
+    if (!dom) return;
+    dom.classList.add("editor-block-active");
+    return () => dom.classList.remove("editor-block-active");
+  }, [target]);
 
   if (!editor || !target) return null;
 
@@ -163,58 +214,69 @@ export function EditorDragHandle({ editor }: { editor: Editor | null }) {
   const commands = editor.commands;
 
   const top = target.rect.top + 2;
-  const left = Math.max(8, target.rect.left - 34);
+  // 48px to the left of the block, matching the frontapp's `rect.left - 48`,
+  // which put the `+` and grip just outside the text column.
+  const left = target.rect.left - 48;
 
   function handleDragStart(e: React.DragEvent) {
-    const view = viewRef.current;
-    if (!view) return;
-
+    if (dragging.current) return;
     dragging.current = true;
     setMenuOpen(false);
 
-    // `move: true` removes the original on a successful drop rather than
-    // leaving a duplicate behind.
-    view.dragging = {
-      slice: view.state.doc.slice(pos, pos + node.nodeSize),
-      move: true,
-    };
+    // Both records are needed, and neither is redundant:
+    //
+    // - `view.dragging` is what the dropcursor plugin reads to snap the
+    //   horizontal drop indicator to a real block boundary, and what makes
+    //   ProseMirror pass the slice and the move flag to `handleDrop`.
+    // - `blockDrag.pos` records where the block came from. It is set here
+    //   rather than by dispatching a `NodeSelection`, because a transaction
+    //   dispatched inside `dragstart` re-renders the document mid-gesture and
+    //   the drag never takes hold. See `block-drag.ts`.
+    const view = editorRef.current;
+    blockDrag.current = { pos };
+    if (view) {
+      view.dragging = {
+        slice: view.state.doc.slice(pos, pos + node.nodeSize),
+        move: true,
+      };
+    }
 
     // Firefox refuses to begin a drag unless some payload is set.
     e.dataTransfer.effectAllowed = "copyMove";
     e.dataTransfer.setData("text/plain", node.textContent || "");
+
+    // A drag image, because the default is a snapshot of the grip — a
+    // near-transparent icon that makes the drop read as the *handle* moving
+    // rather than the block. It has to be in the document and non-zero-sized
+    // at the moment `setDragImage` is called, so it is parked just off the
+    // left edge rather than at `-9999px`, which Chrome renders as empty.
+    const preview = document.createElement("div");
+    preview.className =
+      "pointer-events-none fixed left-0 top-0 -translate-x-[200%] max-w-[300px] truncate rounded-lg border bg-popover px-3 py-2 text-sm text-popover-foreground shadow-lg";
+    preview.textContent = node.textContent || "Moving block…";
+    document.body.appendChild(preview);
+    e.dataTransfer.setDragImage(preview, 0, 0);
+    window.setTimeout(() => preview.remove(), 0);
   }
 
   function handleDragEnd() {
     dragging.current = false;
-    setTarget(null);
-    if (viewRef.current) viewRef.current.dragging = null;
-  }
-
-  function duplicate() {
-    const view = viewRef.current;
-    if (!view) return;
-    view.dispatch(view.state.tr.insert(pos + node.nodeSize, node.toJSON()));
-    setMenuOpen(false);
+    blockDrag.current = null;
+    if (editorRef.current) editorRef.current.dragging = null;
     setTarget(null);
   }
 
-  function remove() {
-    const view = viewRef.current;
-    if (!view) return;
-    view.dispatch(
-      view.state.tr.setSelection(NodeSelection.create(view.state.doc, pos)),
-    );
-    // `deleteSelection` runs as a command against the editor's own state,
-    // which is the same document the transaction above just selected into.
-    commands.deleteSelection();
-    setMenuOpen(false);
+  function insertBelow() {
+    const at = pos + node.nodeSize;
+    commands.insertContentAt(at, { type: "paragraph" });
+    commands.focus(at);
     setTarget(null);
   }
 
   return createPortal(
     <>
       <div
-        className="fixed z-50 flex items-center"
+        className="fixed z-50 flex items-center gap-1"
         style={{ top, left }}
         onMouseLeave={() => {
           if (!menuOpen) setTarget(null);
@@ -222,10 +284,20 @@ export function EditorDragHandle({ editor }: { editor: Editor | null }) {
       >
         <button
           type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={insertBelow}
+          aria-label="Insert a block below"
+          title="Add block below"
+          className="flex size-6 items-center justify-center rounded text-sm font-bold text-muted-foreground/60 transition-colors hover:bg-primary/10 hover:text-primary"
+        >
+          +
+        </button>
+
+        <button
+          type="button"
           draggable
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
-          onMouseDown={(e) => e.preventDefault()}
           onClick={(e) => {
             e.stopPropagation();
             e.preventDefault();
@@ -233,48 +305,50 @@ export function EditorDragHandle({ editor }: { editor: Editor | null }) {
           }}
           aria-label="Drag to reorder, or open block menu"
           title="Drag to move"
-          className="flex size-6 cursor-grab items-center justify-center rounded text-muted-foreground/50 transition-colors hover:bg-accent hover:text-foreground active:cursor-grabbing"
+          // No `onMouseDown` preventDefault here, matching the frontapp. The
+          // usual reason to prevent it is to stop a press turning into a text
+          // selection of the surrounding paragraph, but the rail is portalled
+          // to `document.body` — the mousedown never reaches ProseMirror, so
+          // there is no selection to suppress. Firefox, meanwhile, treats
+          // `preventDefault()` on mousedown as a refusal to start a native
+          // drag at all, which is the gesture this button exists for.
+          //
+          // `select-none` is still load-bearing on its own: it stops the press
+          // selecting the button's own label.
+          className="flex size-6 cursor-grab touch-none select-none items-center justify-center rounded text-muted-foreground/60 transition-colors hover:bg-primary/10 hover:text-primary active:cursor-grabbing"
         >
-          <GripVertical size={14} />
+          <GripVertical size={16} />
         </button>
       </div>
 
       {menuOpen ? (
-        <>
-          <button
-            type="button"
-            aria-hidden="true"
-            tabIndex={-1}
-            onClick={() => setMenuOpen(false)}
-            className="fixed inset-0 z-50 cursor-default"
-          />
-          <div
-            role="menu"
-            className="fixed z-50 w-44 rounded-lg border bg-popover p-1 text-popover-foreground shadow-sm"
-            style={{ top: top + 26, left }}
-          >
-            <button
-              type="button"
-              role="menuitem"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={duplicate}
-              className="flex w-full items-center gap-2.5 rounded px-2 py-1.5 text-left text-xs transition-colors hover:bg-accent"
-            >
-              <Copy size={13} className="text-muted-foreground" />
-              Duplicate block
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={remove}
-              className="flex w-full items-center gap-2.5 rounded px-2 py-1.5 text-left text-xs text-destructive transition-colors hover:bg-destructive/10"
-            >
-              <Trash2 size={13} />
-              Delete block
-            </button>
-          </div>
-        </>
+        <BlockMenu
+          top={top + 32}
+          left={left + 24}
+          onDuplicate={() => {
+            commands.setNodeSelection(pos);
+            const json = node.toJSON();
+            commands.insertContentAt(pos + node.nodeSize, json);
+            setMenuOpen(false);
+            setTarget(null);
+          }}
+          onDelete={() => {
+            commands.setNodeSelection(pos);
+            commands.deleteSelection();
+            setMenuOpen(false);
+            setTarget(null);
+          }}
+          onTransform={(value) => {
+            commands.setNodeSelection(pos);
+            if (value === "paragraph") commands.setParagraph();
+            if (value === "heading1") commands.toggleHeading({ level: 1 });
+            if (value === "heading2") commands.toggleHeading({ level: 2 });
+            if (value === "bulletList") commands.toggleBulletList();
+            setMenuOpen(false);
+            setTarget(null);
+          }}
+          onDismiss={() => setMenuOpen(false)}
+        />
       ) : null}
     </>,
     document.body,

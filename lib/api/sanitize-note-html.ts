@@ -63,7 +63,59 @@ const ALLOWED_ATTR = [
   "data-type",
   "data-checked",
   "class",
+  // Filtered down by `sanitizeStyle` in the hook below — `style` is the one
+  // attribute on this list that can carry behaviour, so it is never allowed
+  // through on DOMPurify's say-so alone.
+  "style",
 ];
+
+/**
+ * The only CSS properties a note may carry in a `style` attribute.
+ *
+ * The editor writes exactly three: `color` and `background-color` from the
+ * colour pickers, and `text-align` from the alignment controls. Anything
+ * else is stripped. `position`, `z-index`, `overflow`, and the `url()` family
+ * are the ones that matter — a note body is author-supplied HTML rendered in
+ * every member's session, and an allowed `style` is the classic way to
+ * overlay a fake login form on the page it is rendered in.
+ */
+const ALLOWED_STYLE_PROPERTIES = new Set(["color", "background-color", "text-align"]);
+
+/** `#rgb`, `#rrggbb`, `#rrggbbaa`, `rgb()`, `rgba()`, `hsl()`, `hsla()`, or a keyword. */
+const SAFE_STYLE_VALUE =
+  /^(#[0-9a-f]{3,8}|(rgb|rgba|hsl|hsla)\([0-9a-z%.,\s/]+\)|inherit|transparent|currentcolor|[a-z]{3,20})$/i;
+
+const ALIGNMENTS = new Set(["left", "center", "right", "justify"]);
+
+/**
+ * Rebuilds a `style` attribute from scratch out of allowed properties only.
+ *
+ * Declaration-by-declaration rather than a substring test: a naive
+ * `value.includes("color")` check passes `background-image: url(...)` and
+ * `-moz-binding`, both of which are worse than what we are filtering.
+ */
+function sanitizeStyle(value: string): string {
+  const kept: string[] = [];
+
+  for (const declaration of value.split(";")) {
+    const separator = declaration.indexOf(":");
+    if (separator < 0) continue;
+
+    const property = declaration.slice(0, separator).trim().toLowerCase();
+    const raw = declaration.slice(separator + 1).trim();
+    if (!raw || !ALLOWED_STYLE_PROPERTIES.has(property)) continue;
+
+    if (property === "text-align") {
+      if (!ALIGNMENTS.has(raw.toLowerCase())) continue;
+    } else if (!SAFE_STYLE_VALUE.test(raw)) {
+      continue;
+    }
+
+    kept.push(`${property}: ${raw}`);
+  }
+
+  return kept.join("; ");
+}
 
 /** `data:image/svg+xml` can carry script; other raster types cannot. */
 const SVG_DATA_URI = /^data:image\/svg\+xml/i;
@@ -88,6 +140,14 @@ function installHooks() {
       if (SVG_DATA_URI.test(src)) {
         node.removeAttribute("src");
       }
+    }
+    // Narrow the one attribute on the allowlist that can carry behaviour.
+    // Done here rather than in the config because DOMPurify has no
+    // per-property allowlist for CSS.
+    if (node.hasAttribute("style")) {
+      const safe = sanitizeStyle(node.getAttribute("style") ?? "");
+      if (safe) node.setAttribute("style", safe);
+      else node.removeAttribute("style");
     }
   });
 

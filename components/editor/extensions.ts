@@ -3,60 +3,63 @@ import Placeholder from "@tiptap/extension-placeholder";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
 import Image from "@tiptap/extension-image";
-// `Table` is a named export here, not a default — the other Tiptap packages
-// in this file all use a default export, so it is easy to miss.
 import { Table } from "@tiptap/extension-table";
 import TableRow from "@tiptap/extension-table-row";
 import TableCell from "@tiptap/extension-table-cell";
 import TableHeader from "@tiptap/extension-table-header";
 import TextAlign from "@tiptap/extension-text-align";
+import { TextStyle } from "@tiptap/extension-text-style";
+import Color from "@tiptap/extension-color";
+import Highlight from "@tiptap/extension-highlight";
 
-// Re-added outside StarterKit. See `draggableBlock` below for why.
-import Paragraph from "@tiptap/extension-paragraph";
-import Heading from "@tiptap/extension-heading";
-import Blockquote from "@tiptap/extension-blockquote";
-import BulletList from "@tiptap/extension-bullet-list";
-import OrderedList from "@tiptap/extension-ordered-list";
-import CodeBlock from "@tiptap/extension-code-block";
-import HorizontalRule from "@tiptap/extension-horizontal-rule";
-
-import type { Extensions, Node } from "@tiptap/core";
+import type { Extensions } from "@tiptap/core";
 
 export interface CreateEditorExtensionsOptions {
   placeholder?: string;
 }
 
 /**
- * Marks a block node as natively draggable.
+ * The extension stack behind the note editor.
  *
- * In Tiptap v3 `draggable` is a property of the node *spec*, not a global
- * toggle, so every block type has to opt in individually. It is what makes
- * ProseMirror set `draggable="true"` on the rendered DOM node and populate
- * the drop cursor — without it the grip handle has nothing to grab.
+ * ## Nothing here is `draggable`
  *
- * The seven StarterKit blocks are re-added here rather than configured
- * through `StarterKit.configure({ … })`, because StarterKit calls
- * `Blockquote.configure(this.options.blockquote)` on its own bundled copy.
- * Passing a pre-extended instance would feed an extension object in as a
- * config bag and silently discard the `draggable` override.
+ * A previous pass set `draggable: true` on every block node so ProseMirror
+ * would render `draggable="true"` on the block's DOM element. That backfired
+ * in the most annoying way possible: browsers only start a native HTML5 drag
+ * from a `draggable` element, so *pressing on text and moving the mouse*
+ * reordered the block instead of selecting the text. Every text selection
+ * that started inside a paragraph was hijacked, and because the drag only
+ * needed a few pixels of movement to trigger, selecting a sentence by
+ * dragging across it was impossible.
+ *
+ * The fix is the interaction model Notion and every other block editor uses:
+ * the block is never itself draggable, and the six-dot grip is the single
+ * drag affordance. The grip stays `draggable` and sets `view.dragging` by
+ * hand (`editor-drag-handle.tsx`), which is the field ProseMirror's own drop
+ * handler reads — so the drop lands through the native code path without
+ * the block hijacking pointer gestures.
+ *
+ * The corollary: `Image` is explicitly `draggable: false` because Tiptap's
+ * image node hardcodes `draggable: true` and does not expose it as an
+ * option. Left on, a click-drag on an image reorders its block instead of
+ * selecting it.
+ *
+ * ## Colours
+ *
+ * `TextStyle` is the base mark every colour mark hangs off — it stores the
+ * `style` attribute, and `Color` / `Highlight` set individual properties on
+ * it. All three are required: `Color` alone throws at runtime without a
+ * text-style mark to attach to.
  */
-function draggableBlock<T extends Node>(Extension: T) {
-  return Extension.extend({ draggable: true });
-}
-
 export function createEditorExtensions({
   placeholder = "Start writing…",
 }: CreateEditorExtensionsOptions = {}): Extensions {
   return [
     StarterKit.configure({
-      // Handed off to the `draggableBlock` copies below.
-      paragraph: false,
-      heading: false,
-      blockquote: false,
-      bulletList: false,
-      orderedList: false,
-      codeBlock: false,
-      horizontalRule: false,
+      // Six levels, not the default three. The heading dropdown offers all
+      // six, and a level the schema rejects renders as a paragraph the
+      // moment the document is reloaded.
+      heading: { levels: [1, 2, 3, 4, 5, 6] },
 
       // `target: null` rather than `_blank`: the reader renders in the same
       // tab, and the sanitizer already forces `rel="noopener noreferrer"` on
@@ -66,41 +69,40 @@ export function createEditorExtensions({
         autolink: true,
         HTMLAttributes: { rel: "noopener noreferrer nofollow" },
       },
-      dropcursor: { color: "#4d7fff", width: 3 },
-    }),
 
-    draggableBlock(Paragraph),
-    draggableBlock(Heading).configure({ levels: [1, 2, 3] }),
-    draggableBlock(Blockquote),
-    draggableBlock(BulletList),
-    draggableBlock(OrderedList),
-    draggableBlock(CodeBlock),
-    draggableBlock(HorizontalRule),
+      // The drop indicator for grip-initiated reordering. Thicker and
+      // tinted with the primary accent so it reads as a placement
+      // decision rather than a text selection.
+      dropcursor: { color: "var(--color-primary-500)", width: 4 },
+    }),
 
     Placeholder.configure({ placeholder }),
 
-    // Draggable as a whole block, not item by item: making `taskItem`
-    // draggable would let ProseMirror pull an item out of its parent list and
-    // produce an invalid document. Dragging the list moves the entire list,
-    // which is what the grip resolves to anyway — it snaps to the top-level
-    // block.
-    draggableBlock(TaskList),
+    // ── Colour marks ────────────────────────────────────────────────────
+    // Order matters: `TextStyle` must precede the marks that write into it.
+    TextStyle,
+    Color,
+    // `multicolor` stores the chosen colour in `style="background-color"`,
+    // so a highlight survives the sanitizer and reads identically in the
+    // reader. Without it every highlight is the same yellow.
+    Highlight.configure({ multicolor: true }),
+
+    // ── Blocks outside StarterKit ──────────────────────────────────────
+    // Not draggable: a draggable `taskItem` would let ProseMirror pull one
+    // item out of its parent list and produce an invalid document, and the
+    // grip snaps to the top-level block regardless, so dragging a task
+    // moves the whole list.
+    TaskList,
     TaskItem.configure({ nested: true }),
 
-    // Tiptap's Image hardcodes `draggable: true` in its node spec and does
-    // not expose it as an option, so it has to be overridden with `extend`.
-    // Leaving it on gives the image its own native drag path alongside the
-    // grip, so the same block could be picked up two different ways — and a
-    // click-drag on an image would start a reorder instead of selecting it.
-    // One affordance is easier to reason about.
+    // Tiptap's Image hardcodes `draggable: true`; see the note above.
     Image.extend({ draggable: false }).configure({
       inline: false,
       allowBase64: true,
       HTMLAttributes: { loading: "lazy" },
     }),
 
-    // Tables drag as a unit, for the same reason task lists do.
-    draggableBlock(Table).configure({ resizable: true }),
+    Table.configure({ resizable: true }),
     TableRow,
     TableHeader,
     TableCell,

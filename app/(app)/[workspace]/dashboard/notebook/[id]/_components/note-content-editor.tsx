@@ -1,11 +1,11 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { RichTextEditor } from "@/components/editor";
-import { PenLine } from "@/lib/icons";
+import { X } from "@/lib/icons";
 import type { Note } from "@/lib/api";
 
 import { updateNoteContentAction } from "../../actions";
@@ -28,17 +28,24 @@ import { noteContentHtml } from "./note-header";
  * auto-save would fire a Server Action on every keystroke, and each one
  * revalidates the path and re-renders the whole Server Component tree, racing
  * the user's own typing.
+ *
+ * The editor occupies the same slot as the read view it replaces — see
+ * `note-body.tsx` for why only one of the two is ever mounted.
  */
 export function NoteContentEditor({
   note,
   workspaceDomain,
+  accent,
+  onClose,
 }: {
   note: Note;
   workspaceDomain: string;
+  /** Matches the read view's rule, so the swap does not change the sheet. */
+  accent: string;
+  onClose: () => void;
 }) {
   const saved = noteContentHtml(note.content);
 
-  const [editing, setEditing] = useState(false);
   const [html, setHtml] = useState(saved);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
 
@@ -53,7 +60,7 @@ export function NoteContentEditor({
   // Adopt the server's copy after a successful save. The Server Action
   // revalidates the note path in the same round trip, so `note.content` is
   // already the new HTML by the time this runs — the editor can close and
-  // let the reader above take over.
+  // let the reader take over.
   //
   // Keyed off the action state rather than a click handler: a handler would
   // read a stale `state.status`, since `useActionState` updates after the
@@ -61,16 +68,16 @@ export function NoteContentEditor({
   useEffect(() => {
     if (state.status === "success" && !wasSuccess.current) {
       wasSuccess.current = true;
-      setEditing(false);
+      onClose();
     }
     if (state.status === "error") {
       wasSuccess.current = false;
     }
-  }, [state]);
+  }, [state, onClose]);
 
   function requestClose() {
     if (!dirty) {
-      setEditing(false);
+      onClose();
       return;
     }
     setConfirmDiscard(true);
@@ -78,35 +85,18 @@ export function NoteContentEditor({
 
   function discard() {
     setHtml(saved);
-    setEditing(false);
     setConfirmDiscard(false);
-  }
-
-  if (!editing) {
-    return (
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs text-muted-foreground">
-          {saved ? "Last saved content is shown above." : "This note has no content yet."}
-        </p>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={() => {
-            setHtml(saved);
-            setEditing(true);
-          }}
-        >
-          <PenLine size={14} />
-          Edit content
-        </Button>
-      </div>
-    );
+    onClose();
   }
 
   return (
     <>
-      <form action={formAction} className="space-y-3" noValidate>
+      <form
+        action={formAction}
+        className="space-y-3"
+        style={{ "--nb-accent": accent } as CSSProperties}
+        noValidate
+      >
         <input type="hidden" name="workspace_domain" value={workspaceDomain} />
         <input type="hidden" name="nanoid" value={note.nanoid} />
 
@@ -141,7 +131,8 @@ export function NoteContentEditor({
             onClick={requestClose}
             disabled={pending}
           >
-            Cancel
+            <X size={14} />
+            Close
           </Button>
           {dirty && !pending ? (
             <span className="text-xs text-muted-foreground">Unsaved changes</span>

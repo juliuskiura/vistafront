@@ -763,17 +763,20 @@
 /* ══════════════════════════════════════════════════════════════════════
  * ATELIER — Notebook surface
  *
- * Flat by construction. There is no shadow ladder and no raised-card
- * metaphor: the original pass read as "paper on a desk" and that turned out
- * to be the thing making it feel dated, because depth-via-shadow is the
- * default idiom of every card UI. Hierarchy here comes from three quieter
- * sources — type scale and weight, whitespace, and a single hairline rule —
- * plus one accent colour per note type.
+ * An earlier pass ruled out elevation entirely: no shadow ladder, no
+ * raised-card metaphor, hierarchy from type scale and hairlines alone. The
+ * reasoning was that depth-via-shadow is the default idiom of every card
+ * UI, and that avoiding it would read as more considered.
  *
- * Consequence worth stating: a flat surface has no elevation cue, so
- * separation has to come from the rule and the gap. That is why
- * `--nb-rule` is a real token rather than a border colour, and why the grid
- * leans on `gap` instead of stacking adjacent bordered boxes.
+ * It read the other way. A note is a *document*, and a document with no
+ * surface is a wall of text in a sidebar column — the note body looked
+ * pasted onto the page rather than placed on it. So the document surface
+ * (`.nb-paper` below) is a real one: hairline edge, generous inset, and a
+ * single very soft shadow. The cards on the *grid* stay flat, because a
+ * grid of 24 lifted cards is the thing that would have looked dated.
+ *
+ * The split is deliberate: one document gets a surface, a list of
+ * twenty-four does not.
  *
  * These are opt-in classes scoped by the `nb-` prefix. They are NOT part
  * of the global design system — if another feature ever wants this surface
@@ -828,80 +831,317 @@
   box-shadow: inset 3px 0 0 0 var(--nb-accent, transparent);
 }
 
-/* Reading surface for note bodies.
+/* ══════════════════════════════════════════════════════════════════════
+ * The note document surface
  *
- * This replaces `prose`, which was dead: @tailwindcss/typography is not a
- * dependency, so those classes never resolved and every note rendered as
- * an unstyled wall of raw HTML. Written out longhand instead, so the
- * styles exist whether or not the plugin is ever added. */
+ * `.nb-prose` styles a *rendered* note (sanitized, read-only);
+ * `.nb-editor-content` styles the *live* ProseMirror surface. They are
+ * grouped in one selector list below rather than given a shared class,
+ * because they genuinely need to differ — the editor needs a caret target,
+ * a placeholder, and a selected-node outline, and it must not inherit the
+ * reader's looser rhythm — but everything that describes the *document*
+ * (type scale, colours, list and quote treatment) must be identical, or
+ * a note changes appearance the moment you finish editing it.
+ *
+ * Hierarchy comes from type scale, weight, and tracking — not from size
+ * alone. A six-level scale in one weight reads as a wall; the top three
+ * levels carry the weight and the bottom three step down quietly.
+ * ══════════════════════════════════════════════════════════════════════ */
+
+/* Reading and editing share the document's type scale, but not its density.
+ * The reader is set for reading: 1rem on 1.75. The editor is set for working:
+ * one step smaller and a touch tighter, because a full-window canvas of
+ * 16px/1.75 text is a wall, and the editor is read *and* revised rather than
+ * read once. Matching the two exactly is what made clicking "Edit" change the
+ * page's texture as well as its function. */
 .nb-prose {
-  font-size: 0.9375rem;
+  font-size: 1rem;
   line-height: 1.75;
   color: var(--nb-ink);
 }
-.nb-prose > * + * { margin-top: 1em; }
-.nb-prose h1,
-.nb-prose h2,
-.nb-prose h3 {
-  font-weight: 600;
-  letter-spacing: -0.015em;
+
+.nb-editor-content {
+  font-size: 0.9375rem;
+  line-height: 1.6;
   color: var(--nb-ink);
-  margin-top: 1.6em;
 }
-.nb-prose h1 { font-size: 1.5rem; }
-.nb-prose h2 { font-size: 1.25rem; }
-.nb-prose h3 { font-size: 1.0625rem; }
-.nb-prose a {
+
+/* Block rhythm follows the same split. The reader keeps the airier gap; the
+ * editor tightens so a list or a run of short paragraphs fits on screen. */
+.nb-prose > * + * { margin-top: 1.15em; }
+.nb-editor-content > * + * { margin-top: 0.65em; }
+
+/* ── Headings ────────────────────────────────────────────────────────────
+ * h1–h3 lead, h4–h6 recede. Tracking tightens as the size grows, which is
+ * what keeps a large heading from looking loose next to body copy. */
+.nb-prose h1, .nb-prose h2, .nb-prose h3,
+.nb-prose h4, .nb-prose h5, .nb-prose h6,
+.nb-editor-content h1, .nb-editor-content h2, .nb-editor-content h3,
+.nb-editor-content h4, .nb-editor-content h5, .nb-editor-content h6 {
+  color: var(--nb-ink);
+  font-weight: 650;
+  letter-spacing: -0.021em;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+.nb-prose :is(h1, h2, h3, h4, h5, h6) { margin-top: 1.9em; }
+.nb-editor-content :is(h1, h2, h3, h4, h5, h6) { margin-top: 1.5em; }
+.nb-prose :is(h1, h2, h3, h4, h5, h6):first-child,
+.nb-prose > :first-child,
+.nb-editor-content :is(h1, h2, h3, h4, h5, h6):first-child,
+.nb-editor-content > :first-child { margin-top: 0; }
+
+.nb-prose h1, .nb-editor-content h1 {
+  font-size: 1.875rem;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+}
+.nb-prose h2, .nb-editor-content h2 {
+  font-size: 1.4375rem;
+  letter-spacing: -0.026em;
+}
+.nb-prose h3, .nb-editor-content h3 { font-size: 1.1875rem; }
+.nb-prose h4, .nb-editor-content h4 { font-size: 1.0625rem; }
+.nb-prose h5, .nb-editor-content h5 {
+  font-size: 0.9375rem;
+  color: var(--nb-ink-muted);
+}
+.nb-prose h6, .nb-editor-content h6 {
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--nb-ink-muted);
+}
+
+/* ── Inline marks ───────────────────────────────────────────────────────── */
+.nb-prose strong, .nb-editor-content strong { font-weight: 650; }
+.nb-prose a, .nb-editor-content a {
   color: var(--color-primary-600);
   text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--color-primary-600) 40%, transparent);
   text-underline-offset: 2px;
-  text-decoration-thickness: 1px;
+  text-decoration-thickness: 1.5px;
+  border-radius: 0.15rem;
+  transition: background-color 0.15s ease, text-decoration-color 0.15s ease;
 }
-.nb-prose ul,
-.nb-prose ol { padding-left: 1.4em; }
-.nb-prose ul { list-style: disc; }
-.nb-prose ol { list-style: decimal; }
-.nb-prose li { margin-top: 0.3em; }
-.nb-prose li::marker { color: var(--nb-ink-muted); }
-.nb-prose blockquote {
-  border-left: 2px solid var(--color-primary-300);
-  padding-left: 1em;
-  color: var(--nb-ink-muted);
-  font-style: italic;
+.nb-prose a:hover, .nb-editor-content a:hover {
+  text-decoration-color: var(--color-primary-600);
+  background-color: color-mix(in srgb, var(--color-primary-500) 10%, transparent);
 }
-.nb-prose code {
-  background: var(--color-muted);
-  padding: 0.15em 0.4em;
+
+/* Highlight. `box-decoration-break: clone` keeps the background hugging
+ * each line of a multi-line highlight instead of one rectangle around the
+ * whole run. */
+.nb-prose mark, .nb-editor-content mark {
   border-radius: 0.25rem;
-  font-size: 0.875em;
+  padding: 0.08em 0.15em;
+  margin-inline: -0.05em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  color: inherit;
 }
-.nb-prose pre {
-  background: var(--color-muted);
-  padding: 1em;
-  border-radius: 0.75rem;
+
+.nb-prose code, .nb-editor-content code {
+  background: color-mix(in srgb, var(--color-primary-500) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-primary-500) 14%, transparent);
+  padding: 0.1em 0.35em;
+  border-radius: 0.3rem;
+  font-size: 0.85em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.nb-prose pre, .nb-editor-content pre {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-primary-500) 7%, transparent),
+      color-mix(in srgb, var(--color-primary-500) 3%, transparent)
+    );
+  border: 1px solid var(--nb-rule);
+  padding: 1.1em 1.2em;
+  border-radius: 0.85rem;
   overflow-x: auto;
+  font-size: 0.875rem;
+  line-height: 1.65;
 }
-.nb-prose pre code { background: none; padding: 0; }
-.nb-prose strong { font-weight: 600; }
-.nb-prose hr {
+.nb-prose pre code, .nb-editor-content pre code {
+  background: none;
   border: 0;
-  border-top: 1px solid var(--nb-rule);
-  margin-block: 2em;
+  padding: 0;
+  font-size: inherit;
 }
-.nb-prose table {
+
+/* ── Lists ─────────────────────────────────────────────────────────────── */
+.nb-prose ul, .nb-editor-content ul,
+.nb-prose ol, .nb-editor-content ol { padding-left: 1.45em; }
+.nb-prose ul, .nb-editor-content ul { list-style: disc; }
+.nb-prose ol, .nb-editor-content ol { list-style: decimal; }
+.nb-prose li, .nb-editor-content li { margin-top: 0.3em; }
+.nb-prose li::marker, .nb-editor-content li::marker {
+  color: color-mix(in srgb, var(--color-primary-600) 65%, var(--nb-ink-muted));
+}
+.nb-prose li > ul, .nb-editor-content li > ul,
+.nb-prose li > ol, .nb-editor-content li > ol { margin-top: 0.3em; }
+
+/* ── Quote ─────────────────────────────────────────────────────────────── */
+.nb-prose blockquote, .nb-editor-content blockquote {
+  border-left: 3px solid var(--color-primary-500);
+  padding: 0.15em 0 0.15em 1.1em;
+  color: var(--nb-ink-muted);
+  font-style: normal;
+}
+.nb-prose blockquote p:first-child, .nb-editor-content blockquote p:first-child { margin-top: 0; }
+
+/* ── Rule ────────────────────────────────────────────────────────────────
+ * A gradient that fades at both ends, so a divider reads as a break in the
+ * page rather than a drawn line. */
+.nb-prose hr, .nb-editor-content hr {
+  border: 0;
+  height: 1px;
+  margin-block: 2.2em;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--nb-rule-strong) 18%,
+    var(--nb-rule-strong) 82%,
+    transparent
+  );
+}
+
+/* ── Media ─────────────────────────────────────────────────────────────── */
+.nb-prose img, .nb-editor-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.75rem;
+  border: 1px solid var(--nb-rule);
+}
+.nb-editor-content img.ProseMirror-selectednode {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+/* ── Tables ────────────────────────────────────────────────────────────── */
+.nb-prose table, .nb-editor-content table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.875rem;
+  font-size: 0.9rem;
+  table-layout: fixed;
 }
-.nb-prose th {
+.nb-prose th, .nb-editor-content th,
+.nb-prose td, .nb-editor-content td {
+  border: 1px solid var(--nb-rule);
+  padding: 0.55em 0.75em;
+  vertical-align: top;
   text-align: left;
-  font-weight: 600;
-  border-bottom: 1px solid var(--nb-rule);
-  padding: 0.5em 0.75em;
 }
-.nb-prose td {
-  border-bottom: 1px solid var(--nb-rule);
-  padding: 0.5em 0.75em;
+.nb-prose th, .nb-editor-content th {
+  background: color-mix(in srgb, var(--color-primary-500) 7%, transparent);
+  font-weight: 650;
+}
+.nb-editor-content th,
+.nb-editor-content td { position: relative; min-width: 3em; }
+.nb-prose tbody tr:nth-child(even) td,
+.nb-editor-content tbody tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--nb-rule) 22%, transparent);
+}
+
+/* ── Selection ─────────────────────────────────────────────────────────── */
+.nb-prose ::selection,
+.nb-editor-content ::selection {
+  background: color-mix(in srgb, var(--color-primary-500) 26%, transparent);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+ * The glass page
+ *
+ * The note page carries the editor's surface treatment itself: the same
+ * primary-tinted wash fading out over the top of the page, extended to the
+ * full content area rather than drawn on a card. The editor and the reader
+ * then sit on that wash as sheets rather than being the only place the
+ * treatment appears.
+ *
+ * The wash lives on a `position: fixed` pseudo-element, not on the page
+ * element itself. Painted on the element it would scroll away, leaving the
+ * bottom half of a long note on a flat background — a hard edge where the
+ * gradient ran out, halfway down a document. Fixed, it stays anchored to the
+ * viewport for the whole read.
+ *
+ * `z-index: -1` puts it behind the page's own content but still inside the
+ * scrolling `<main>`, so it covers the content area only and does not wash
+ * over the app shell or the sidebar.
+ *
+ * No border and no shadow: the page *is* the surface, so there is nothing
+ * behind it to separate from. An outline here would be a frame drawn around
+ * the window.
+ * ══════════════════════════════════════════════════════════════════════ */
+.nb-page-glass {
+  position: relative;
+  isolation: isolate;
+}
+.nb-page-glass::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-primary-500) 5%, transparent),
+      transparent 20rem
+    ),
+    radial-gradient(
+      120% 60% at 50% -10%,
+      color-mix(in srgb, var(--color-primary-500) 7%, transparent),
+      transparent 70%
+    );
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+ * Editor chrome
+ * ══════════════════════════════════════════════════════════════════════ */
+
+/* The editing surface as a sheet of paper rather than a bare text column.
+ * A near-mirror of `.nb-paper` below — the editor replaces the reader in the
+ * same slot, and a note that visibly changed surface on click-to-edit reads
+ * as a different page. Only the top gradient is extra.
+ *
+ * No edge at all, and no focus ring. A sheet this wide is a page, and any
+ * outline around it — a hairline, a ring, or a focus halo — reads as a frame
+ * drawn around the window rather than as the edge of a document. The soft,
+ * widely-spread shadow does the separating instead: enough to lift the
+ * surface off the background, not enough to read as a floating panel.
+ *
+ * Focus deliberately changes nothing. The caret is already the clearest
+ * possible focus indicator, and it is inside the surface rather than around
+ * it. */
+.nb-editor-shell {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-primary-500) 4%, transparent), transparent 14rem);
+  border: 0;
+  border-radius: 1.375rem;
+  box-shadow: 0 12px 40px -18px color-mix(in srgb, var(--nb-ink) 22%, transparent);
+  overflow: hidden;
+}
+/* Toolbar strip: a soft separator plus a tint, so it reads as chrome rather
+ * than as the first line of the document. The divider is a low-alpha ink wash
+ * rather than `--nb-rule`, so it stays a hint at a seam rather than a line
+ * drawn across the sheet. It is a seam *inside* the editor, which is the one
+ * place a rule belongs now that the editor has no outer edge of its own. */
+.nb-editor-shell > div:first-child {
+  background: color-mix(in srgb, var(--nb-rule) 26%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--nb-ink) 7%, transparent);
+}
+/* Same inset accent rule as `.nb-paper`, for the same reason. */
+.nb-editor-shell::before {
+  content: "";
+  position: absolute;
+  inset-block: 2rem;
+  left: 1.5rem;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--nb-accent, transparent);
+  opacity: 0.75;
+  pointer-events: none;
 }
 
 /* Monospace editing surface — the content field is HTML, so an editor
@@ -912,92 +1152,26 @@
   line-height: 1.7;
 }
 
-/* ──────────────────────────────────────────────────────────────────────
- * Editor content — the ProseMirror surface.
- *
- * `.nb-prose` above styles *rendered* notes (sanitized, read-only). This
- * styles the *live* editing surface, which needs a few things the read view
- * does not: a visible caret target, placeholder text, a selected-node
- * outline, and a reset of ProseMirror's own default margins.
- *
- * Deliberately NOT styled with `.nb-prose` — sharing the class would pull in
- * the read view's spacing rhythm and make the editing surface drift from what
- * the reader sees after save.
- * ────────────────────────────────────────────────────────────────────── */
-.nb-editor-content {
-  font-size: 0.9375rem;
-  line-height: 1.75;
-  color: var(--nb-ink);
-  min-height: 8rem;
-  outline: none;
+.nb-editor-content { min-height: 12rem; outline: none; }
+.nb-editor-content:focus { outline: none; }
+
+/* Block highlight shown while the drag rail is attached to a block, ported
+ * from the frontapp's `.ProseMirror .editor-block-active`. The wash bleeds
+ * 0.75rem past the block on each side so a full-width table or code block
+ * reads as highlighted rather than as a stripe across the middle. */
+.nb-editor-content .editor-block-active {
+  position: relative;
 }
-.nb-editor-content > * + * { margin-top: 0.75em; }
-.nb-editor-content h1,
-.nb-editor-content h2,
-.nb-editor-content h3 {
-  font-weight: 600;
-  letter-spacing: -0.015em;
-  line-height: 1.3;
-}
-.nb-editor-content h1 { font-size: 1.5rem; }
-.nb-editor-content h2 { font-size: 1.25rem; }
-.nb-editor-content h3 { font-size: 1.0625rem; }
-.nb-editor-content ul,
-.nb-editor-content ol { padding-left: 1.4em; }
-.nb-editor-content ul { list-style: disc; }
-.nb-editor-content ol { list-style: decimal; }
-.nb-editor-content ul[data-type="taskList"] {
-  list-style: none;
-  padding-left: 0.25em;
-}
-.nb-editor-content ul[data-type="taskList"] li {
-  display: flex;
-  gap: 0.5em;
-  align-items: flex-start;
-}
-.nb-editor-content ul[data-type="taskList"] li > label {
-  margin-top: 0.3em;
-  user-select: none;
-}
-.nb-editor-content ul[data-type="taskList"] li > div { flex: 1; }
-.nb-editor-content blockquote {
-  border-left: 2px solid var(--color-primary-300);
-  padding-left: 1em;
-  color: var(--nb-ink-muted);
-  font-style: italic;
-}
-.nb-editor-content a {
-  color: var(--color-primary-600);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  cursor: pointer;
-}
-.nb-editor-content code {
-  background: var(--color-muted);
-  padding: 0.15em 0.4em;
-  border-radius: 0.25rem;
-  font-size: 0.875em;
-}
-.nb-editor-content pre {
-  background: var(--color-muted);
-  padding: 1em;
-  border-radius: 0.75rem;
-  overflow-x: auto;
-}
-.nb-editor-content pre code { background: none; padding: 0; }
-.nb-editor-content hr {
-  border: 0;
-  border-top: 1px solid var(--nb-rule);
-  margin-block: 1.5em;
-}
-.nb-editor-content img {
-  max-width: 100%;
-  height: auto;
-  border-radius: 0.5rem;
-}
-.nb-editor-content img.ProseMirror-selectednode {
-  outline: 2px solid var(--color-primary-500);
-  outline-offset: 2px;
+.nb-editor-content .editor-block-active::before {
+  content: "";
+  position: absolute;
+  left: -0.75rem;
+  right: -0.75rem;
+  top: -0.15rem;
+  bottom: -0.15rem;
+  background: color-mix(in srgb, var(--color-primary-500) 8%, transparent);
+  border-radius: 0.4rem;
+  pointer-events: none;
 }
 
 /* Tiptap's placeholder extension renders a data attribute on the first empty
@@ -1008,30 +1182,39 @@
   height: 0;
   pointer-events: none;
   color: var(--nb-ink-muted);
-  opacity: 0.6;
+  opacity: 0.55;
+  font-style: italic;
 }
 
-/* Tables get a real grid rather than ProseMirror's default borderless
- * cells, so column structure is visible while editing. */
-.nb-editor-content table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.875rem;
-  table-layout: fixed;
+/* ── Task lists ────────────────────────────────────────────────────────── */
+.nb-editor-content ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0.1em;
 }
-.nb-editor-content th,
-.nb-editor-content td {
-  border: 1px solid var(--nb-rule);
-  padding: 0.4em 0.6em;
-  vertical-align: top;
-  position: relative;
-  min-width: 3em;
+.nb-editor-content ul[data-type="taskList"] li {
+  display: flex;
+  gap: 0.6em;
+  align-items: flex-start;
 }
-.nb-editor-content th {
-  background: color-mix(in srgb, var(--color-muted) 60%, transparent);
-  font-weight: 600;
-  text-align: left;
+.nb-editor-content ul[data-type="taskList"] li > label {
+  margin-top: 0.42em;
+  user-select: none;
+  display: flex;
 }
+.nb-editor-content ul[data-type="taskList"] li > label input {
+  accent-color: var(--color-primary-600);
+  width: 0.95em;
+  height: 0.95em;
+  cursor: pointer;
+}
+.nb-editor-content ul[data-type="taskList"] li > div { flex: 1; }
+.nb-editor-content ul[data-type="taskList"] li[data-checked="true"] > div {
+  color: var(--nb-ink-muted);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--nb-ink-muted) 50%, transparent);
+}
+
+/* ── Table cell selection and resizing ─────────────────────────────────── */
 .nb-editor-content .selectedCell::after {
   content: "";
   position: absolute;
@@ -1048,6 +1231,85 @@
   background: var(--color-primary-500);
   pointer-events: none;
 }
+.nb-editor-content .resize-cursor { cursor: col-resize; }
+
+/* Checkerboard behind the custom-highlight input: the universal
+ * "this swatch has no colour of its own" signal. */
+.nb-checkerboard {
+  background-image:
+    linear-gradient(45deg, var(--color-muted) 25%, transparent 25%, transparent 75%, var(--color-muted) 75%),
+    linear-gradient(45deg, var(--color-muted) 25%, transparent 25%, transparent 75%, var(--color-muted) 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 4px 4px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+ * The document surface
+ *
+ * The read view's counterpart to `.nb-editor-shell`, and it swaps with it in
+ * the same slot — so both flatten identically inside a glass page. Left
+ * standalone, the read view keeps the frontapp's note-card ring
+ * (`ring-1 ring-foreground/10`) plus a wide soft shadow, and a deep inset so
+ * the prose never sits near the edge.
+ * ══════════════════════════════════════════════════════════════════════ */
+.nb-paper {
+  position: relative;
+  background-color: var(--background);
+  border: 0;
+  border-radius: 1.375rem;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--nb-ink) 7%, transparent),
+    0 12px 40px -18px color-mix(in srgb, var(--nb-ink) 22%, transparent);
+  padding: 3rem 3.5rem 3.5rem;
+}
+/* A hairline of the note's accent down the leading edge: the one place
+ * the type colour touches the document itself. Inset from the edge so it
+ * reads as a marker on the sheet rather than a bar framing the window. */
+.nb-paper::before {
+  content: "";
+  position: absolute;
+  inset-block: 2rem;
+  left: 1.5rem;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--nb-accent, transparent);
+  opacity: 0.75;
+}
+
+@media (max-width: 640px) {
+  .nb-paper { padding: 1.75rem 1.25rem 2rem; }
+  .nb-paper::before { left: 0.6rem; inset-block: 1.25rem; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+ * Quick snippet tools
+ *
+ * The floating bar that follows a text selection. It has to read as
+ * *above* the text it acts on, so it is the one place in the note surface
+ * that gets a real shadow and a backdrop tint.
+ * ══════════════════════════════════════════════════════════════════════ */
+.nb-bubble {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  border-radius: 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--nb-ink) 10%, transparent);
+  background: color-mix(in srgb, var(--popover, var(--background)) 92%, transparent);
+  backdrop-filter: blur(12px) saturate(1.6);
+  padding: 0.25rem;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--background) 60%, transparent),
+    0 2px 4px color-mix(in srgb, var(--nb-ink) 8%, transparent),
+    0 12px 28px -12px color-mix(in srgb, var(--nb-ink) 35%, transparent);
+  color: var(--popover-foreground, inherit);
+}
+/* The colour swatch inside a trigger is a 2px rule under the glyph; it
+ * needs the tint behind it or it disappears on a dark surface. */
+.nb-bubble [aria-label="Text colour"] > span > span:last-child,
+.nb-bubble [aria-label="Highlight colour"] > span > span:last-child {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--nb-ink) 12%, transparent);
+}
+
 
 /* Staggered entrance for the grid. Kept under 400ms total so a page of
  * 24 cards reads as one gesture rather than 24 competing animations. */
@@ -1061,7 +1323,9 @@
   .nb-card,
   .nb-card:hover,
   .nb-accent,
-  .nb-accent:hover {
+  .nb-accent:hover,
+  .nb-prose a,
+  .nb-prose a:hover {
     transition: none;
   }
   .nb-rise { animation: none; }
