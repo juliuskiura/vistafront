@@ -120,7 +120,14 @@ export function NoteContentEditor({
           </p>
         ) : null}
 
-        <div className="flex items-center gap-2">
+        {/*
+          `nb-inset-x` puts the actions on the note's shared left edge, so
+          they line up with the title above and the editor's toolbar and
+          footer. The row sits outside `.nb-editor-shell` — it is the form's
+          chrome, not the editor's — so it would otherwise start hard against
+          the sheet with nothing tying it to the block above.
+        */}
+        <div className="nb-inset-x flex items-center gap-2 pb-1 pt-4">
           <Button type="submit" size="sm" disabled={pending}>
             {pending ? "Saving…" : "Save content"}
           </Button>

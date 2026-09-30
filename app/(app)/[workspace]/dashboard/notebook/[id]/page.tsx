@@ -10,10 +10,7 @@ import {
 import { requireWorkspace } from "@/lib/auth/server";
 import { requireFeature } from "@/lib/features/guard";
 
-import { NoteAttachments, NoteRelations } from "./_components/note-attachments";
-import { NoteBody } from "./_components/note-body";
-import { NoteHeader } from "./_components/note-header";
-import { NoteMetaPanel } from "./_components/note-meta-panel";
+import { NoteDetail } from "./_components/note-detail";
 
 /**
  * Note detail (Server Component).
@@ -73,27 +70,21 @@ export default async function NoteDetailPage({
   const type = noteTypes.find((t) => String(t.key) === String(note.note_type)) ?? null;
 
   return (
-    <div className="nb-page-glass flex min-h-full w-full flex-col gap-7 px-5 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-10">
-      <NoteHeader note={note} type={type} workspaceDomain={active.domain} />
-
-      <NoteBody note={note} type={type} workspaceDomain={active.domain} />
-
+    <div className="nb-page-glass min-h-full w-full px-4 py-5 sm:px-6 sm:py-7 lg:px-8">
       {/*
-        Metadata and files, stacked under the body now that the rail is gone.
-        The definition list stays in a measured column: it is a list of short
-        values, and stretched across a wide window the labels drift too far
-        from the values they describe.
+        One surface for the whole note. The radius, the shadow and the clip
+        live here rather than on the editor, so the title and the body read as
+        a single object — the editor used to carry the surface alone, which
+        boxed the prose and left the title floating on the page above it.
       */}
-      <div className="max-w-3xl space-y-6 border-t border-[var(--nb-rule)] pt-6">
-        <NoteMetaPanel
+      <article className="nb-sheet mx-auto w-full max-w-6xl">
+        <NoteDetail
           note={note}
-          noteTypes={noteTypes}
+          type={type}
+          attachments={attachments}
           workspaceDomain={active.domain}
         />
-
-        <NoteAttachments attachments={attachments} />
-        <NoteRelations relations={note.relations} />
-      </div>
+      </article>
     </div>
   );
 }

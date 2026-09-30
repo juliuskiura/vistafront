@@ -4,21 +4,14 @@ import Link from "next/link";
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
-  BarChart3,
-  CalendarDays,
   CheckCircle2,
   Clock,
-  ListOrdered,
-  PenLine,
-  Send,
-  Sparkles,
-  Upload,
-  Users,
-  Wifi,
-  MessageCircle,
   Heart,
-  type LucideIcon,
-} from "lucide-react";
+  MessageCircle,
+  PenLine,
+  Sparkles,
+  Wifi,
+} from "@/lib/icons";
 
 import type {
   ManagedChannel,
@@ -43,15 +36,6 @@ const STATUS_STYLES: Record<string, string> = {
   failed: "text-red-700 bg-red-50 border-red-200",
   canceled: "text-slate-600 bg-slate-50 border-slate-200",
 };
-
-const QUICK_ACTIONS: { label: string; description: string; icon: LucideIcon; href: string; color: string; bg: string }[] = [
-  { label: "Compose", description: "Create and schedule posts", icon: PenLine, href: "compose", color: "text-primary-600", bg: "bg-primary-50" },
-  { label: "Calendar", description: "Drag-and-drop scheduling", icon: CalendarDays, href: "calendar", color: "text-violet-600", bg: "bg-violet-50" },
-  { label: "Queues", description: "Repeating post schedules", icon: ListOrdered, href: "queues", color: "text-emerald-600", bg: "bg-emerald-50" },
-  { label: "Bulk Upload", description: "Import posts from CSV", icon: Upload, href: "bulk-upload", color: "text-amber-600", bg: "bg-amber-50" },
-  { label: "Analytics", description: "Per-platform insights", icon: BarChart3, href: "analytics", color: "text-rose-600", bg: "bg-rose-50" },
-  { label: "Connected Channels", description: "Connect social channels", icon: Users, href: "channels", color: "text-sky-600", bg: "bg-sky-50" },
-];
 
 /* ──────────────────────────────────────────────────────────────────────
  * Helpers
@@ -413,35 +397,6 @@ export function SocialHomePageClient({
             ))}
           </div>
         )}
-      </div>
-
-      {/* ── Quick actions ── */}
-      <div>
-        <h3 className="mb-3 text-sm font-semibold text-neutral-900">Quick Actions</h3>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {QUICK_ACTIONS.map((action) => (
-            <Link
-              key={action.label}
-              href={`${basePath}/${action.href}`}
-              className="rounded-xl border bg-card p-4 text-card-foreground transition-all hover:-translate-y-0.5 hover:shadow-md"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`flex size-10 items-center justify-center rounded-xl ${action.bg} ${action.color}`}>
-                    <action.icon className="size-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-semibold text-neutral-900">{action.label}</h4>
-                    <p className="text-xs text-muted-foreground">{action.description}</p>
-                  </div>
-                </div>
-                <svg className="size-4 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
-              </div>
-            </Link>
-          ))}
-        </div>
       </div>
 
       {/* ── Upcoming + Connected channels ── */}

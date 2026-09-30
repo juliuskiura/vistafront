@@ -6,6 +6,7 @@ import type { Editor } from "@tiptap/react";
 import type { Node as PMNode } from "@tiptap/pm/model";
 
 import { GripVertical } from "@/lib/icons";
+import { cn } from "@/lib/utils";
 
 import { blockDrag } from "../block-drag";
 import { BlockMenu } from "./editor-block-menu";
@@ -214,9 +215,19 @@ export function EditorDragHandle({ editor }: { editor: Editor | null }) {
   const commands = editor.commands;
 
   const top = target.rect.top + 2;
+
   // 48px to the left of the block, matching the frontapp's `rect.left - 48`,
   // which put the `+` and grip just outside the text column.
-  const left = target.rect.left - 48;
+  //
+  // Clamped to the viewport on a phone. The content area's inset is 8px
+  // there — deliberately, it is the frontapp's — so the ideal position is
+  // roughly 24px off the left edge and half the rail is unreachable. When the
+  // clamp bites, the buttons are given a solid surface so they stay legible
+  // where they land, on top of the first few characters rather than beside
+  // them.
+  const ideal = target.rect.left - 48;
+  const left = Math.max(4, ideal);
+  const cramped = ideal < left;
 
   function handleDragStart(e: React.DragEvent) {
     if (dragging.current) return;
@@ -276,7 +287,14 @@ export function EditorDragHandle({ editor }: { editor: Editor | null }) {
   return createPortal(
     <>
       <div
-        className="fixed z-50 flex items-center gap-1"
+        className={cn(
+          "fixed z-50 flex items-center gap-1",
+          // Only when the clamp bites: a solid pill so the rail stays readable
+          // over the text it now covers, and rounded to match. On a wide
+          // window the rail sits in clear space and needs no surface.
+          cramped &&
+            "rounded-full border bg-popover/95 p-0.5 shadow-sm backdrop-blur-sm",
+        )}
         style={{ top, left }}
         onMouseLeave={() => {
           if (!menuOpen) setTarget(null);
@@ -288,7 +306,7 @@ export function EditorDragHandle({ editor }: { editor: Editor | null }) {
           onClick={insertBelow}
           aria-label="Insert a block below"
           title="Add block below"
-          className="flex size-6 items-center justify-center rounded text-sm font-bold text-muted-foreground/60 transition-colors hover:bg-primary/10 hover:text-primary"
+          className="flex size-6 items-center justify-center rounded text-sm font-bold text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
         >
           +
         </button>
@@ -315,7 +333,7 @@ export function EditorDragHandle({ editor }: { editor: Editor | null }) {
           //
           // `select-none` is still load-bearing on its own: it stops the press
           // selecting the button's own label.
-          className="flex size-6 cursor-grab touch-none select-none items-center justify-center rounded text-muted-foreground/60 transition-colors hover:bg-primary/10 hover:text-primary active:cursor-grabbing"
+          className="flex size-6 cursor-grab touch-none select-none items-center justify-center rounded text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary active:cursor-grabbing"
         >
           <GripVertical size={16} />
         </button>
@@ -324,7 +342,7 @@ export function EditorDragHandle({ editor }: { editor: Editor | null }) {
       {menuOpen ? (
         <BlockMenu
           top={top + 32}
-          left={left + 24}
+          left={Math.min(left + 24, window.innerWidth - 224)}
           onDuplicate={() => {
             commands.setNodeSelection(pos);
             const json = node.toJSON();

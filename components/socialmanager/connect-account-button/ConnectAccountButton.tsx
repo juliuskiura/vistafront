@@ -69,7 +69,7 @@ export function ConnectAccountButton({
       className={cn(
         // `rounded-2xl` and the `px/py` pair override VSButton's pill radius and
         // its size-variant padding — tailwind-merge drops the losing classes.
-        "group flex-col gap-3.5 rounded-2xl px-6 py-1 text-base",
+        "group flex-col gap-0 rounded-2xl px-6 py-1 text-base",
         // `threeD` ships a dark `text-shadow` sized for light-on-dark. On a
         // white surface it reads as smudged text, so it is cleared here and the
         // bevel is left to do the work instead.

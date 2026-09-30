@@ -301,10 +301,17 @@ export function RichTextEditor({
         className,
       )}
     >
+      {/*
+        `nb-inset-x` rather than the toolbar's own tight padding: inside a
+        `.nb-sheet` it lines the toolbar's buttons up with the title above and
+        the footer below, so the three bands share one left edge. Outside a
+        sheet it falls back to a hair of padding, which is all a standalone
+        editor — the note composer — needs.
+      */}
       {editor ? (
         <EditorToolbar
           editor={editor}
-          className="border-b px-1.5 py-1"
+          className="nb-inset-x border-b py-1"
         />
       ) : null}
 
@@ -325,7 +332,7 @@ export function RichTextEditor({
       </div>
 
       {showFooter ? (
-        <div className="flex items-center gap-3 border-t border-[color-mix(in_srgb,var(--nb-ink)_7%,transparent)] px-3.5 py-2 text-[11px] text-muted-foreground">
+        <div className="nb-inset-x flex items-center gap-3 border-t border-[color-mix(in_srgb,var(--nb-ink)_7%,transparent)] py-2 text-[11px] text-muted-foreground">
           <span>{counts.words} words</span>
           <span aria-hidden="true" className="opacity-40">
             |

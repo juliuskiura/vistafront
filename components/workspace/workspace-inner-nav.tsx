@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import type { LucideIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { InnerNavItemLink } from "./inner-nav-item-link";
 
 export interface InnerNavItem {
   label: string;
@@ -12,12 +14,27 @@ export interface InnerNavItem {
   icon: LucideIcon;
   /** Exact-match basePath (used for the section home item). */
   end?: boolean;
+  /**
+   * Supporting line under the label in menus. Omit it and the row stays one
+   * line tall, so a menu can mix plain navigation with described actions.
+   */
+  description?: string;
+  /** Tinted badge behind the icon in menus. Supplied with `iconColor`. */
+  iconBg?: string;
+  /** Accent for the icon inside that badge. Supplied with `iconBg`. */
+  iconColor?: string;
 }
 
 export interface InnerNavGroup {
   label: string;
   icon: LucideIcon;
   items: InnerNavItem[];
+  /**
+   * Paint the trigger as a primary action rather than a nav section. Used for
+   * menus that hold shortcuts ("Quick Actions") instead of sub-pages, so the
+   * header says which one is a shortcut before it is opened.
+   */
+  accent?: boolean;
 }
 
 interface WorkspaceInnerNavProps {
@@ -63,10 +80,14 @@ export function WorkspaceInnerNav({
   const activeGroup = groupItems.find((g) => g.items.some(itemActive));
   const activeItem = flatItems.find(itemActive);
 
+  // A flat item is a primary section, so it wins the mobile trigger's label: a
+  // section whose name also appears in a shortcut menu (Social Manager's
+  // "Calendar") should still read as "Calendar" in the collapsed control, not
+  // as the name of the menu that happens to contain it.
   const mobileTriggerLabel =
-    activeGroup?.label ?? activeItem?.label ?? brandLabel;
+    activeItem?.label ?? activeGroup?.label ?? brandLabel;
   const MobileTriggerIcon =
-    (activeGroup ? activeGroup.icon : undefined) ?? activeItem?.icon ?? BrandIcon;
+    activeItem?.icon ?? (activeGroup ? activeGroup.icon : undefined) ?? BrandIcon;
 
   const anyOpen = mobileOpen || openGroup !== null;
 
@@ -115,6 +136,10 @@ export function WorkspaceInnerNav({
           {groupItems.map((group) => {
             const isOpen = openGroup === group.label;
             const groupActive = group.items.some(itemActive);
+            // Described items make the menu wider than its trigger, so it hangs
+            // off the trigger's right edge instead of stretching to match it.
+            // Plain sub-sections keep the original stretch-to-trigger width.
+            const described = group.items.some((item) => item.description);
             return (
               <div key={group.label} className="relative shrink-0">
                 <button
@@ -124,16 +149,23 @@ export function WorkspaceInnerNav({
                   }
                   aria-haspopup="true"
                   aria-expanded={isOpen}
-                  className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                    groupActive
-                      ? "bg-primary-50 text-primary-700 dark:bg-primary-950/60 dark:text-primary-300"
-                      : "text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
-                  }`}
+                  className={cn(
+                    "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                    group.accent
+                      ? "bg-primary-600 text-white shadow-sm hover:bg-primary-500"
+                      : groupActive
+                        ? "bg-primary-50 text-primary-700 dark:bg-primary-950/60 dark:text-primary-300"
+                        : "text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800",
+                  )}
                 >
                   <group.icon className="h-4 w-4 shrink-0" />
                   <span className="whitespace-nowrap">{group.label}</span>
                   <svg
-                    className={`h-3.5 w-3.5 shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                    className={cn(
+                      "h-3.5 w-3.5 shrink-0 transition-transform",
+                      isOpen && "rotate-180",
+                      group.accent && "text-white/80",
+                    )}
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -143,25 +175,21 @@ export function WorkspaceInnerNav({
                   </svg>
                 </button>
                 {isOpen && (
-                  <div className="absolute left-0 right-0 z-30 mt-1 min-w-[12rem] rounded-xl border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-800 dark:bg-slate-900">
-                    {group.items.map((item) => {
-                      const active = itemActive(item);
-                      return (
-                        <Link
-                          key={item.href || item.label}
-                          href={itemHref(item)}
-                          onClick={() => setOpenGroup(null)}
-                          className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors ${
-                            active
-                              ? "bg-primary-50 text-primary-700 dark:bg-primary-950/60 dark:text-primary-300"
-                              : "text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
-                          }`}
-                        >
-                          <item.icon className="h-4 w-4 shrink-0" />
-                          <span className="flex-1">{item.label}</span>
-                        </Link>
-                      );
-                    })}
+                  <div
+                    className={cn(
+                      "absolute z-30 mt-1 rounded-xl border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-800 dark:bg-slate-900",
+                      described ? "right-0 min-w-[16rem]" : "left-0 right-0 min-w-[12rem]",
+                    )}
+                  >
+                    {group.items.map((item) => (
+                      <InnerNavItemLink
+                        key={item.href || item.label}
+                        item={item}
+                        href={itemHref(item)}
+                        active={itemActive(item)}
+                        onNavigate={() => setOpenGroup(null)}
+                      />
+                    ))}
                   </div>
                 )}
               </div>
@@ -194,24 +222,15 @@ export function WorkspaceInnerNav({
 
           {mobileOpen && (
             <div className="absolute left-0 right-0 z-30 mt-1 max-h-[70vh] overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-800 dark:bg-slate-900">
-              {flatItems.map((item) => {
-                const active = itemActive(item);
-                return (
-                  <Link
-                    key={item.href || item.label}
-                    href={itemHref(item)}
-                    onClick={() => setMobileOpen(false)}
-                    className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors ${
-                      active
-                        ? "bg-primary-50 text-primary-700 dark:bg-primary-950/60 dark:text-primary-300"
-                        : "text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
-                    }`}
-                  >
-                    <item.icon className="h-4 w-4 shrink-0" />
-                    <span className="flex-1">{item.label}</span>
-                  </Link>
-                );
-              })}
+              {flatItems.map((item) => (
+                <InnerNavItemLink
+                  key={item.href || item.label}
+                  item={item}
+                  href={itemHref(item)}
+                  active={itemActive(item)}
+                  onNavigate={() => setMobileOpen(false)}
+                />
+              ))}
               {groupItems.map((group) => {
                 if (group.items.length === 0) return null;
                 return (
@@ -219,24 +238,15 @@ export function WorkspaceInnerNav({
                     <p className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                       {group.label}
                     </p>
-                    {group.items.map((item) => {
-                      const active = itemActive(item);
-                      return (
-                        <Link
-                          key={item.href || item.label}
-                          href={itemHref(item)}
-                          onClick={() => setMobileOpen(false)}
-                          className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors ${
-                            active
-                              ? "bg-primary-50 text-primary-700 dark:bg-primary-950/60 dark:text-primary-300"
-                              : "text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
-                          }`}
-                        >
-                          <item.icon className="h-4 w-4 shrink-0" />
-                          <span className="flex-1">{item.label}</span>
-                        </Link>
-                      );
-                    })}
+                    {group.items.map((item) => (
+                      <InnerNavItemLink
+                        key={item.href || item.label}
+                        item={item}
+                        href={itemHref(item)}
+                        active={itemActive(item)}
+                        onNavigate={() => setMobileOpen(false)}
+                      />
+                    ))}
                   </div>
                 );
               })}

@@ -118,6 +118,7 @@ import {
   Wallet,
   Wifi,
   WrapText,
+  Wrench,
   X,
   XCircle,
   Zap,
@@ -241,6 +242,7 @@ export {
   Wifi,
   WrapText,
   X,
+  Wrench,
   XCircle,
   Zap,
 };

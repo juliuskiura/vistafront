@@ -3,15 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  BarChart3,
   CalendarDays,
   LayoutDashboard,
-  ListOrdered,
   MessageSquare,
   PenLine,
-  Send,
   Share2,
-  Upload,
+  Zap,
 } from "@/lib/icons";
 import {
   WorkspaceInnerNav,
@@ -22,6 +19,7 @@ import { Banner, type BannerAction } from "@/components/banner";
 import { ConnectAccountButton } from "@/components/socialmanager/connect-account-button";
 import { useConnectAccount } from "@/lib/context";
 import type { SocialMediaPlatform } from "@/lib/api/types";
+import { QUICK_ACTIONS } from "./quick-actions";
 
 /* ──────────────────────────────────────────────────────────────────────
  * Social Manager Layout
@@ -40,16 +38,11 @@ const NAV_ITEMS: InnerNavItem[] = [
   { label: "Calendar", href: "/calendar", icon: CalendarDays },
 ];
 
+// One shortcut menu, not a set of sub-sections: every destination the team
+// reaches for from the header lives here, each with its own tinted icon, so
+// the trigger is an action rather than another place to navigate from.
 const NAV_GROUPS: InnerNavGroup[] = [
-  {
-    label: "Publishing",
-    icon: Send,
-    items: [
-      { label: "Queues", href: "/queues", icon: ListOrdered },
-      { label: "Bulk Upload", href: "/bulk-upload", icon: Upload },
-      { label: "Analytics", href: "/analytics", icon: BarChart3 },
-    ],
-  },
+  { label: "Quick Actions", icon: Zap, accent: true, items: QUICK_ACTIONS },
 ];
 
 interface SocialManagerLayoutProps {

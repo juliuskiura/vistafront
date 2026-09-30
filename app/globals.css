@@ -1053,25 +1053,24 @@
 /* ══════════════════════════════════════════════════════════════════════
  * The glass page
  *
- * The note page carries the editor's surface treatment itself: the same
- * primary-tinted wash fading out over the top of the page, extended to the
- * full content area rather than drawn on a card. The editor and the reader
- * then sit on that wash as sheets rather than being the only place the
- * treatment appears.
+ * Two surfaces, at different scales.
  *
- * The wash lives on a `position: fixed` pseudo-element, not on the page
- * element itself. Painted on the element it would scroll away, leaving the
- * bottom half of a long note on a flat background — a hard edge where the
- * gradient ran out, halfway down a document. Fixed, it stays anchored to the
- * viewport for the whole read.
+ * `.nb-page-glass` is the page: a primary-tinted wash across the whole
+ * content area, full-bleed, with nothing framing it. It lives on a
+ * `position: fixed` pseudo-element, not on the page element itself — painted
+ * on the element it would scroll away, leaving the bottom half of a long note
+ * on a flat background, with a hard edge where the gradient ran out halfway
+ * down a document. Fixed, it stays anchored to the viewport for the whole
+ * read. `z-index: -1` keeps it inside the scrolling `<main>`, so it covers
+ * the content area only and never washes over the shell or the sidebar.
  *
- * `z-index: -1` puts it behind the page's own content but still inside the
- * scrolling `<main>`, so it covers the content area only and does not wash
- * over the app shell or the sidebar.
- *
- * No border and no shadow: the page *is* the surface, so there is nothing
- * behind it to separate from. An outline here would be a frame drawn around
- * the window.
+ * `.nb-sheet` is the note: one rounded surface holding the title, the body or
+ * editor, and the details, so the whole note reads as a single object. The
+ * surface belongs here rather than on the editor because the editor used to
+ * carry it alone, which boxed the prose and left the title floating on the
+ * page above it — two things where the note is one thing. The editor and the
+ * reader flatten inside it (see the rules below); the radius, the shadow and
+ * the overflow clip all come from the sheet.
  * ══════════════════════════════════════════════════════════════════════ */
 .nb-page-glass {
   position: relative;
@@ -1096,24 +1095,79 @@
     );
 }
 
+/* The note's surface. The radius alone would round nothing visible, because
+ * the title block, the toolbar tint and the footer are all square-edged
+ * children — `overflow: hidden` is what clips them to the curve.
+ *
+ * `--nb-inset` is the note's one horizontal inset, shared by the three bands
+ * that sit edge to edge inside the sheet — the title block, the editor
+ * toolbar, and the editor footer — so their contents start on one vertical
+ * line down the note. The content area is deliberately not on it: that column
+ * is centred and measured, and pinning it to the same inset would throw the
+ * measure away. It is declared here and read with a fallback, because the
+ * editor also renders outside a sheet (the note composer), where there is no
+ * title for the toolbar to line up with.
+ *
+ * No `overflow: hidden`, which is what it needs to be absent of: `overflow`
+ * other than `visible` makes the sheet a scroll container, and a sticky
+ * descendant then resolves its position against *the sheet* rather than
+ * against the page's `<main>`. The sheet does not scroll, so the sticky
+ * header would have no travel and simply never move. The radius is kept
+ * honest by rounding the sticky block's own top corners instead — nothing
+ * else paints to the sheet's edges, so nothing else needs clipping. */
+.nb-sheet {
+  position: relative;
+  background-color: var(--background);
+  border: 0;
+  border-radius: 1.375rem;
+  box-shadow: 0 12px 40px -18px color-mix(in srgb, var(--nb-ink) 22%, transparent);
+  --nb-inset: 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .nb-sheet { --nb-inset: 2rem; }
+}
+
+@media (min-width: 1024px) {
+  .nb-sheet { --nb-inset: 2.5rem; }
+}
+
+.nb-inset-x {
+  padding-left: var(--nb-inset, 0.375rem);
+  padding-right: var(--nb-inset, 0.375rem);
+}
+
+/* The sticky identity block at the top of a sheet: back link, type pill,
+ * tags, title, timestamps.
+ *
+ * Fully opaque, and carrying no padding of its own — it has to cover the whole
+ * width of the sheet to hide the prose passing under it. Padding on this
+ * element would sit outside the painted background and open a transparent
+ * gutter down both sides plus a band above, with the text scrolling visibly
+ * through them. The inset belongs on an inner block; the outer one only
+ * covers and rules. The hairline underneath is the boundary while scrolled.
+ *
+ * `top: -3rem` rather than `0`: the sheet's rounded top corners are at the
+ * page's own top, and pinning flush to the scrollport leaves a sliver of the
+ * sheet showing above the header. Pulling the resting position up by the
+ * sheet's own inset parks the header's top edge under that sliver, so the
+ * opaque block meets the sheet's edge with no gap. */
+.nb-sticky-head {
+  position: sticky;
+  top: -3rem;
+  z-index: 20;
+  background-color: var(--background);
+  border-bottom: 1px solid var(--nb-rule);
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+}
+
 /* ══════════════════════════════════════════════════════════════════════
  * Editor chrome
  * ══════════════════════════════════════════════════════════════════════ */
 
-/* The editing surface as a sheet of paper rather than a bare text column.
- * A near-mirror of `.nb-paper` below — the editor replaces the reader in the
- * same slot, and a note that visibly changed surface on click-to-edit reads
- * as a different page. Only the top gradient is extra.
- *
- * No edge at all, and no focus ring. A sheet this wide is a page, and any
- * outline around it — a hairline, a ring, or a focus halo — reads as a frame
- * drawn around the window rather than as the edge of a document. The soft,
- * widely-spread shadow does the separating instead: enough to lift the
- * surface off the background, not enough to read as a floating panel.
- *
- * Focus deliberately changes nothing. The caret is already the clearest
- * possible focus indicator, and it is inside the surface rather than around
- * it. */
+/* The editing surface. Standalone it carries its own treatment; inside a
+ * `.nb-sheet` it flattens to a region of that sheet — see below. */
 .nb-editor-shell {
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--color-primary-500) 4%, transparent), transparent 14rem);
@@ -1121,6 +1175,18 @@
   border-radius: 1.375rem;
   box-shadow: 0 12px 40px -18px color-mix(in srgb, var(--nb-ink) 22%, transparent);
   overflow: hidden;
+}
+
+/* Inside a sheet the editor is a region of the note, not a surface of its
+ * own. A second rounded, shadowed pane nested in the first reads as a card in
+ * a card and puts a visible seam across the note between the title and the
+ * prose. So it keeps its top gradient — that still marks where the document
+ * starts — and the toolbar's tint and seam, and gives up the background, the
+ * radius and the shadow. */
+.nb-sheet .nb-editor-shell {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-primary-500) 4%, transparent), transparent 12rem);
+  border-radius: 0;
+  box-shadow: none;
 }
 /* Toolbar strip: a soft separator plus a tint, so it reads as chrome rather
  * than as the first line of the document. The divider is a low-alpha ink wash
@@ -1131,18 +1197,10 @@
   background: color-mix(in srgb, var(--nb-rule) 26%, transparent);
   border-bottom-color: color-mix(in srgb, var(--nb-ink) 7%, transparent);
 }
-/* Same inset accent rule as `.nb-paper`, for the same reason. */
-.nb-editor-shell::before {
-  content: "";
-  position: absolute;
-  inset-block: 2rem;
-  left: 1.5rem;
-  width: 3px;
-  border-radius: 3px;
-  background: var(--nb-accent, transparent);
-  opacity: 0.75;
-  pointer-events: none;
-}
+/* No accent rule down the leading edge. It used to mark the note's type on a
+ * surface that held nothing else; with the surface now enclosing the title as
+ * well, a bar floating beside the prose reads as a divider, and the type is
+ * already named by the pill in the header. */
 
 /* Monospace editing surface — the content field is HTML, so an editor
  * that looks like prose would misrepresent what is being typed. */
@@ -1247,10 +1305,10 @@
  * The document surface
  *
  * The read view's counterpart to `.nb-editor-shell`, and it swaps with it in
- * the same slot — so both flatten identically inside a glass page. Left
- * standalone, the read view keeps the frontapp's note-card ring
- * (`ring-1 ring-foreground/10`) plus a wide soft shadow, and a deep inset so
- * the prose never sits near the edge.
+ * the same slot — so both flatten identically inside a `.nb-sheet`, and the
+ * note's silhouette does not change when you click "Edit". Left standalone
+ * each keeps the frontapp's note-card ring plus a wide soft shadow, and a deep
+ * inset so the prose never sits near the edge.
  * ══════════════════════════════════════════════════════════════════════ */
 .nb-paper {
   position: relative;
@@ -1262,23 +1320,26 @@
     0 12px 40px -18px color-mix(in srgb, var(--nb-ink) 22%, transparent);
   padding: 3rem 3.5rem 3.5rem;
 }
-/* A hairline of the note's accent down the leading edge: the one place
- * the type colour touches the document itself. Inset from the edge so it
- * reads as a marker on the sheet rather than a bar framing the window. */
-.nb-paper::before {
-  content: "";
-  position: absolute;
-  inset-block: 2rem;
-  left: 1.5rem;
-  width: 3px;
-  border-radius: 3px;
-  background: var(--nb-accent, transparent);
-  opacity: 0.75;
+
+/* Inside a sheet, the same flattening as `.nb-editor-shell` above. The surface
+ * is the sheet's job now; the inset is still the content's, and it is tighter
+ * than the standalone default so the read view reads as a page — one measured
+ * column with margins in proportion to it, rather than a block of prose with
+ * an arbitrary gap around it.
+ *
+ * A4 at 96dpi is 794px wide, which is what `max-w-[72ch]` plus this inset
+ * comes to on a typical screen. The width is what actually sells the page; the
+ * padding only has to look like margins. */
+.nb-sheet .nb-paper {
+  background-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 2.25rem 2.75rem 2.5rem;
 }
 
 @media (max-width: 640px) {
   .nb-paper { padding: 1.75rem 1.25rem 2rem; }
-  .nb-paper::before { left: 0.6rem; inset-block: 1.25rem; }
+  .nb-sheet .nb-paper { padding: 1.5rem 1.1rem 1.75rem; }
 }
 
 /* ══════════════════════════════════════════════════════════════════════
