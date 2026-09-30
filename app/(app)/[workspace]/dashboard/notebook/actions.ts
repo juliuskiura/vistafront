@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { flattenError } from "zod";
 
 import {
   createNote,
@@ -13,58 +14,89 @@ import {
   type Note,
 } from "@/lib/api";
 
-export interface CreateNoteActionState {
-  status: "idle" | "success" | "error";
-  message?: string;
-  fieldErrors?: Record<string, string[]>;
-  createdNanoid?: string;
-}
-
-export const initialCreateNoteState: CreateNoteActionState = { status: "idle" };
-
-function pickString(formData: FormData, name: string): string {
-  return String(formData.get(name) ?? "").trim();
-}
+import {
+  colorClassSchema,
+  CreateNoteSchema,
+  CreateNoteTypeSchema,
+  DeleteNoteSchema,
+  NoteActionSchema,
+  UpdateNoteContentSchema,
+  UpdateNoteMetaSchema,
+  type NoteActionState,
+} from "./action-state";
 
 /**
- * Server Action: create a new note from the "New Note" form on the list page.
+ * Notebook Server Actions.
  *
- * The form posts `title`, `note_type`, optional `tags` (comma-separated),
- * and optional `content` (JSON-encoded rich-text blob). On success we
- * `redirect` to the new note's detail page so the user lands in the editor.
+ * Every payload is validated against the Zod contract in `action-state.ts`
+ * before it reaches `lib/api`. That matters more here than in most features:
+ * the workspace domain decides which tenant's notes are visible, and a
+ * missing or malformed one does not error — Django's
+ * `WorkspaceResolutionMiddleware` falls back to the shared `app` workspace and
+ * returns `200 OK` with an empty list. Validation turns that silent
+ * empty-page failure into an explicit error.
+ *
+ * Actions return `NoteActionState` for `useActionState` consumers. The
+ * toggle/delete actions return void: they are button presses wired to
+ * `ConfirmDialog` and `<form action>`, not validated forms with field-level
+ * errors.
+ */
+
+/** Collect FormData into a plain object, dropping empty strings. */
+function toPayload(formData: FormData): Record<string, string> {
+  const payload: Record<string, string> = {};
+  for (const [key, value] of formData.entries()) {
+    if (typeof value === "string") payload[key] = value;
+  }
+  return payload;
+}
+
+function fail(
+  message: string,
+  fieldErrors?: Record<string, string[]>,
+): NoteActionState {
+  return fieldErrors ? { status: "error", message, fieldErrors } : { status: "error", message };
+}
+
+function invalid(error: Parameters<typeof flattenError>[0]): NoteActionState {
+  const { fieldErrors } = flattenError(error);
+  return {
+    status: "error",
+    message: "Please fix the highlighted fields.",
+    fieldErrors: fieldErrors as Record<string, string[]>,
+  };
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Create
+ * ────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Create a note and redirect into its detail page.
+ *
+ * `redirect` throws a control-flow signal, so it must stay outside the
+ * try/catch — a `NEXT_REDIRECT` swallowed by a catch block turns navigation
+ * into a silent no-op.
  */
 export async function createNoteAction(
-  _prev: CreateNoteActionState,
+  _prev: NoteActionState,
   formData: FormData,
-): Promise<CreateNoteActionState> {
-  const title = pickString(formData, "title");
-  const noteType = pickString(formData, "note_type") || "general";
-  const tagsRaw = pickString(formData, "tags");
-  const contentRaw = pickString(formData, "content");
+): Promise<NoteActionState> {
+  const parsed = CreateNoteSchema.safeParse(toPayload(formData));
+  if (!parsed.success) return invalid(parsed.error);
 
-  const fieldErrors: Record<string, string[]> = {};
-  if (!title) {
-    fieldErrors.title = ["Title is required."];
-  }
-  if (Object.keys(fieldErrors).length > 0) {
-    return {
-      status: "error",
-      message: "Please fix the highlighted fields.",
-      fieldErrors,
-    };
-  }
+  const { workspace_domain, title, note_type, tags, content } = parsed.data;
 
-  const domain = pickString(formData, "workspace_domain");
   let created: Note;
   try {
     created = await createNote(
       {
         title,
-        note_type: noteType,
-        content: contentRaw ? safeParseJson(contentRaw) : {},
-        tags: tagsRaw ? tagsRaw.split(",").map((t) => t.trim()).filter(Boolean) : [],
+        note_type,
+        content: content ? safeParseJson(content) : {},
+        tags,
       },
-      domain,
+      workspace_domain,
     );
   } catch (error) {
     console.error("createNoteAction failed:", error);
@@ -75,44 +107,28 @@ export async function createNoteAction(
     };
   }
 
-  revalidatePath(`/${domain}/dashboard/notebook`);
-  redirect(`/${domain}/dashboard/notebook/${created.nanoid}`);
+  revalidatePath(`/${workspace_domain}/dashboard/notebook`);
+  redirect(`/${workspace_domain}/dashboard/notebook/${created.nanoid}`);
 }
 
-/**
- * Server Action: persist metadata changes (title, type, tags) from the
- * note detail page.
- */
-export async function updateNoteMetaAction(
-  _prev: CreateNoteActionState,
-  formData: FormData,
-): Promise<CreateNoteActionState> {
-  const nanoid = pickString(formData, "nanoid");
-  const domain = pickString(formData, "workspace_domain");
-  const title = pickString(formData, "title");
-  const noteType = pickString(formData, "note_type");
-  const tagsRaw = pickString(formData, "tags");
+/* ──────────────────────────────────────────────────────────────────────
+ * Update
+ * ────────────────────────────────────────────────────────────────────── */
 
-  if (!nanoid) {
-    return { status: "error", message: "Missing note id." };
-  }
-  if (!title) {
-    return {
-      status: "error",
-      fieldErrors: { title: ["Title is required."] },
-      message: "Please fix the highlighted fields.",
-    };
-  }
+export async function updateNoteMetaAction(
+  _prev: NoteActionState,
+  formData: FormData,
+): Promise<NoteActionState> {
+  const parsed = UpdateNoteMetaSchema.safeParse(toPayload(formData));
+  if (!parsed.success) return invalid(parsed.error);
+
+  const { workspace_domain, nanoid, title, note_type, tags } = parsed.data;
 
   try {
     await updateNote(
       nanoid,
-      {
-        title,
-        note_type: noteType || "general",
-        tags: tagsRaw ? tagsRaw.split(",").map((t) => t.trim()).filter(Boolean) : [],
-      },
-      domain,
+      { title, note_type, tags },
+      workspace_domain,
     );
   } catch (error) {
     console.error("updateNoteMetaAction failed:", error);
@@ -122,155 +138,138 @@ export async function updateNoteMetaAction(
     };
   }
 
-  revalidatePath(`/${domain}/dashboard/notebook`);
-  revalidatePath(`/${domain}/dashboard/notebook/${nanoid}`);
+  revalidatePath(`/${workspace_domain}/dashboard/notebook`);
+  revalidatePath(`/${workspace_domain}/dashboard/notebook/${nanoid}`);
   return { status: "success", message: "Note saved." };
 }
 
-/**
- * Server Action: persist content edits (rich-text JSON) from the detail page.
- */
 export async function updateNoteContentAction(
-  _prev: CreateNoteActionState,
+  _prev: NoteActionState,
   formData: FormData,
-): Promise<CreateNoteActionState> {
-  const nanoid = pickString(formData, "nanoid");
-  const domain = pickString(formData, "workspace_domain");
-  const contentRaw = pickString(formData, "content");
+): Promise<NoteActionState> {
+  const parsed = UpdateNoteContentSchema.safeParse(toPayload(formData));
+  if (!parsed.success) return invalid(parsed.error);
 
-  if (!nanoid) {
-    return { status: "error", message: "Missing note id." };
-  }
+  const { workspace_domain, nanoid, content } = parsed.data;
 
   try {
     await updateNote(
       nanoid,
-      {
-        content: contentRaw ? safeParseJson(contentRaw) : {},
-      },
-      domain,
+      { content: content ? safeParseJson(content) : {} },
+      workspace_domain,
     );
   } catch (error) {
     console.error("updateNoteContentAction failed:", error);
     return {
       status: "error",
-      message: "We could not auto-save your changes.",
+      message: "We could not save your changes. Please try again.",
     };
   }
 
-  revalidatePath(`/${domain}/dashboard/notebook/${nanoid}`);
+  revalidatePath(`/${workspace_domain}/dashboard/notebook/${nanoid}`);
   return { status: "success", message: "Saved." };
 }
 
-/**
- * Server Action: toggle the favorite flag on a note.
- */
+/* ──────────────────────────────────────────────────────────────────────
+ * Toggles
+ *
+ * These are single-button presses bound to `<form action>`, so they return
+ * void. They still validate: `nanoid` is interpolated into a URL path, and
+ * an unvalidated value there is a path-traversal surface.
+ * ────────────────────────────────────────────────────────────────────── */
+
 export async function toggleFavoriteAction(formData: FormData): Promise<void> {
-  const nanoid = pickString(formData, "nanoid");
-  const domain = pickString(formData, "workspace_domain");
-  if (!nanoid) return;
+  const parsed = NoteActionSchema.safeParse(toPayload(formData));
+  if (!parsed.success) return;
+
+  const { workspace_domain, nanoid } = parsed.data;
   try {
-    await toggleNoteFavorite(nanoid, domain);
+    await toggleNoteFavorite(nanoid, workspace_domain);
   } catch (error) {
     console.error("toggleFavoriteAction failed:", error);
   }
-  revalidatePath(`/${domain}/dashboard/notebook`);
-  revalidatePath(`/${domain}/dashboard/notebook/${nanoid}`);
+  revalidatePath(`/${workspace_domain}/dashboard/notebook`);
+  revalidatePath(`/${workspace_domain}/dashboard/notebook/${nanoid}`);
 }
 
-/**
- * Server Action: toggle the archived flag on a note.
- */
 export async function toggleArchiveAction(formData: FormData): Promise<void> {
-  const nanoid = pickString(formData, "nanoid");
-  const domain = pickString(formData, "workspace_domain");
-  if (!nanoid) return;
+  const parsed = NoteActionSchema.safeParse(toPayload(formData));
+  if (!parsed.success) return;
+
+  const { workspace_domain, nanoid } = parsed.data;
   try {
-    await toggleNoteArchive(nanoid, domain);
+    await toggleNoteArchive(nanoid, workspace_domain);
   } catch (error) {
     console.error("toggleArchiveAction failed:", error);
   }
-  revalidatePath(`/${domain}/dashboard/notebook`);
-  revalidatePath(`/${domain}/dashboard/notebook/${nanoid}`);
+  revalidatePath(`/${workspace_domain}/dashboard/notebook`);
+  revalidatePath(`/${workspace_domain}/dashboard/notebook/${nanoid}`);
 }
 
-/**
- * Server Action: soft-delete a note. Used by the "Delete" button on the
- * detail page. Redirects back to the list after.
- */
+/* ──────────────────────────────────────────────────────────────────────
+ * Delete
+ *
+ * Soft-delete, then return to the list. Called from the detail page's
+ * `ConfirmDialog` and from the card kebab menu — both gated by the dialog
+ * (AGENTS.md §8), so this action never fires on a bare click.
+ * ────────────────────────────────────────────────────────────────────── */
+
 export async function deleteNoteAction(formData: FormData): Promise<void> {
-  const nanoid = pickString(formData, "nanoid");
-  const domain = pickString(formData, "workspace_domain");
-  if (!nanoid || !domain) return;
+  const parsed = DeleteNoteSchema.safeParse(toPayload(formData));
+  if (!parsed.success) return;
+
+  const { workspace_domain, nanoid } = parsed.data;
   try {
-    await deleteNote(nanoid, domain);
+    await deleteNote(nanoid, workspace_domain);
   } catch (error) {
     console.error("deleteNoteAction failed:", error);
   }
-  revalidatePath(`/${domain}/dashboard/notebook`);
-  redirect(`/${domain}/dashboard/notebook`);
+  revalidatePath(`/${workspace_domain}/dashboard/notebook`);
+  redirect(`/${workspace_domain}/dashboard/notebook`);
 }
 
-export interface CreateNoteTypeActionState {
-  status: "idle" | "success" | "error";
-  message?: string;
-  fieldErrors?: Record<string, string[]>;
-}
+/* ──────────────────────────────────────────────────────────────────────
+ * Note types
+ * ────────────────────────────────────────────────────────────────────── */
 
-export const initialCreateNoteTypeState: CreateNoteTypeActionState = {
-  status: "idle",
-};
-
-/**
- * Server Action: create a new workspace-configurable note type.
- */
 export async function createNoteTypeAction(
-  _prev: CreateNoteTypeActionState,
+  _prev: NoteActionState,
   formData: FormData,
-): Promise<CreateNoteTypeActionState> {
-  const name = pickString(formData, "name");
-  const key = pickString(formData, "key").toLowerCase();
-  const orderRaw = pickString(formData, "order");
-  const colorBg = pickString(formData, "color_bg");
-  const colorText = pickString(formData, "color_text");
+): Promise<NoteActionState> {
+  const parsed = CreateNoteTypeSchema.safeParse(toPayload(formData));
+  if (!parsed.success) return invalid(parsed.error);
 
-  const fieldErrors: Record<string, string[]> = {};
-  if (!name) fieldErrors.name = ["Name is required."];
-  if (!key) fieldErrors.key = ["Key is required."];
-  if (Object.keys(fieldErrors).length > 0) {
-    return {
-      status: "error",
-      message: "Please fix the highlighted fields.",
-      fieldErrors,
-    };
-  }
+  const { workspace_domain, name, key, order, color_bg, color_text } =
+    parsed.data;
 
+  // `color_code` classes are rendered into `className`. The schema caps the
+  // length and character set; this second check rejects anything the regex
+  // let through but the palette does not cover, so a workspace admin cannot
+  // inject arbitrary classes into another member's rendered page.
   const colorCode: { text?: string; bg?: string } = {};
-  if (colorBg) colorCode.bg = colorBg;
-  if (colorText) colorCode.text = colorText;
+  const bg = colorClassSchema.safeParse(color_bg ?? "");
+  const text = colorClassSchema.safeParse(color_text ?? "");
+  if (!bg.success || !text.success) {
+    return fail("Enter plain Tailwind class names for the badge colours.", {
+      color_bg: ["Invalid background class."],
+      color_text: ["Invalid text class."],
+    });
+  }
+  if (bg.data) colorCode.bg = bg.data;
+  if (text.data) colorCode.text = text.data;
 
-  const domain = pickString(formData, "workspace_domain");
   try {
-    await createNoteType(
-      {
-        name,
-        key,
-        order: orderRaw ? Number(orderRaw) || 0 : 0,
-        color_code: colorCode,
-      },
-      domain,
-    );
+    await createNoteType({ name, key, order, color_code: colorCode }, workspace_domain);
   } catch (error) {
     console.error("createNoteTypeAction failed:", error);
-    return {
-      status: "error",
-      message: "We could not create the note type.",
-    };
+    return { status: "error", message: "We could not create the note type." };
   }
 
-  revalidatePath("/", "layout");
-  return { status: "success", message: `Created note type "${name}".` };
+  revalidatePath(`/${workspace_domain}/dashboard/notebook`);
+  return { status: "success", message: `Created note type “${name}”.` };
 }
+
+/* ────────────────────────────────────────────────────────────────────── */
 
 function safeParseJson(raw: string): Record<string, unknown> {
   try {
@@ -279,7 +278,8 @@ function safeParseJson(raw: string): Record<string, unknown> {
       return parsed as Record<string, unknown>;
     }
   } catch {
-    // fall through
+    // Not JSON — fall through and store the string as an HTML blob, which is
+    // what the textarea editor produces.
   }
   return { html: raw };
 }

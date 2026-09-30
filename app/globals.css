@@ -759,3 +759,310 @@
   .checkout-fade-slide,
   .checkout-pop { animation: none !important; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+ * ATELIER — Notebook surface
+ *
+ * Flat by construction. There is no shadow ladder and no raised-card
+ * metaphor: the original pass read as "paper on a desk" and that turned out
+ * to be the thing making it feel dated, because depth-via-shadow is the
+ * default idiom of every card UI. Hierarchy here comes from three quieter
+ * sources — type scale and weight, whitespace, and a single hairline rule —
+ * plus one accent colour per note type.
+ *
+ * Consequence worth stating: a flat surface has no elevation cue, so
+ * separation has to come from the rule and the gap. That is why
+ * `--nb-rule` is a real token rather than a border colour, and why the grid
+ * leans on `gap` instead of stacking adjacent bordered boxes.
+ *
+ * These are opt-in classes scoped by the `nb-` prefix. They are NOT part
+ * of the global design system — if another feature ever wants this surface
+ * it should get its own tokens rather than borrowing these.
+ * ══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Surface is the page background, not a raised panel. */
+  --nb-card: transparent;
+  --nb-card-hover: oklch(0.975 0.004 286);
+  --nb-rule: oklch(0.90 0.006 286);
+  --nb-rule-strong: oklch(0.82 0.008 286);
+  --nb-ink: oklch(0.20 0.015 286);
+  --nb-ink-muted: oklch(0.52 0.014 286);
+}
+
+.dark {
+  --nb-card: transparent;
+  --nb-card-hover: oklch(0.27 0.014 286);
+  --nb-rule: oklch(0.30 0.014 286);
+  --nb-rule-strong: oklch(0.38 0.016 286);
+  --nb-ink: oklch(0.97 0.005 286);
+  --nb-ink-muted: oklch(0.68 0.014 286);
+}
+
+/* Card surface — no shadow, no border. Hover is a wash of colour plus the
+ * accent rule darkening, which reads as "selected" rather than "lifted". */
+.nb-card {
+  background-color: var(--nb-card);
+  transition: background-color 0.2s ease;
+}
+.nb-card:hover {
+  background-color: var(--nb-card-hover);
+}
+
+/* Hairline used where a card used to rely on its own edge. */
+.nb-rule {
+  border-color: var(--nb-rule);
+}
+
+/* Per-note-type accent rule. The colour is injected as --nb-accent by
+ * TypeSwatch from a whitelisted Tailwind token — never a raw backend
+ * class string, which would be an injection vector.
+ *
+ * On a flat surface this inset rule is the *only* thing identifying the
+ * note's type at a glance, so it stays 3px rather than thinning to a
+ * hairline with the rest of the chrome. */
+.nb-accent {
+  box-shadow: inset 3px 0 0 0 var(--nb-accent, transparent);
+}
+.nb-accent:hover {
+  box-shadow: inset 3px 0 0 0 var(--nb-accent, transparent);
+}
+
+/* Reading surface for note bodies.
+ *
+ * This replaces `prose`, which was dead: @tailwindcss/typography is not a
+ * dependency, so those classes never resolved and every note rendered as
+ * an unstyled wall of raw HTML. Written out longhand instead, so the
+ * styles exist whether or not the plugin is ever added. */
+.nb-prose {
+  font-size: 0.9375rem;
+  line-height: 1.75;
+  color: var(--nb-ink);
+}
+.nb-prose > * + * { margin-top: 1em; }
+.nb-prose h1,
+.nb-prose h2,
+.nb-prose h3 {
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--nb-ink);
+  margin-top: 1.6em;
+}
+.nb-prose h1 { font-size: 1.5rem; }
+.nb-prose h2 { font-size: 1.25rem; }
+.nb-prose h3 { font-size: 1.0625rem; }
+.nb-prose a {
+  color: var(--color-primary-600);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+}
+.nb-prose ul,
+.nb-prose ol { padding-left: 1.4em; }
+.nb-prose ul { list-style: disc; }
+.nb-prose ol { list-style: decimal; }
+.nb-prose li { margin-top: 0.3em; }
+.nb-prose li::marker { color: var(--nb-ink-muted); }
+.nb-prose blockquote {
+  border-left: 2px solid var(--color-primary-300);
+  padding-left: 1em;
+  color: var(--nb-ink-muted);
+  font-style: italic;
+}
+.nb-prose code {
+  background: var(--color-muted);
+  padding: 0.15em 0.4em;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+}
+.nb-prose pre {
+  background: var(--color-muted);
+  padding: 1em;
+  border-radius: 0.75rem;
+  overflow-x: auto;
+}
+.nb-prose pre code { background: none; padding: 0; }
+.nb-prose strong { font-weight: 600; }
+.nb-prose hr {
+  border: 0;
+  border-top: 1px solid var(--nb-rule);
+  margin-block: 2em;
+}
+.nb-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.nb-prose th {
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 1px solid var(--nb-rule);
+  padding: 0.5em 0.75em;
+}
+.nb-prose td {
+  border-bottom: 1px solid var(--nb-rule);
+  padding: 0.5em 0.75em;
+}
+
+/* Monospace editing surface — the content field is HTML, so an editor
+ * that looks like prose would misrepresent what is being typed. */
+.nb-editor {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Editor content — the ProseMirror surface.
+ *
+ * `.nb-prose` above styles *rendered* notes (sanitized, read-only). This
+ * styles the *live* editing surface, which needs a few things the read view
+ * does not: a visible caret target, placeholder text, a selected-node
+ * outline, and a reset of ProseMirror's own default margins.
+ *
+ * Deliberately NOT styled with `.nb-prose` — sharing the class would pull in
+ * the read view's spacing rhythm and make the editing surface drift from what
+ * the reader sees after save.
+ * ────────────────────────────────────────────────────────────────────── */
+.nb-editor-content {
+  font-size: 0.9375rem;
+  line-height: 1.75;
+  color: var(--nb-ink);
+  min-height: 8rem;
+  outline: none;
+}
+.nb-editor-content > * + * { margin-top: 0.75em; }
+.nb-editor-content h1,
+.nb-editor-content h2,
+.nb-editor-content h3 {
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+}
+.nb-editor-content h1 { font-size: 1.5rem; }
+.nb-editor-content h2 { font-size: 1.25rem; }
+.nb-editor-content h3 { font-size: 1.0625rem; }
+.nb-editor-content ul,
+.nb-editor-content ol { padding-left: 1.4em; }
+.nb-editor-content ul { list-style: disc; }
+.nb-editor-content ol { list-style: decimal; }
+.nb-editor-content ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0.25em;
+}
+.nb-editor-content ul[data-type="taskList"] li {
+  display: flex;
+  gap: 0.5em;
+  align-items: flex-start;
+}
+.nb-editor-content ul[data-type="taskList"] li > label {
+  margin-top: 0.3em;
+  user-select: none;
+}
+.nb-editor-content ul[data-type="taskList"] li > div { flex: 1; }
+.nb-editor-content blockquote {
+  border-left: 2px solid var(--color-primary-300);
+  padding-left: 1em;
+  color: var(--nb-ink-muted);
+  font-style: italic;
+}
+.nb-editor-content a {
+  color: var(--color-primary-600);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.nb-editor-content code {
+  background: var(--color-muted);
+  padding: 0.15em 0.4em;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+}
+.nb-editor-content pre {
+  background: var(--color-muted);
+  padding: 1em;
+  border-radius: 0.75rem;
+  overflow-x: auto;
+}
+.nb-editor-content pre code { background: none; padding: 0; }
+.nb-editor-content hr {
+  border: 0;
+  border-top: 1px solid var(--nb-rule);
+  margin-block: 1.5em;
+}
+.nb-editor-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+}
+.nb-editor-content img.ProseMirror-selectednode {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+/* Tiptap's placeholder extension renders a data attribute on the first empty
+ * paragraph; there is no node to style, so the style goes here. */
+.nb-editor-content p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: var(--nb-ink-muted);
+  opacity: 0.6;
+}
+
+/* Tables get a real grid rather than ProseMirror's default borderless
+ * cells, so column structure is visible while editing. */
+.nb-editor-content table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  table-layout: fixed;
+}
+.nb-editor-content th,
+.nb-editor-content td {
+  border: 1px solid var(--nb-rule);
+  padding: 0.4em 0.6em;
+  vertical-align: top;
+  position: relative;
+  min-width: 3em;
+}
+.nb-editor-content th {
+  background: color-mix(in srgb, var(--color-muted) 60%, transparent);
+  font-weight: 600;
+  text-align: left;
+}
+.nb-editor-content .selectedCell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--color-primary-500) 12%, transparent);
+  pointer-events: none;
+}
+.nb-editor-content .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--color-primary-500);
+  pointer-events: none;
+}
+
+/* Staggered entrance for the grid. Kept under 400ms total so a page of
+ * 24 cards reads as one gesture rather than 24 competing animations. */
+@keyframes nb-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.nb-rise { animation: nb-rise 0.34s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .nb-card,
+  .nb-card:hover,
+  .nb-accent,
+  .nb-accent:hover {
+    transition: none;
+  }
+  .nb-rise { animation: none; }
+}

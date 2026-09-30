@@ -45,8 +45,49 @@ export interface ListNotesOptions {
 }
 
 export async function listNotes(opts: ListNotesOptions): Promise<Note[]> {
+  const payload = await fetchNotes(opts);
+  return unwrap(payload);
+}
+
+/**
+ * Variant of {@link listNotes} that keeps the raw paginated envelope
+ * (`{ count, next, previous, results }`) so a caller can render pagination
+ * controls.
+ *
+ * The distinction matters: `listNotes` unwraps to `Note[]` and throws the
+ * `count` away, so a UI built on it cannot tell "page 1 of 1" from "page 1
+ * of 12" and reports `results.length` as the total — which is the page size,
+ * not the workspace's note count.
+ *
+ * A flat-array response (a non-paginated viewset, or a proxy that strips
+ * the envelope) is normalised back into an envelope with the correct
+ * `count` rather than degrading to zero, so callers never have to branch.
+ */
+export async function paginatedListNotes(
+  opts: ListNotesOptions,
+): Promise<Paginated<Note>> {
+  const payload = await fetchNotes(opts);
+  if (Array.isArray(payload)) {
+    return {
+      count: payload.length,
+      next: null,
+      previous: null,
+      results: payload,
+    };
+  }
+  return {
+    count: payload?.count ?? 0,
+    next: payload?.next ?? null,
+    previous: payload?.previous ?? null,
+    results: Array.isArray(payload?.results) ? payload.results : [],
+  };
+}
+
+async function fetchNotes(
+  opts: ListNotesOptions,
+): Promise<Note[] | Paginated<Note>> {
   const { workspace, ...rest } = opts;
-  const payload = await serverFetch<Note[] | Paginated<Note>>(
+  return serverFetch<Note[] | Paginated<Note>>(
     `/apis/notebook/notes/${toQueryString({
       search: rest.search,
       note_type: rest.note_type,
@@ -61,7 +102,6 @@ export async function listNotes(opts: ListNotesOptions): Promise<Note[]> {
     })}`,
     { workspace },
   );
-  return unwrap(payload);
 }
 
 export function getNote(nanoid: string, workspace: string): Promise<Note> {
@@ -140,8 +180,13 @@ export async function listNoteAttachments(
 export async function listNoteTypes(
   workspace: string,
 ): Promise<NoteTypeOption[]> {
+  // The notebook viewset is globally paginated (25/page). Note types are a
+  // small, workspace-scoped catalogue that the UI renders in full — as filter
+  // chips, as the composer's options, and as the accent lookup — so a
+  // truncated list would silently hide categories. `page_size` is clamped to
+  // `max_page_size = 100` server-side.
   const payload = await serverFetch<NoteTypeOption[] | Paginated<NoteTypeOption>>(
-    "/apis/notebook/note-types/",
+    `/apis/notebook/note-types/${toQueryString({ page_size: 100 })}`,
     { workspace },
   );
   return unwrap(payload);
