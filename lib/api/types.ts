@@ -1152,8 +1152,117 @@ export interface SocialMediaPlatform {
   auth_destination?: string | null;
   is_active: boolean;
   oauth_callback_uri: string;
+  /**
+   * Absolute inbound webhook URL for this platform's receiver, or `""` when the
+   * platform has none. Read-only on the backend: it is resolved from
+   * `webhook_endpoint` (an operator override, e.g. a tunnel) falling back to
+   * `{PROTOCOL}://{APP_DOMAIN}/apis/socialmanager/{slug}/webhook/`. This is the
+   * value an operator pastes into the Meta developer console.
+   */
+  webhook_endpoint: string;
+  /**
+   * Fields to subscribe to at the *app* level in the Meta developer console
+   * (e.g. `messages,messaging_postbacks,message_reactions`).
+   *
+   * Display only. Nothing in the backend posts this to Meta — there is no app
+   * level `subscribed_fields` call — so it documents what a human must tick
+   * rather than reporting what Meta actually has. `""` on a platform that
+   * cannot receive webhooks at all.
+   */
+  webhook_fields: string | null;
   created_at: string;
   updated_at: string;
+}
+
+/**
+ * What `POST /apis/socialmanager/pages/{nanoid}/reconnect/` answers.
+ *
+ * The single most useful diagnostic the backend exposes: it re-mints the page
+ * token, verifies it against Meta, and then re-asserts the per-Page
+ * `subscribed_apps` subscription that makes Messenger deliver anything. So
+ * `subscribed: true` proves three things at once — the token is valid, it
+ * carries the `pages_messaging` permission, and the page is on the app's
+ * register.
+ */
+export interface ReconnectPageResult {
+  nanoid: string;
+  page_id: string;
+  page_name: string;
+  ok: boolean;
+  /** Whether a fresh page token was issued. */
+  minted?: boolean;
+  /** Whether Meta accepted that token for this page. */
+  verified?: boolean;
+  /**
+   * Whether `POST /{page_id}/subscribed_apps` succeeded. `null` on a platform
+   * that has no such call (everything except Facebook), `false` when the token
+   * is fine but the subscription was rejected.
+   */
+  subscribed?: boolean | null;
+  /** Why it failed, in the backend's own words. */
+  reason?: string;
+  error_type?: string;
+  /** True when only re-running OAuth in a browser can fix this. */
+  reauth?: boolean;
+}
+
+/**
+ * How one connected Page stands with respect to Messenger delivery.
+ *
+ * Three states, not two, and the third is the whole point. A Page that was
+ * never attempted looks identical to a healthy one everywhere else in the
+ * product — it is connected, it is publishable, `verify` passes — so counting
+ * it as `subscribed` would make the panel confidently wrong about exactly the
+ * tenants it exists to find.
+ */
+export type MessengerPageState = "failed" | "never" | "subscribed";
+
+export interface MessengerAttempt {
+  success: boolean;
+  reason: string;
+  source: string;
+  created_at: string;
+}
+
+/**
+ * One row of `GET /apis/socialmanager/pages/messenger_health/`, flattened with
+ * the Page and the owning workspace.
+ *
+ * Cross-tenant by design: the console workspace is not a tenant, and the
+ * operator handling a support call needs the tenant's slug and name in the same
+ * row as the failure, or they end cross-referencing two screens to find out who
+ * to call back.
+ */
+export interface MessengerHealthPage {
+  state: MessengerPageState;
+  attempted: boolean;
+  page_nanoid: string;
+  page_id_platform: string;
+  page_name: string;
+  is_active: boolean;
+  needs_reauth: boolean;
+  workspace_slug: string;
+  workspace_name: string;
+  workspace_nanoid: string;
+  /** Null when `state` is `"never"` — there is no attempt to report. */
+  attempt: MessengerAttempt | null;
+}
+
+export interface MessengerHealth {
+  summary: {
+    total_pages: number;
+    subscribed: number;
+    failed: number;
+    never_attempted: number;
+    workspaces_affected: number;
+  };
+  pages: MessengerHealthPage[];
+  /**
+   * Set by the caller when the fetch failed. Never set by the backend — the
+   * flag exists so the panel can say "could not load" instead of rendering a
+   * zeroed summary that reads as "no problems found".
+   */
+  unavailable?: boolean;
 }
 
 export interface PlatformContentFormat {

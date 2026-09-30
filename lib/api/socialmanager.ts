@@ -10,6 +10,7 @@ import type {
   DiscoverChannelsResult,
   Hashtag,
   ManagedChannel,
+  MessengerHealth,
   MediaConstraint,
   MetricSnapshot,
   OauthInitResult,
@@ -21,6 +22,7 @@ import type {
   PostQueue,
   PostQueueItem,
   PostsSyncStatusResult,
+  ReconnectPageResult,
   RevokeAccountResult,
   ScheduledPost,
   ScheduledPostForm,
@@ -387,6 +389,50 @@ export function verifyPage(
   return serverMutate<{ ok: boolean; error?: string; error_type?: string }>(
     `/apis/socialmanager/pages/${nanoid}/verify/`,
     { body: {}, workspace },
+  );
+}
+
+/**
+ * Cross-tenant Messenger subscription health — **console workspace only.**
+ *
+ * One row per connected Facebook Page with the latest subscription attempt for
+ * it, so an operator can answer "why does tenant X get no messages" from one
+ * screen instead of a log grep. Paging is refused by Django unless the resolved
+ * workspace satisfies `_is_admin_workspace`, which is the console workspace, so
+ * the console guard on the page and this 403 are two halves of one lock.
+ *
+ * Read-only on purpose. Repairing another tenant's Page from a global surface
+ * would mean minting and storing someone else's access token; the repair paths
+ * are the tenant's own Channels screen and `manage.py subscribe_facebook_pages`.
+ */
+export function getMessengerHealth(workspace: string): Promise<MessengerHealth> {
+  return serverFetch<MessengerHealth>(
+    "/apis/socialmanager/pages/messenger_health/",
+    { workspace },
+  );
+}
+
+/**
+ * Re-mint this channel's page token, verify it, and re-assert its Messenger
+ * webhook subscription — in one call.
+ *
+ * `verify` only answers "can this page still connect?", which is a flat no for a
+ * channel whose token was never written and tells you nothing about whether the
+ * page is subscribed to the app. `reconnect` answers both, which makes it the
+ * one call a Messenger problem should start from: a `subscribed: false` with
+ * `verified: true` means the token is healthy and the page is simply not on the
+ * app's register, while `reauth: true` means only a browser re-auth can fix it.
+ *
+ * Safe on a healthy channel — the mint is unconditional, so it doubles as a
+ * token refresh.
+ */
+export function reconnectPage(
+  nanoid: string,
+  workspace: string,
+): Promise<ReconnectPageResult> {
+  return serverMutate<ReconnectPageResult>(
+    `/apis/socialmanager/pages/${nanoid}/reconnect/`,
+    { body: { subscribe: true }, workspace },
   );
 }
 

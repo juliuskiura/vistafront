@@ -1,5 +1,5 @@
 import { requireWorkspace } from "@/lib/auth/server";
-import { requireFeature } from "@/lib/features/guard";
+import { getSubscriptionStateCached, requireFeature } from "@/lib/features/guard";
 import { listAccounts, verifyPage } from "@/lib/api";
 import type { SocialAccount } from "@/lib/api/types";
 import { ChannelsClient } from "./channels-client";
@@ -23,6 +23,16 @@ export default async function ChannelsPage({
   const active = await requireWorkspace(slug);
   await requireFeature(active, "socialmanager.posts");
   const ws = active.domain;
+
+  // The Messenger setup link is for the operator, not for tenants. Hiding it
+  // here rather than letting the target page redirect is deliberate: a button
+  // that is visible to everyone and bounces everyone but one workspace back
+  // to this same screen is worse than no button, because it advertises a screen
+  // the reader cannot have. `exempt` is set by the backend from
+  // `_is_admin_workspace`, the same predicate the Messenger page itself guards
+  // on, so the two cannot disagree. Cached, so this reuses the fetch
+  // `requireFeature` already made.
+  const { exempt: isConsole } = await getSubscriptionStateCached(active.nanoid);
 
   // No platform list here: ConnectAccountProvider owns that fetch and only runs
   // it when the shared connect modal is actually opened.
@@ -67,6 +77,7 @@ export default async function ChannelsPage({
       pageToAccountNanoid={pageToAccountNanoid}
       verdicts={verdicts}
       accounts={accounts}
+      isConsoleWorkspace={isConsole}
     />
   );
 }
