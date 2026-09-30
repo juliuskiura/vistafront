@@ -24,9 +24,9 @@ export function workspaceRelativePath(pathname: string): string {
  * True when `item` owns `pathname`.
  *
  * Ids with no registered route (unported features such as the
- * console-admin-only `mails`, `documents`, `developer`) are NEVER active.
- * They have no path to match against, so treating them as a match against any
- * default is what caused several links to highlight at once.
+ * console-admin-only `documents` and `developer`) are NEVER active. They have
+ * no path to match against, so treating them as a match against any default is
+ * what caused several links to highlight at once.
  */
 export function isNavItemActive(
   pathname: string,

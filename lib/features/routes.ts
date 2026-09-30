@@ -107,6 +107,9 @@ export const navLandingPaths: Partial<Record<string, string>> = {
   deals: "/dashboard/deals",
   subscriptions: "/dashboard/subscriptions",
   platform: "/dashboard/platform",
+  // Mailbox (`mailbox/navigation.py` → `id = "mails"`). The route lives under
+  // the standard dashboard tree; the backend hides the link from non-admins.
+  mails: "/dashboard/mailbox",
 };
 
 /**
@@ -114,10 +117,10 @@ export const navLandingPaths: Partial<Record<string, string>> = {
  * frontend route.
  *
  * There is deliberately NO fallback to "/dashboard": a silent default made
- * unmapped ids (e.g. the console-admin-only `mails`, `documents`,
- * `developer`) resolve to the exact same string as `overview`, so their
- * prefix match lit up on every dashboard subpage and hijacked the page
- * heading. Callers must handle `undefined` explicitly.
+ * unmapped ids (e.g. the console-admin-only `documents`, `developer`) resolve
+ * to the exact same string as `overview`, so their prefix match lit up on every
+ * dashboard subpage and hijacked the page heading. Callers must handle
+ * `undefined` explicitly.
  */
 export function navItemPath(id: string): string | undefined {
   return navLandingPaths[id];
