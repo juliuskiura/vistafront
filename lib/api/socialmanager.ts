@@ -12,6 +12,8 @@ import type {
   ManagedChannel,
   MessengerHealth,
   MediaConstraint,
+  WebhookConfig,
+  WebhookInput,
   MetricSnapshot,
   OauthInitResult,
   OauthRedirectUriResult,
@@ -389,6 +391,66 @@ export function verifyPage(
   return serverMutate<{ ok: boolean; error?: string; error_type?: string }>(
     `/apis/socialmanager/pages/${nanoid}/verify/`,
     { body: {}, workspace },
+  );
+}
+
+/**
+ * Every inbound webhook registration in the deployment.
+ *
+ * Runs through `unwrapAll` because the app's `DefaultRouter` paginates: the
+ * response is `{count, results, next, …}`, not a bare array. Typing this as
+ * `WebhookConfig[]` and returning it unchecked compiles fine and then fails at
+ * runtime inside the page's `webhooks.map`.
+ *
+ * Reachable by any authenticated caller on purpose: a tenant's Channels screen
+ * has to be able to tell an operator which Meta App and callback URL its Page is
+ * registered with in order to explain a delivery that never arrived, and none
+ * of that is secret. Writes are the other way round — the backend refuses any
+ * write that did not resolve to the console workspace, so this call being
+ * available to everyone is not a way to repoint a webhook.
+ */
+export function listWebhooks(
+  workspace: string,
+): Promise<WebhookConfig[]> {
+  return serverFetch<WebhookConfig[] | Paginated<WebhookConfig>>(
+    "/apis/socialmanager/webhooks/",
+    { workspace },
+  ).then((payload) => unwrapAll(payload, workspace));
+}
+
+/**
+ * One webhook registration, writable. Console-only server-side; a rejected write
+ * comes back as a 403 from the backend rather than silently disappearing.
+ */
+export function updateWebhook(
+  nanoid: string,
+  body: WebhookInput,
+  workspace: string,
+): Promise<WebhookConfig> {
+  return serverMutate<WebhookConfig>(
+    `/apis/socialmanager/webhooks/${nanoid}/`,
+    { body, workspace },
+  );
+}
+
+export function createWebhook(
+  body: WebhookInput,
+  workspace: string,
+): Promise<WebhookConfig> {
+  return serverMutate<WebhookConfig>("/apis/socialmanager/webhooks/", {
+    body,
+    workspace,
+  });
+}
+
+/** Remove a registration entirely. Prefer blanking a field to inheriting. */
+export function deleteWebhook(
+  nanoid: string,
+  workspace: string,
+): Promise<{ deleted: boolean }> {
+  return serverMutate<{ deleted: boolean }>(
+    `/apis/socialmanager/webhooks/${nanoid}/`,
+    { body: {}, method: "DELETE", workspace },
   );
 }
 

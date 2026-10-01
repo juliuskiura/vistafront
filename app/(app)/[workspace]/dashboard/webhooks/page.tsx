@@ -1,12 +1,22 @@
 import { redirect } from "next/navigation";
 
 import { Banner } from "@/components/banner";
-import { listPlatforms } from "@/lib/api";
+import { listPlatforms, listWebhooks } from "@/lib/api";
 import type { SocialMediaPlatform, WebhookConfig } from "@/lib/api/types";
 import { requireWorkspace } from "@/lib/auth/server";
 import { getSubscriptionStateCached } from "@/lib/features/guard";
 
 import { WebhooksClient } from "./webhooks-client";
+
+/**
+ * The platform slugs that actually have a webhook receiver.
+ *
+ * Mirrors `socialmanager.views_webhook.WEBHOOK_PLATFORMS`. Anything outside this
+ * set has no URL to register, so offering it in the platform picker would
+ * produce a webhook that can never receive anything — and the operator would
+ * only discover that from an empty inbox.
+ */
+const RECEIVER_SLUGS = new Set(["facebook", "instagram", "instagramfb"]);
 
 /**
  * Webhooks (Server Component) — **console workspace only.**
@@ -49,13 +59,18 @@ export default async function WebhooksPage({
     (): SocialMediaPlatform[] => [],
   );
 
-  // Flattened because the screen is about webhook registrations, not platforms.
-  // A platform with no row of its own inherits everything, which is recorded
-  // separately below — dropping those silently would make a correctly
-  // configured single-App deployment look like it had no webhooks at all.
-  const webhooks: WebhookConfig[] = platforms.flatMap((p) => p.webhooks ?? []);
-  const platformsWithReceiver = platforms.filter(
-    (p) => p.is_active && Boolean(p.webhook_endpoint || p.slug === "instagram" || p.slug === "facebook" || p.slug === "instagramfb"),
+  // Fetched from its own endpoint rather than read off the platform rows. The
+  // nested `webhooks` field still exists and is still the cheapest read for a
+  // client that already has the platforms; this endpoint is the one that can
+  // write, so it is also the one the screen edits through.
+  //
+  // `catch` because the endpoint 404s until `0045_webhook` is applied. Degrading
+  // to an empty list shows "nothing configured", which is wrong but recoverable —
+  // the alternative is a server error with no page at all.
+  const webhooks = await listWebhooks(ws).catch((): WebhookConfig[] => []);
+
+  const platformsWithReceiver = platforms.filter((p) =>
+    RECEIVER_SLUGS.has(p.slug),
   );
 
   return (
@@ -69,6 +84,15 @@ export default async function WebhooksPage({
         <WebhooksClient
           webhooks={webhooks}
           platformCount={platforms.length}
+          workspace={ws}
+          platforms={platforms.map((p) => ({
+            nanoid: p.nanoid,
+            slug: p.slug,
+            name: p.name,
+            client_id: p.client_id,
+            webhook_endpoint: p.webhook_endpoint,
+            webhook_fields: p.webhook_fields,
+          }))}
           platformsWithReceiver={platformsWithReceiver.map((p) => ({
             slug: p.slug,
             name: p.name,

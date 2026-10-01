@@ -1311,6 +1311,65 @@ export interface WebhookConfig {
   help_texts: Record<string, string>;
 }
 
+/**
+ * One inbound webhook registration — one Meta App, pointed at one callback URL.
+ *
+ * A platform can be served by more than one App. Comments and Messenger are
+ * routinely split across two Apps with different App IDs, different signing
+ * secrets and different field lists, and only the App that owns a Page delivers
+ * that Page's messages. `help_texts` carries the backend's per-field
+ * documentation straight through so the operator screen can show it, rather
+ * than the same prose being duplicated into the frontend.
+ */
+export interface WebhookConfig {
+  id: number;
+  nanoid: string | null;
+  platform: number;
+  platform_slug: string;
+  platform_name: string;
+  name: string;
+  /** Blank means "inherit from the platform row". */
+  client_id: string | null;
+  /** Blank means "inherit `resolved_webhook_endpoint` from the platform". */
+  callback_url: string | null;
+  /**
+   * The *name* of the settings/env key holding this App's signing secret — the
+   * secret itself is never in the database. Setting it changes nothing unless
+   * the key is also added to `WEBHOOK_SECRET_ENV_VARS`, which is why the field
+   * help says so.
+   */
+  secret_env_var: string | null;
+  subscribed_fields: string | null;
+  is_active: boolean;
+  /** What to actually copy and compare — already accounts for inheritance. */
+  resolved_callback_url: string;
+  resolved_client_id: string;
+  resolved_subscribed_fields: string[];
+  /** True when the row contributes nothing of its own. */
+  is_inherited: boolean;
+  /** Field name → the model's own `help_text`. Empty string when undocumented. */
+  help_texts: Record<string, string>;
+}
+
+/**
+ * The writable half of a `WebhookConfig`.
+ *
+ * Every field except `name` may be blank, and blank means "inherit from the
+ * platform row" — so the shape cannot distinguish "not configured" from "not
+ * sent". The Server Action clears absent keys rather than leaving a previously
+ * set value in place, which is what makes clearing a field possible at all.
+ */
+export interface WebhookInput {
+  /** Platform **nanoid**, not slug — the serializer resolves by nanoid. */
+  platform: string;
+  name: string;
+  client_id?: string | null;
+  callback_url?: string | null;
+  secret_env_var?: string | null;
+  subscribed_fields?: string | null;
+  is_active?: boolean;
+}
+
 export interface PlatformContentFormat {
   id: string;
   nanoid: string;

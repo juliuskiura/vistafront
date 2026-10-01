@@ -1,18 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertTriangle, Info, Search } from "@/lib/icons";
+import { AlertTriangle, Info, Plus, Search } from "@/lib/icons";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import type { SocialMediaPlatform, WebhookConfig } from "@/lib/api/types";
 
 import { WebhookCard } from "./_components/webhook-card";
+import type { PlatformOption } from "./_components/webhook-form";
 
-/**
- * A platform whose receiver exists, flattened for the "not configured
- * explicitly" panel. Declared here rather than passed as whole platform rows
- * because the client component needs four fields and nothing else.
- */
+/** A platform whose receiver exists, flattened for the "not configured
+ * explicitly" panel. Declared here rather than passing whole platform rows
+ * because the list needs a handful of fields and nothing else. */
 export type PlatformReceiver = Pick<
   SocialMediaPlatform,
   "slug" | "name" | "client_id" | "webhook_endpoint" | "webhook_fields"
@@ -23,6 +23,9 @@ interface Props {
   /** How many platform rows came back, to tell "no platforms" from "none configured". */
   platformCount: number;
   platformsWithReceiver: PlatformReceiver[];
+  /** Selectable platforms, by nanoid — the value the backend resolves on. */
+  platforms: PlatformOption[];
+  workspace: string;
 }
 
 /**
@@ -30,7 +33,7 @@ interface Props {
  *
  * Two jobs, in this order, because they are asked in this order:
  *
- * 1. **Show the registrations.** One card per webhook row, each field carrying
+ * 1. **Configure the registrations.** One card per webhook, each field carrying
  *    the `help_text` the backend ships with it. That prose is written once on
  *    the model and read from there, so the sentence an operator reads here is
  *    the same one a developer reads in the Django admin — and it cannot drift
@@ -42,13 +45,15 @@ interface Props {
  *    "nothing is configured" when the truth is "everything is inherited from
  *    the platform rows". Those platforms are listed explicitly for that reason.
  *
- * No state beyond the filter. Nothing on this screen mutates, and nothing
- * changes while it is open.
+ * No live state: every save and delete is a Server Action that revalidates, so
+ * the list is whatever the server last returned. Nothing here polls.
  */
 export function WebhooksClient({
   webhooks,
   platformCount,
   platformsWithReceiver,
+  platforms,
+  workspace,
 }: Props) {
   const [query, setQuery] = useState("");
 
@@ -56,7 +61,13 @@ export function WebhooksClient({
     const needle = query.trim().toLowerCase();
     if (!needle) return webhooks;
     return webhooks.filter((w) =>
-      [w.name, w.platform_name, w.platform_slug, w.resolved_client_id, w.secret_env_var ?? ""]
+      [
+        w.name,
+        w.platform_name,
+        w.platform_slug,
+        w.resolved_client_id,
+        w.secret_env_var ?? "",
+      ]
         .join(" ")
         .toLowerCase()
         .includes(needle),
@@ -85,56 +96,71 @@ export function WebhooksClient({
               </p>
               <p className="mt-1 text-xs leading-relaxed text-amber-800">
                 There is nothing to point a webhook at. Configure a platform
-                first — its App ID and callback URL are what a webhook row
-                inherits when it leaves a field blank.
+                first — its App ID and callback URL are what a webhook inherits
+                when you leave a field blank.
               </p>
             </div>
           </div>
         </Card>
       )}
 
-      {webhooks.length > 0 && (
-        <Card className="rounded-3xl border p-5">
-          <header className="mb-4">
+      <Card className="rounded-3xl border p-5">
+        <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div>
             <h2 className="text-sm font-bold text-slate-900">
-              Configured registrations
+              Registrations
             </h2>
             <p className="mt-1 text-xs leading-relaxed text-slate-600">
               {webhooks.length} webhook{webhooks.length === 1 ? "" : "s"} across{" "}
               {new Set(webhooks.map((w) => w.platform_slug)).size} platform
               {new Set(webhooks.map((w) => w.platform_slug)).size === 1 ? "" : "s"}.
-              Check each Callback URL against the App ID on the same card — a URL
+              Check each callback URL against the App ID on the same card — a URL
               saved on the wrong App reads &quot;verified&quot; and delivers nothing.
             </p>
-          </header>
+          </div>
+          <a href="#new-webhook">
+            <Button size="sm" variant="outline">
+              <Plus className="size-3.5" />
+              Add webhook
+            </Button>
+          </a>
+        </header>
 
-          {webhooks.length > 6 && (
-            <div className="relative mb-4">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-              <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Filter by name, platform, App ID, or secret key…"
-                aria-label="Filter webhooks"
-                className="pl-9"
-              />
-            </div>
-          )}
+        {webhooks.length > 6 && (
+          <div className="relative mb-4">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Filter by name, platform, App ID, or secret key…"
+              aria-label="Filter webhooks"
+              className="pl-9"
+            />
+          </div>
+        )}
 
-          {visible.length === 0 ? (
-            <p className="rounded-2xl border border-slate-200 p-4 text-xs text-slate-600">
-              Nothing matches that filter. {webhooks.length} webhook
-              {webhooks.length === 1 ? " is" : "s are"} configured in total.
-            </p>
-          ) : (
-            <div className="space-y-4">
-              {visible.map((webhook) => (
-                <WebhookCard key={webhook.nanoid ?? webhook.id} webhook={webhook} />
-              ))}
-            </div>
-          )}
-        </Card>
-      )}
+        {visible.length === 0 && webhooks.length > 0 ? (
+          <p className="rounded-2xl border border-slate-200 p-4 text-xs text-slate-600">
+            Nothing matches that filter. {webhooks.length} webhook
+            {webhooks.length === 1 ? " is" : "s are"} configured in total.
+          </p>
+        ) : null}
+
+        <div className="space-y-4">
+          {visible.map((webhook) => (
+            <WebhookCard
+              key={webhook.nanoid ?? webhook.id}
+              webhook={webhook}
+              platforms={platforms}
+              workspace={workspace}
+            />
+          ))}
+        </div>
+
+        <div id="new-webhook" className="scroll-mt-6 border-t border-slate-100 pt-4">
+          <WebhookCard webhook={null} platforms={platforms} workspace={workspace} />
+        </div>
+      </Card>
 
       <Card className="rounded-3xl border p-5">
         <header className="mb-3">
@@ -155,7 +181,10 @@ export function WebhooksClient({
         ) : (
           <ul className="divide-y divide-slate-100">
             {inherited.map((p) => (
-              <li key={p.slug} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 py-2.5">
+              <li
+                key={p.slug}
+                className="flex flex-wrap items-baseline gap-x-3 gap-y-1 py-2.5"
+              >
                 <span className="text-sm font-semibold text-slate-800">{p.name}</span>
                 <span className="font-mono text-[11px] text-slate-400">{p.slug}</span>
                 {p.client_id && (
