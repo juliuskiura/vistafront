@@ -61,6 +61,7 @@ export {
   getPaypalQuote,
   createPaypalCheckout,
   capturePaypalOrder,
+  getMpesaConfig,
 } from "./billing";
 
 export {

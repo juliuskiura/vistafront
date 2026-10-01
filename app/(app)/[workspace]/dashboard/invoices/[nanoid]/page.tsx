@@ -6,6 +6,7 @@ import {
   getPlan,
   getOrganization,
   getPaypalQuote,
+  getMpesaConfig,
   listPaymentMethods,
   type Invoice,
   type Order,
@@ -200,6 +201,13 @@ export default async function InvoiceDetailPage({
     workspace: active.domain,
   }).catch(() => null);
 
+  // KCB's paybill and our account number under it. Read here (server-side)
+  // so the manual paybill instructions can never drift from the backend's
+  // configuration; a failure only disables the copy-to-clipboard numbers.
+  const mpesaConfig = await getMpesaConfig(invoice.nanoid, {
+    workspace: active.domain,
+  }).catch(() => null);
+
   return (
     <div className="flex min-h-full flex-col">
       <Banner
@@ -226,6 +234,7 @@ export default async function InvoiceDetailPage({
           invoiceTotal={Number(invoice.total)}
           invoiceCurrency={invoice.currency || data.currency}
           paypalQuote={paypalQuote}
+          mpesaConfig={mpesaConfig}
           order={order}
           plan={plan}
           paymentMethods={paymentMethods}

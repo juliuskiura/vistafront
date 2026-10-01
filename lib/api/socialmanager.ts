@@ -395,19 +395,15 @@ export function verifyPage(
 }
 
 /**
- * Every inbound webhook registration in the deployment.
+ * Every inbound webhook registration.
  *
  * Runs through `unwrapAll` because the app's `DefaultRouter` paginates: the
  * response is `{count, results, next, …}`, not a bare array. Typing this as
  * `WebhookConfig[]` and returning it unchecked compiles fine and then fails at
  * runtime inside the page's `webhooks.map`.
  *
- * Reachable by any authenticated caller on purpose: a tenant's Channels screen
- * has to be able to tell an operator which Meta App and callback URL its Page is
- * registered with in order to explain a delivery that never arrived, and none
- * of that is secret. Writes are the other way round — the backend refuses any
- * write that did not resolve to the console workspace, so this call being
- * available to everyone is not a way to repoint a webhook.
+ * A global configuration list, handled the same way as `listPlatforms` — these
+ * rows are deployment config, not tenant data, so they are not workspace-scoped.
  */
 export function listWebhooks(
   workspace: string,
@@ -419,8 +415,8 @@ export function listWebhooks(
 }
 
 /**
- * One webhook registration, writable. Console-only server-side; a rejected write
- * comes back as a 403 from the backend rather than silently disappearing.
+ * One webhook registration, writable. Same ungated access as the platform rows
+ * it inherits from.
  */
 export function updateWebhook(
   nanoid: string,

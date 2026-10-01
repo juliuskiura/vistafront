@@ -1,199 +1,146 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { AlertTriangle, Info, Plus, Search } from "@/lib/icons";
+import { useState } from "react";
+import { AlertTriangle, ChevronDown, Info, Plus } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import type { SocialMediaPlatform, WebhookConfig } from "@/lib/api/types";
+import type { WebhookConfig } from "@/lib/api/types";
 
-import { WebhookCard } from "./_components/webhook-card";
-import type { PlatformOption } from "./_components/webhook-form";
-
-/** A platform whose receiver exists, flattened for the "not configured
- * explicitly" panel. Declared here rather than passing whole platform rows
- * because the list needs a handful of fields and nothing else. */
-export type PlatformReceiver = Pick<
-  SocialMediaPlatform,
-  "slug" | "name" | "client_id" | "webhook_endpoint" | "webhook_fields"
-> & { resolved_webhook_endpoint: string };
-
-interface Props {
-  webhooks: WebhookConfig[];
-  /** How many platform rows came back, to tell "no platforms" from "none configured". */
-  platformCount: number;
-  platformsWithReceiver: PlatformReceiver[];
-  /** Selectable platforms, by nanoid — the value the backend resolves on. */
-  platforms: PlatformOption[];
-  workspace: string;
-}
+import { WebhookForm, type Platform } from "./webhook-form";
 
 /**
- * The Webhooks screen.
- *
- * Two jobs, in this order, because they are asked in this order:
- *
- * 1. **Configure the registrations.** One card per webhook, each field carrying
- *    the `help_text` the backend ships with it. That prose is written once on
- *    the model and read from there, so the sentence an operator reads here is
- *    the same one a developer reads in the Django admin — and it cannot drift
- *    from the field's real behaviour.
- *
- * 2. **Say what is *not* configured.** A deployment running one Meta App per
- *    platform needs no webhook rows at all — every field inherits — so the
- *    common case is an empty list. Showing only the empty list would read as
- *    "nothing is configured" when the truth is "everything is inherited from
- *    the platform rows". Those platforms are listed explicitly for that reason.
- *
- * No live state: every save and delete is a Server Action that revalidates, so
- * the list is whatever the server last returned. Nothing here polls.
+ * The Webhooks screen: every registration, editable, plus the ones that inherit
+ * everything from their platform.
  */
 export function WebhooksClient({
   webhooks,
   platformCount,
-  platformsWithReceiver,
   platforms,
   workspace,
-}: Props) {
-  const [query, setQuery] = useState("");
+}: {
+  webhooks: WebhookConfig[];
+  platformCount: number;
+  platforms: Platform[];
+  workspace: string;
+}) {
+  const [editing, setEditing] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
 
-  const visible = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    if (!needle) return webhooks;
-    return webhooks.filter((w) =>
-      [
-        w.name,
-        w.platform_name,
-        w.platform_slug,
-        w.resolved_client_id,
-        w.secret_env_var ?? "",
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(needle),
-    );
-  }, [webhooks, query]);
-
-  // A platform with a receiver but no row of its own. Sorted so the list is
-  // stable between renders rather than following whatever order the API
-  // happened to return.
-  const inherited = useMemo(() => {
-    const configured = new Set(webhooks.map((w) => w.platform_slug));
-    return platformsWithReceiver
-      .filter((p) => !configured.has(p.slug))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [platformsWithReceiver, webhooks]);
+  const withRows = new Set(webhooks.map((w) => w.platform_slug));
+  const inherited = platforms.filter(
+    (p) => ["facebook", "instagram", "instagramfb"].includes(p.slug) && !withRows.has(p.slug),
+  );
 
   return (
     <div className="space-y-6">
       {platformCount === 0 && (
         <Card className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
-            <div>
-              <p className="text-sm font-bold text-amber-900">
-                No platforms configured
-              </p>
-              <p className="mt-1 text-xs leading-relaxed text-amber-800">
-                There is nothing to point a webhook at. Configure a platform
-                first — its App ID and callback URL are what a webhook inherits
-                when you leave a field blank.
-              </p>
-            </div>
-          </div>
+          <p className="text-sm font-bold text-amber-900">
+            No platforms configured
+          </p>
+          <p className="mt-1 text-xs text-amber-800">
+            Configure a platform first — that is what a webhook inherits from when
+            a field is blank.
+          </p>
         </Card>
       )}
 
       <Card className="rounded-3xl border p-5">
-        <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <header className="mb-4 flex items-start justify-between gap-3">
           <div>
             <h2 className="text-sm font-bold text-slate-900">
-              Registrations
+              {webhooks.length} registration{webhooks.length === 1 ? "" : "s"}
             </h2>
-            <p className="mt-1 text-xs leading-relaxed text-slate-600">
-              {webhooks.length} webhook{webhooks.length === 1 ? "" : "s"} across{" "}
-              {new Set(webhooks.map((w) => w.platform_slug)).size} platform
-              {new Set(webhooks.map((w) => w.platform_slug)).size === 1 ? "" : "s"}.
-              Check each callback URL against the App ID on the same card — a URL
-              saved on the wrong App reads &quot;verified&quot; and delivers nothing.
+            <p className="mt-1 text-xs text-slate-600">
+              Check each callback URL against the App ID beside it — a URL saved
+              on the wrong App reads &quot;verified&quot; and delivers nothing.
             </p>
           </div>
-          <a href="#new-webhook">
-            <Button size="sm" variant="outline">
+          {!creating && (
+            <Button size="sm" variant="outline" onClick={() => setCreating(true)}>
               <Plus className="size-3.5" />
               Add webhook
             </Button>
-          </a>
+          )}
         </header>
 
-        {webhooks.length > 6 && (
-          <div className="relative mb-4">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Filter by name, platform, App ID, or secret key…"
-              aria-label="Filter webhooks"
-              className="pl-9"
-            />
-          </div>
-        )}
-
-        {visible.length === 0 && webhooks.length > 0 ? (
-          <p className="rounded-2xl border border-slate-200 p-4 text-xs text-slate-600">
-            Nothing matches that filter. {webhooks.length} webhook
-            {webhooks.length === 1 ? " is" : "s are"} configured in total.
-          </p>
-        ) : null}
-
-        <div className="space-y-4">
-          {visible.map((webhook) => (
-            <WebhookCard
-              key={webhook.nanoid ?? webhook.id}
-              webhook={webhook}
+        <div className="space-y-3">
+          {creating && platforms.length > 0 && (
+            <WebhookForm
+              webhook={null}
               platforms={platforms}
               workspace={workspace}
+              onClose={() => setCreating(false)}
             />
-          ))}
-        </div>
+          )}
 
-        <div id="new-webhook" className="scroll-mt-6 border-t border-slate-100 pt-4">
-          <WebhookCard webhook={null} platforms={platforms} workspace={workspace} />
+          {webhooks.map((w) => (
+            <div key={w.nanoid ?? w.id}>
+              {editing === (w.nanoid ?? String(w.id)) ? (
+                <WebhookForm
+                  webhook={w}
+                  platforms={platforms}
+                  workspace={workspace}
+                  onClose={() => setEditing(null)}
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setEditing(w.nanoid ?? String(w.id))
+                  }
+                  className="flex w-full items-start justify-between gap-2 rounded-2xl border border-slate-200 p-4 text-left"
+                >
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">{w.name}</p>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      {w.platform_name}
+                    </p>
+                  </div>
+                  <span className="flex shrink-0 items-center gap-1.5">
+                    {w.is_inherited && (
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
+                        inherited
+                      </span>
+                    )}
+                    {!w.is_active && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                        <AlertTriangle className="size-3" />
+                        inactive
+                      </span>
+                    )}
+                    <ChevronDown className="size-4 text-slate-400" />
+                  </span>
+                </button>
+              )}
+            </div>
+          ))}
+
+          {webhooks.length === 0 && !creating && (
+            <p className="rounded-2xl border border-slate-200 p-4 text-xs text-slate-600">
+              Nothing configured. Every field can be left blank to inherit from
+              the platform, so a row is only needed when a platform runs more
+              than one App.
+            </p>
+          )}
         </div>
       </Card>
 
-      <Card className="rounded-3xl border p-5">
-        <header className="mb-3">
-          <h2 className="text-sm font-bold text-slate-900">
+      {inherited.length > 0 && (
+        <Card className="rounded-3xl border p-5">
+          <h2 className="mb-2 text-sm font-bold text-slate-900">
             Inherited from the platform
           </h2>
-          <p className="mt-1 text-xs leading-relaxed text-slate-600">
-            No webhook row of its own, so every field falls back to the platform
-            row. Listed because an empty screen above would otherwise read as
-            &quot;nothing is configured&quot; when the truth is
-            &quot;everything is inherited&quot;.
-          </p>
-        </header>
-        {inherited.length === 0 ? (
-          <p className="rounded-2xl border border-slate-200 p-4 text-xs text-slate-600">
-            Every platform with a webhook receiver has a row of its own above.
-          </p>
-        ) : (
           <ul className="divide-y divide-slate-100">
             {inherited.map((p) => (
               <li
                 key={p.slug}
-                className="flex flex-wrap items-baseline gap-x-3 gap-y-1 py-2.5"
+                className="flex flex-wrap items-baseline gap-x-3 py-2 text-xs"
               >
-                <span className="text-sm font-semibold text-slate-800">{p.name}</span>
-                <span className="font-mono text-[11px] text-slate-400">{p.slug}</span>
-                {p.client_id && (
-                  <span className="font-mono text-[11px] text-slate-500">
-                    App {p.client_id}
-                  </span>
-                )}
-                {p.webhook_endpoint || p.resolved_webhook_endpoint ? null : (
-                  <span className="inline-flex items-center gap-1 text-[11px] text-amber-700">
+                <span className="font-semibold text-slate-800">{p.name}</span>
+                <span className="font-mono text-slate-400">{p.slug}</span>
+                {!p.webhook_endpoint && (
+                  <span className="inline-flex items-center gap-1 text-amber-700">
                     <Info className="size-3" />
                     no callback URL resolved
                   </span>
@@ -201,8 +148,8 @@ export function WebhooksClient({
               </li>
             ))}
           </ul>
-        )}
-      </Card>
+        </Card>
+      )}
     </div>
   );
 }

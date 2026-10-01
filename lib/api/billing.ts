@@ -7,6 +7,7 @@ import {
   PaymentMethod,
   PaypalQuote,
   PaypalOrder,
+  MpesaConfig,
 } from "@/lib/api/types";
 import { serverFetch, serverMutate } from "./server-fetch";
 
@@ -69,6 +70,27 @@ export async function extendInvoice(
 export async function listPayments({ workspace }: { workspace: string }): Promise<Payment[]> {
   const payload = await serverFetch<Paginated<Payment> | Payment[]>("/apis/billing/payments/", { workspace });
   return Array.isArray(payload) ? payload : payload.results ?? [];
+}
+
+/**
+ * Fetch the M-Pesa paybill and account number for the manual paybill path.
+ *
+ * KCB collects through one shared bank paybill; this merchant's account number
+ * under it is what identifies the payment as ours. Both are deployment
+ * configuration owned by the backend, so the checkout screen reads them here
+ * rather than hardcoding them. Run server-side (Server Component).
+ */
+export async function getMpesaConfig(
+  invoiceNanoid: string | null,
+  { workspace }: { workspace: string },
+): Promise<MpesaConfig> {
+  const qs = invoiceNanoid
+    ? `?${new URLSearchParams({ invoice: invoiceNanoid }).toString()}`
+    : "";
+  return serverFetch<MpesaConfig>(
+    `/apis/billing/payments/mpesa/config/${qs}`,
+    { workspace },
+  );
 }
 
 /**

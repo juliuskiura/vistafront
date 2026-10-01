@@ -9,37 +9,25 @@ import { getSubscriptionStateCached } from "@/lib/features/guard";
 import { WebhooksClient } from "./webhooks-client";
 
 /**
- * The platform slugs that actually have a webhook receiver.
+ * Webhooks (Server Component).
  *
- * Mirrors `socialmanager.views_webhook.WEBHOOK_PLATFORMS`. Anything outside this
- * set has no URL to register, so offering it in the platform picker would
- * produce a webhook that can never receive anything — and the operator would
- * only discover that from an empty inbox.
- */
-const RECEIVER_SLUGS = new Set(["facebook", "instagram", "instagramfb"]);
-
-/**
- * Webhooks (Server Component) — **console workspace only.**
+ * One screen listing every inbound webhook registration: which Meta App serves
+ * which platform, at what callback URL, with which fields, and which settings key
+ * holds the secret that signs its deliveries.
  *
- * One screen listing every inbound webhook registration in the deployment: which
- * Meta App serves which platform, at what callback URL, with which fields, and
- * which settings key holds the secret that signs its deliveries.
+ * The page is console-workspace only, via `SubscriptionState.exempt` — which the
+ * backend derives from `_is_admin_workspace(workspace)`, the same predicate
+ * behind `permstack`'s `ConsolePermissionResolver`. Not a hardcoded domain,
+ * because the console domain is an env-overridable Django setting that would
+ * silently drift.
  *
- * The guard is the console workspace, read through `SubscriptionState.exempt`,
- * which the backend derives from `_is_admin_workspace(workspace)` — the same
- * predicate behind `permstack`'s `ConsolePermissionResolver` and the
- * subscription bypass. Not a hardcoded domain, because the console domain is an
- * env-overridable Django setting that would silently drift.
+ * That guard is the *page*. The endpoint underneath it is not separately gated:
+ * `WebhookViewSet` is a plain `ModelViewSet` with no workspace scoping, exactly
+ * like `SocialMediaPlatformViewSet` which holds the same App IDs and callback
+ * URLs. So this redirect controls which screen is offered, and nothing more.
  *
- * This is the UI half of the lock. The nav item is also `console_admin_only`,
- * so the link is hidden from tenants — but a route is guessable by URL, so the
- * page cannot rely on the sidebar for its own security. The data behind it is
- * deployment configuration: callback URLs, App IDs and the names of the
- * settings keys that hold app secrets. None of that is a tenant concept.
- *
- * Rendered on the server because nothing here changes while the screen is
- * open — this is a read-only reference, not a live view. No polling, no query
- * cache, no client fetch.
+ * Rendered on the server because nothing here changes while the screen is open.
+ * No polling, no query cache, no client fetch.
  */
 export default async function WebhooksPage({
   params,
@@ -69,10 +57,6 @@ export default async function WebhooksPage({
   // the alternative is a server error with no page at all.
   const webhooks = await listWebhooks(ws).catch((): WebhookConfig[] => []);
 
-  const platformsWithReceiver = platforms.filter((p) =>
-    RECEIVER_SLUGS.has(p.slug),
-  );
-
   return (
     <div className="flex min-h-full flex-col">
       <Banner
@@ -91,14 +75,6 @@ export default async function WebhooksPage({
             name: p.name,
             client_id: p.client_id,
             webhook_endpoint: p.webhook_endpoint,
-            webhook_fields: p.webhook_fields,
-          }))}
-          platformsWithReceiver={platformsWithReceiver.map((p) => ({
-            slug: p.slug,
-            name: p.name,
-            client_id: p.client_id ?? "",
-            webhook_endpoint: p.webhook_endpoint,
-            resolved_webhook_endpoint: p.webhook_endpoint,
             webhook_fields: p.webhook_fields,
           }))}
         />

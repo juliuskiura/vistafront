@@ -5,6 +5,7 @@ import { ChevronRight, HelpCircle, ShieldCheck } from "@/lib/icons";
 
 import {
   type ClientBusiness,
+  type MpesaConfig,
   type Order,
   type PaymentMethod,
   type SubsPlan,
@@ -44,6 +45,12 @@ interface PaymentCheckoutClientProps {
   invoiceCurrency: string;
   /** Backend-computed (marked-up) USD quote; null if the quote failed. */
   paypalQuote: PaypalQuote | null;
+  /**
+   * KCB's paybill and our account number under it, for the manual M-PESA
+   * paybill path. Null when the backend could not supply them, in which case
+   * the customer is pointed at the automated prompt only.
+   */
+  mpesaConfig: MpesaConfig | null;
   /** Tenant workspace slug scoping every backend call. */
   workspace: string;
   order: Order;
@@ -61,6 +68,7 @@ export function PaymentCheckoutClient({
   invoiceTotal,
   invoiceCurrency,
   paypalQuote,
+  mpesaConfig,
   workspace,
   order,
   plan,
@@ -303,6 +311,7 @@ export function PaymentCheckoutClient({
                     isProcessing={isProcessing}
                     amountKES={amountKES}
                     invoiceNumber={invoiceLabel}
+                    mpesaConfig={mpesaConfig}
                   />
                 )}
 

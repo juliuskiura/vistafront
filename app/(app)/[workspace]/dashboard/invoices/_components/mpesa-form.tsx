@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { MpesaFormData } from "./types";
 import { MpesaLogo } from "./brand-logos";
+import type { MpesaConfig } from "@/lib/api";
 import {
   AlertCircle,
   Check,
@@ -20,6 +21,12 @@ interface MpesaFormProps {
   isProcessing: boolean;
   amountKES: string;
   invoiceNumber: string;
+  /**
+   * KCB's paybill and our account number under it, from the backend. They are
+   * deployment configuration, so they are never hardcoded here — the customer
+   * types exactly what the backend says.
+   */
+  mpesaConfig: MpesaConfig | null;
 }
 
 type StkPhase = "idle" | "prompted" | "approved";
@@ -31,6 +38,7 @@ export function MpesaForm({
   isProcessing,
   amountKES,
   invoiceNumber,
+  mpesaConfig,
 }: MpesaFormProps) {
   const [stkPhase, setStkPhase] = useState<StkPhase>("idle");
   const [countdown, setCountdown] = useState(45);
@@ -181,9 +189,14 @@ export function MpesaForm({
               id="mpesa-ref-input"
               type="text"
               readOnly
-              value={formData.accountReference}
+              value={mpesaConfig?.invoice_number || formData.accountReference}
               className="glass-input w-full px-4 py-3 rounded-xl font-mono text-xs opacity-80 cursor-not-allowed bg-card/40"
             />
+            <p className="text-[11px] text-muted-foreground mt-1.5">
+              Our account number {mpesaConfig?.account_number ?? "—"} followed
+              by your invoice number. It is what appears on your M-PESA
+              statement.
+            </p>
           </div>
 
           {stkPhase !== "idle" && (
@@ -218,7 +231,7 @@ export function MpesaForm({
                       </span>{" "}
                       for Acc.{" "}
                       <span className="text-amber-300">
-                        {formData.accountReference}
+                        {mpesaConfig?.account_number ?? formData.accountReference}
                       </span>
                       ?
                     </div>
@@ -320,12 +333,13 @@ export function MpesaForm({
               </span>
               <div className="flex items-center justify-between">
                 <span className="font-mono text-base font-bold text-foreground tracking-wider">
-                  247247
+                  {mpesaConfig?.paybill ?? "Unavailable"}
                 </span>
                 <button
                   type="button"
-                  onClick={() => copyToClipboard("247247", "paybill")}
-                  className="px-2 py-1 rounded-md bg-muted/60 hover:bg-muted text-xs font-medium text-foreground flex items-center gap-1 cursor-pointer transition-colors"
+                  onClick={() => copyToClipboard(mpesaConfig?.paybill ?? "", "paybill")}
+                  disabled={!mpesaConfig}
+                  className="px-2 py-1 rounded-md bg-muted/60 hover:bg-muted text-xs font-medium text-foreground flex items-center gap-1 cursor-pointer transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {copiedField === "paybill" ? (
                     <Check className="w-3 h-3 text-emerald-500" />
@@ -343,12 +357,12 @@ export function MpesaForm({
               </span>
               <div className="flex items-center justify-between">
                 <span className="font-mono text-base font-bold text-emerald-500 tracking-wider">
-                  {formData.accountReference}
+                  {mpesaConfig?.account_number ?? "Unavailable"}
                 </span>
                 <button
                   type="button"
                   onClick={() =>
-                    copyToClipboard(formData.accountReference, "account")
+                    copyToClipboard(mpesaConfig?.account_number ?? "", "account")
                   }
                   className="px-2 py-1 rounded-md bg-muted/60 hover:bg-muted text-xs font-medium text-foreground flex items-center gap-1 cursor-pointer transition-colors"
                 >
@@ -368,7 +382,7 @@ export function MpesaForm({
               htmlFor="mpesa-code-input"
               className="block text-xs font-semibold text-foreground/90 mb-1.5 uppercase tracking-wider"
             >
-              M-PESA Confirmation SMS Code
+              M-PESA Receipt Number
             </label>
             <div className="relative">
               <input
@@ -381,8 +395,10 @@ export function MpesaForm({
               />
             </div>
             <p className="text-[11px] text-muted-foreground mt-1">
-              Found in your Safaricom confirmation SMS (10 characters
-              alphanumeric).
+              The receipt code in your Safaricom confirmation SMS or M-PESA app
+              (e.g.{" "}
+              <span className="font-mono">NLJ7RT61SV</span>). We match it to
+              your payment and issue the receipt.
             </p>
           </div>
 
