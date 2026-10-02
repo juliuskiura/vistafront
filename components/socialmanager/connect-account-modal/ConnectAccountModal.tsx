@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import type { SocialMediaPlatform, SocialPlatform } from "@/lib/api/types";
 import { oauthInitAction } from "@/app/(app)/[workspace]/dashboard/socialmanager/actions";
+import { useConnectHandshake } from "./_hooks/use-connect-handshake";
 import { buildPlatformOptions, needsDoorChoice, recommendedDoor } from "./_components/platform-copy";
 import { ModalHeader } from "./_components/modal-header";
 import { StepIndicator } from "./_components/step-indicator";
@@ -69,87 +70,24 @@ export default function ConnectAccountModal({
     return preselected && needsDoorChoice(preselected) ? "doors" : "select";
   });
   const [errorMessage, setErrorMessage] = useState("");
-  const popupRef = useRef<Window | null>(null);
-  const listenerRef = useRef<((event: MessageEvent) => void) | null>(null);
-  const messageReceivedRef = useRef(false);
 
-  useEffect(() => {
-    return () => {
-      if (popupRef.current && !popupRef.current.closed) {
-        popupRef.current.close();
-      }
-      if (listenerRef.current) {
-        window.removeEventListener("message", listenerRef.current);
-      }
-    };
-  }, []);
-
-  const handleMessage = useCallback(
-    (event: MessageEvent) => {
-      // Only accept messages sent by the popup window we opened, and only from
-      // this app's own origin — never from a third-party window or a forged
-      // origin, so a foreign page can't claim a connection.
-      //
-      // Django's OAuth closing page is served through the same public host as
-      // this app (nginx proxies /apis/ to Django), so its origin IS this app's
-      // origin. Compare against the live runtime origin rather than a build-time
-      // NEXT_PUBLIC_* constant: a constant is frozen at build and silently rots
-      // when the deploy target changes, which previously made this check reject
-      // every genuine success message.
-      if (event.source !== popupRef.current) return;
-      if (event.origin !== window.location.origin) return;
-
-      const data = event.data;
-      if (!data || typeof data !== "object") return;
-      if (!("success" in data && "platform" in data)) return;
-
-      const { success, platform, error } = data as {
-        success: boolean;
-        platform: string;
-        error?: string;
-      };
-
-      messageReceivedRef.current = true;
-
-      if (popupRef.current && !popupRef.current.closed) {
-        popupRef.current.close();
-      }
-      popupRef.current = null;
-
-      if (success) {
+  // The popup's own `postMessage` is the fast path; `useConnectHandshake`
+  // reconciles against the backend when the popup closes without saying
+  // anything, which is what a severed `window.opener` looks like from here.
+  const { begin, cancel, takeBaseline } = useConnectHandshake({
+    workspaceDomain,
+    onSuccess: useCallback(
+      (platform: string) => {
         setStep("success");
         onConnected(platform as SocialPlatform);
-      } else {
-        setErrorMessage(error || "The sign-in was interrupted. Please try again.");
-        setStep("error");
-      }
-    },
-    [onConnected],
-  );
-
-  useEffect(() => {
-    if (step === "connecting") {
-      messageReceivedRef.current = false;
-      const handler = (event: MessageEvent) => handleMessage(event);
-      listenerRef.current = handler;
-      window.addEventListener("message", handler);
-      const poll = window.setInterval(() => {
-        if (messageReceivedRef.current) return;
-        const popup = popupRef.current;
-        if (popup && popup.closed) {
-          popupRef.current = null;
-          setErrorMessage(
-            "We couldn't confirm the connection — the window closed before the flow finished. Refresh to check whether the account connected anyway.",
-          );
-          setStep("error");
-        }
-      }, 600);
-      return () => {
-        window.removeEventListener("message", handler);
-        window.clearInterval(poll);
-      };
-    }
-  }, [step, handleMessage, onConnected]);
+      },
+      [onConnected],
+    ),
+    onFailure: useCallback((message: string) => {
+      setErrorMessage(message);
+      setStep("error");
+    }, []),
+  });
 
   const handleSelectPlatform = useCallback(
     async (platform: SocialPlatform) => {
@@ -160,27 +98,20 @@ export default function ConnectAccountModal({
       try {
         // The platform slug alone identifies the handshake: each door is its
         // own platform row on the backend, so no route/gateway parameter is
-        // sent.
-        const result = await oauthInitAction(
-          { platform: platform as string, rerequest },
-          workspaceDomain,
-        );
+        // sent. The account snapshot rides along with it — both must resolve
+        // before the popup opens, and running them together keeps the wait (and
+        // the user's click gesture) as short as it was.
+        const [result, baseline] = await Promise.all([
+          oauthInitAction({ platform: platform as string, rerequest }, workspaceDomain),
+          takeBaseline(),
+        ]);
         if ("error" in result) {
           setErrorMessage(result.error || "We couldn't start the sign-in. Please try again.");
           setStep("error");
           return;
         }
 
-        const authUrl = result.auth_url || "";
-        const popup = window.open(authUrl, "oauth-popup", "width=600,height=700,left=200,top=100");
-
-        if (!popup) {
-          setErrorMessage("We need a pop-up window to sign you in. Allow pop-ups for this site and try again.");
-          setStep("error");
-          return;
-        }
-
-        popupRef.current = popup;
+        begin(result.auth_url || "", platform, baseline);
       } catch (err: unknown) {
         const body =
           typeof err === "object" && err !== null
@@ -192,7 +123,7 @@ export default function ConnectAccountModal({
         setStep("error");
       }
     },
-    [workspaceDomain, rerequest],
+    [begin, takeBaseline, workspaceDomain, rerequest],
   );
 
   /**
@@ -257,7 +188,7 @@ export default function ConnectAccountModal({
           <StepConnecting
             platformName={currentPlatformInfo?.name || "your account"}
             onCancel={() => {
-              if (popupRef.current && !popupRef.current.closed) popupRef.current.close();
+              cancel();
               setStep("select");
             }}
           />
