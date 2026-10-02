@@ -11,7 +11,7 @@ import { deleteWebhookAction, saveWebhookAction } from "./actions";
 
 export type Platform = Pick<
   SocialMediaPlatform,
-  "nanoid" | "slug" | "name" | "client_id" | "webhook_endpoint" | "webhook_fields"
+  "nanoid" | "slug" | "name" | "client_id"
 >;
 
 type ActionState = {
@@ -63,11 +63,18 @@ export function WebhookForm({
   });
 
   const platform = platforms.find((p) => p.slug === values.slug);
+
+  // What a blank field will fall back to. Read from the webhook record itself
+  // (`resolved_*`), which the server already computes — deliberately NOT from the
+  // platform payload: webhook config is not on the platform API, and it is not
+  // the platform's business anyway. Editing an existing registration shows the
+  // values it already resolves to; a new one has nothing resolved yet, so the
+  // platform's App ID is the only hint available.
   const inherited: Record<string, string | null> = {
-    client_id: platform?.client_id ?? null,
-    callback_url: platform?.webhook_endpoint ?? null,
+    client_id: webhook?.resolved_client_id ?? platform?.client_id ?? null,
+    callback_url: webhook?.resolved_callback_url ?? null,
     secret_env_var: null,
-    subscribed_fields: platform?.webhook_fields ?? null,
+    subscribed_fields: webhook?.resolved_subscribed_fields?.join(",") ?? null,
   };
 
   function set(key: string, next: string) {

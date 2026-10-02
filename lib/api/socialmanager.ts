@@ -10,7 +10,6 @@ import type {
   DiscoverChannelsResult,
   Hashtag,
   ManagedChannel,
-  MessengerHealth,
   MediaConstraint,
   WebhookConfig,
   WebhookInput,
@@ -447,26 +446,6 @@ export function deleteWebhook(
   return serverMutate<{ deleted: boolean }>(
     `/apis/socialmanager/webhooks/${nanoid}/`,
     { body: {}, method: "DELETE", workspace },
-  );
-}
-
-/**
- * Cross-tenant Messenger subscription health — **console workspace only.**
- *
- * One row per connected Facebook Page with the latest subscription attempt for
- * it, so an operator can answer "why does tenant X get no messages" from one
- * screen instead of a log grep. Paging is refused by Django unless the resolved
- * workspace satisfies `_is_admin_workspace`, which is the console workspace, so
- * the console guard on the page and this 403 are two halves of one lock.
- *
- * Read-only on purpose. Repairing another tenant's Page from a global surface
- * would mean minting and storing someone else's access token; the repair paths
- * are the tenant's own Channels screen and `manage.py subscribe_facebook_pages`.
- */
-export function getMessengerHealth(workspace: string): Promise<MessengerHealth> {
-  return serverFetch<MessengerHealth>(
-    "/apis/socialmanager/pages/messenger_health/",
-    { workspace },
   );
 }
 

@@ -721,11 +721,48 @@ export async function updatePlatformAction(
 ): Promise<PlatformActionState> {
   try {
     await updatePlatform(nanoid, body, workspace);
-  } catch {
-    return { status: "error", message: "Failed to update platform." };
+  } catch (err) {
+    // TEMP DEBUG 2026-10-01: the bare catch here hid the real cause and the
+    // UI showed a generic message. Remove once the platform-config save works.
+    console.error("[updatePlatformAction] PATCH failed", {
+      nanoid,
+      workspace,
+      body,
+      err,
+      message: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
+    return {
+      status: "error",
+      message: `Failed to update platform: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    };
   }
 
-  revalidatePath(`/${workspace}/dashboard/socialmanager`);
+  // TEMP DEBUG 2026-10-01: revalidatePath is the only statement outside the
+  // try above, so a throw here propagates to the client and surfaces as the
+  // generic "Something went wrong on the server" — hiding the cause.
+  try {
+    revalidatePath(`/${workspace}/dashboard/socialmanager`);
+  } catch (err) {
+    console.error("[updatePlatformAction] revalidatePath failed", {
+      nanoid,
+      workspace,
+      path: `/${workspace}/dashboard/socialmanager`,
+      err,
+      message: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
+    // The mutation already committed; only the cache refresh failed. Report it
+    // rather than claiming success, so the cause is visible either way.
+    return {
+      status: "error",
+      message: `Platform saved but revalidation failed: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    };
+  }
   return { status: "success", message: "Platform updated." };
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, ChevronDown, Info, Plus } from "@/lib/icons";
+import { AlertTriangle, ChevronDown, Plus } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { WebhookConfig } from "@/lib/api/types";
@@ -139,12 +139,6 @@ export function WebhooksClient({
               >
                 <span className="font-semibold text-slate-800">{p.name}</span>
                 <span className="font-mono text-slate-400">{p.slug}</span>
-                {!p.webhook_endpoint && (
-                  <span className="inline-flex items-center gap-1 text-amber-700">
-                    <Info className="size-3" />
-                    no callback URL resolved
-                  </span>
-                )}
               </li>
             ))}
           </ul>

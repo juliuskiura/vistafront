@@ -48,9 +48,10 @@ export default async function WebhooksPage({
   );
 
   // Fetched from its own endpoint rather than read off the platform rows. The
-  // nested `webhooks` field still exists and is still the cheapest read for a
-  // client that already has the platforms; this endpoint is the one that can
-  // write, so it is also the one the screen edits through.
+  // platform payload deliberately carries no webhook configuration at all, so
+  // this endpoint is the only read — and because it is also the one the screen
+  // writes through, a client never has to reconcile two shapes of the same
+  // fact.
   //
   // `catch` because the endpoint 404s until `0045_webhook` is applied. Degrading
   // to an empty list shows "nothing configured", which is wrong but recoverable —
@@ -74,8 +75,6 @@ export default async function WebhooksPage({
             slug: p.slug,
             name: p.name,
             client_id: p.client_id,
-            webhook_endpoint: p.webhook_endpoint,
-            webhook_fields: p.webhook_fields,
           }))}
         />
       </div>

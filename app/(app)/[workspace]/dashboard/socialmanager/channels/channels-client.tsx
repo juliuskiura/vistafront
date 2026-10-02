@@ -1,13 +1,12 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useConnectAccount } from "@/lib/context";
-import { RefreshCw, AlertCircle, Plus, ShieldCheck } from "@/lib/icons";
+import { RefreshCw, AlertCircle, Plus } from "@/lib/icons";
 import { syncAccountAction, disconnectChannelAction } from "../actions";
 import { ChannelCard } from "./_components/channel-card";
 import { describeChannelHealth, type VerifyVerdict } from "./_components/channel-health-label";
@@ -31,13 +30,6 @@ interface Props {
    * to pick — so they surface as a guided Reconnect notice instead.
    */
   accounts?: SocialAccount[];
-  /**
-   * Whether this is the console workspace, which is the only one that may open
-   * the Messenger setup page. Resolved server-side from the same
-   * `_is_admin_workspace` predicate the target page guards on, so the entry
-   * point and the page it opens can never disagree about who is allowed.
-   */
-  isConsoleWorkspace?: boolean;
 }
 
 export function ChannelsClient({
@@ -46,7 +38,6 @@ export function ChannelsClient({
   pageToAccountNanoid,
   verdicts = {},
   accounts = [],
-  isConsoleWorkspace = false,
 }: Props) {
   const ws = workspaceDomain.toLowerCase();
   const { open: openConnectAccount, canConnect } = useConnectAccount();
@@ -119,21 +110,6 @@ export function ChannelsClient({
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-2 shrink-0">
-          {isConsoleWorkspace && (
-            <Button
-              variant="outline"
-              asChild
-              className="border-slate-300 bg-white text-slate-700 text-xs font-semibold px-4 py-2.5 rounded-xl shadow-xs hover:bg-slate-50"
-            >
-              <Link
-                href={`/${ws}/dashboard/socialmanager/messenger`}
-                title="Callback URL, Meta App, and the tenants whose pages are not receiving messages"
-              >
-                <ShieldCheck className="w-4 h-4" />
-                <span>Messenger Setup</span>
-              </Link>
-            </Button>
-          )}
           <Button
             onClick={() => openConnectAccount()}
             disabled={!canConnect}

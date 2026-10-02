@@ -174,7 +174,6 @@ export {
   getAiTailorStatus,
   getAnalyticsSyncStatus,
   getConnectedInstagram,
-  getMessengerHealth,
   getPost,
   getOauthRedirectUri,
   getPostsSyncStatus,
