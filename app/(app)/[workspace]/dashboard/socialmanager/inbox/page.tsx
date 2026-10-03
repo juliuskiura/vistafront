@@ -10,7 +10,7 @@ import { InboxClient } from "./inbox-client";
 import { InboxSkeleton } from "./_components/inbox-skeleton";
 
 /**
- * Social Inbox (Server Component).
+ * Unified Inbox (Server Component).
  *
  * Renders the shared Banner, then defers everything below it to a Client
  * island. The island's thread-list query is prefetched here so the first
@@ -34,13 +34,16 @@ export default async function InboxPage({
   return (
     <div className="flex min-h-full flex-col">
       <Banner
-        title="Inbox"
-        description="Messages people send to your connected pages, with replies sent back from here."
+        title="Unified Inbox"
+        description="Every message sent to your connected pages, across all of them, with replies sent back from here."
       />
 
       <div className="mt-6 flex-1">
         <LiveServerData
-          queryKey={["socialmanager-inbox", ws]}
+          // The empty search term is part of the key because the client keys on
+          // it: this prefetch is the unsearched list, and a key that stops short
+          // of the term would miss the dehydrated cache and ship a spinner.
+          queryKey={["socialmanager-inbox", ws, ""]}
           queryFn={() => listConversations({ workspace: ws })}
         >
           {/* The island reads `useSearchParams` to keep the open thread

@@ -4,23 +4,36 @@ import { createContext, useContext, useMemo, type ReactNode } from "react";
 import type { SocialMediaPlatform } from "@/lib/api/types";
 import {
   buildPlatformBrandMap,
+  buildPlatformNameMap,
+  resolveBrandName,
   resolveBrandSlug,
   type PlatformBrandMap,
+  type PlatformNameMap,
 } from "@/lib/social/platform-brand";
 
 interface PlatformBrandContextValue {
   /** Door slug → brand slug map, derived from `auth_destination`. */
   readonly map: PlatformBrandMap;
+  /** Brand slug → platform display name map. */
+  readonly names: PlatformNameMap;
   /**
    * Resolve a platform row slug to the brand slug its UI should wear.
    * `instagramfb` → `instagram`; an ordinary platform resolves to itself.
    */
   brandOf: (slug: string | null | undefined) => string;
+  /**
+   * The name to label a platform slug with: the row of the brand it resolves to,
+   * never the row of the door it connected through. A slug with no known brand
+   * resolves to itself so an unrecognised platform stays readable.
+   */
+  nameOf: (slug: string | null | undefined) => string;
 }
 
 const EMPTY: PlatformBrandContextValue = {
   map: new Map(),
+  names: new Map(),
   brandOf: (slug) => (slug ?? "").trim(),
+  nameOf: (slug) => (slug ?? "").trim(),
 };
 
 const PlatformBrandContext = createContext<PlatformBrandContextValue | null>(null);
@@ -49,7 +62,15 @@ export function PlatformBrandProvider({
 }) {
   const value = useMemo<PlatformBrandContextValue>(() => {
     const map = buildPlatformBrandMap(platforms);
-    return { map, brandOf: (slug) => resolveBrandSlug(map, slug) };
+    const names = buildPlatformNameMap(platforms);
+    const brandOf = (slug: string | null | undefined) =>
+      resolveBrandSlug(map, slug);
+    return {
+      map,
+      names,
+      brandOf,
+      nameOf: (slug) => resolveBrandName(names, brandOf(slug)),
+    };
   }, [platforms]);
 
   return (

@@ -19,12 +19,13 @@ export interface ThreadListProps {
 }
 
 /**
- * The left pane: every thread for the workspace, filtered client-side.
+ * The left pane: every thread for the workspace.
  *
- * Filtering is client-side on purpose. The backend's only text-adjacent filter
- * is `?unread=1`, and its `?page=` filter collides with the shared paginator's
- * page number, so there is no server-side search to call. The list is capped
- * at 100 threads, which is small enough to hold in memory and search through.
+ * Filtering is not done here. The search runs on the server (`?q=`), because it
+ * has to be: the endpoint's only text-adjacent filters are `?unread=1` and
+ * `?page=`, and a match on message text — or on a channel name the row does not
+ * carry — cannot be resolved from the rows already on screen. What arrives here
+ * is the result set for the current term.
  */
 export function ThreadList({
   conversations,
@@ -36,23 +37,11 @@ export function ThreadList({
   search,
   onSearchChange,
 }: ThreadListProps) {
-  const term = search.trim().toLowerCase();
-  const visible = term
-    ? conversations.filter((conversation) =>
-        [
-          conversation.participant_display_name,
-          conversation.last_message_preview,
-          // The channel name is searchable too: an agent with five connected
-          // Pages often knows which one a customer wrote to before they know
-          // the customer's name.
-          conversation.channel?.page_name ?? "",
-        ].some((field) => field.toLowerCase().includes(term)),
-      )
-    : conversations;
+  const term = search.trim();
 
   // The avatar and the row title are both the person, so the label is computed
   // once here rather than twice in `ThreadRow` with two chances to disagree.
-  const labelled = visible.map((conversation) => ({
+  const labelled = conversations.map((conversation) => ({
     conversation,
     label: senderLabel(
       conversation.participant_sender,
@@ -87,7 +76,7 @@ export function ThreadList({
               </Button>
             }
           />
-        ) : visible.length === 0 ? (
+        ) : conversations.length === 0 ? (
           <ListNotice
             tone="empty"
             icon={<MessageSquare className="size-5" aria-hidden="true" />}

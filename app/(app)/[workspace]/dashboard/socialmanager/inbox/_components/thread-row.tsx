@@ -1,7 +1,8 @@
 "use client";
 
 import { formatMediumDate } from "@/lib/dates";
-import { PlatformGlyph } from "@/components/platform-icon";
+import { PlatformGlyph, usePlatformStyleResolver } from "@/components/platform-icon";
+import { usePlatformBrand } from "@/lib/social/platform-brand-context";
 import { cn } from "@/lib/utils";
 
 import { InboxAvatar } from "./inbox-avatar";
@@ -38,6 +39,18 @@ export function ThreadRow({
   onSelect,
 }: ThreadRowProps) {
   const unread = unreadCount > 0;
+  const { nameOf } = usePlatformBrand();
+  const resolvePlatformStyle = usePlatformStyleResolver();
+
+  // Named after the brand, not the door, so the label always describes the glyph
+  // beside it: `auth_destination` decides both, and a channel connected through
+  // a Facebook Page is an Instagram one. The local style map covers a platform
+  // whose row has not loaded.
+  const platformLabel = channel
+    ? nameOf(channel.platform_slug) ||
+      resolvePlatformStyle(channel.platform_slug).label ||
+      channel.platform_slug
+    : "";
 
   return (
     <button
@@ -68,17 +81,23 @@ export function ThreadRow({
           </span>
         </span>
 
-        {/* Which connected channel this thread belongs to. A workspace with
-            several Pages has one inbox, and the same person can write to two
-            of them, so the row is ambiguous without it. Hidden entirely when
-            unresolved — an unattributed thread is better than one labelled
-            with the wrong channel. */}
+        {/* Which platform and which connected channel this thread belongs to.
+            A workspace with several Pages has one inbox, and the same person can
+            write to two of them, so the row is ambiguous without it — and the
+            platform alone is not enough either, since one workspace routinely
+            holds several channels on the same one. Hidden entirely when
+            unresolved: an unattributed thread is better than one labelled with
+            the wrong channel. */}
         {channel && (
-          <span className="mt-0.5 flex items-center gap-1.5">
+          <span className="mt-0.5 flex items-center gap-1.5 text-[11px]">
             <PlatformGlyph platform={channel.platform_slug} size="sm" />
-            <span className="truncate text-[11px] text-gray-400">
-              {channel.page_name}
+            <span className="shrink-0 font-medium text-gray-500">
+              {platformLabel}
             </span>
+            <span aria-hidden="true" className="shrink-0 text-gray-300">
+              ·
+            </span>
+            <span className="truncate text-gray-400">{channel.page_name}</span>
           </span>
         )}
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -13,6 +13,16 @@ import { ThreadView } from "./_components/thread-view";
 
 /** How often the thread list refreshes while the tab is open. */
 const POLL_INTERVAL_MS = 30_000;
+
+/**
+ * How long typing pauses before the list is searched.
+ *
+ * The search is server-side now, so every keystroke would otherwise be a round
+ * trip — and the backend answers it with one request per connected channel. Half
+ * a second is long enough to finish typing a name and short enough that the list
+ * still feels like it is answering you.
+ */
+const SEARCH_DEBOUNCE_MS = 400;
 
 /**
  * The open thread is held in the URL as `?thread=<nanoid>`.
@@ -30,8 +40,20 @@ export function InboxClient({ workspace }: { workspace: string }) {
   const apiFetch = useApiFetch();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  // The debounced term is what the query runs on; `search` is what the input
+  // holds. Two states rather than one so the field stays responsive while the
+  // list is still on the last term the user finished typing.
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
   const selectedId = searchParams.get(THREAD_PARAM);
+
+  useEffect(() => {
+    const timer = setTimeout(
+      () => setDebouncedSearch(search.trim()),
+      SEARCH_DEBOUNCE_MS,
+    );
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const {
     data: conversations = [],
@@ -39,8 +61,10 @@ export function InboxClient({ workspace }: { workspace: string }) {
     error,
     refetch,
   } = useQuery<SocialConversation[]>({
-    queryKey: ["socialmanager-inbox", workspace],
-    queryFn: () => fetchConversations(workspace, apiFetch),
+    // The term is part of the key so a search never paints over an unsearched
+    // list, and going back to an empty box restores the full list from cache.
+    queryKey: ["socialmanager-inbox", workspace, debouncedSearch],
+    queryFn: () => fetchConversations(workspace, debouncedSearch, apiFetch),
     refetchInterval: POLL_INTERVAL_MS,
     refetchOnWindowFocus: true,
   });
@@ -66,6 +90,8 @@ export function InboxClient({ workspace }: { workspace: string }) {
     // The reply handler returns the stored message, but the thread list also
     // needs refreshing: a new outbound message changes the thread's
     // last_message_at, its preview, and its position in the list.
+    // A prefix match: it invalidates the unsearched list and every searched
+    // variant at once, so a reply cannot leave a stale search result on screen.
     void queryClient.invalidateQueries({
       queryKey: ["socialmanager-inbox", workspace],
     });
@@ -107,11 +133,12 @@ export function InboxClient({ workspace }: { workspace: string }) {
  */
 async function fetchConversations(
   workspace: string,
+  search: string,
   apiFetch: ReturnType<typeof useApiFetch>,
 ): Promise<SocialConversation[]> {
-  const res = await apiFetch(
-    `/api/socialmanager/inbox?workspace=${encodeURIComponent(workspace)}`,
-  );
+  const query = new URLSearchParams({ workspace });
+  if (search) query.set("q", search);
+  const res = await apiFetch(`/api/socialmanager/inbox?${query.toString()}`);
   if (!res.ok) {
     throw new Error(`Inbox request failed: ${res.status}`);
   }

@@ -195,6 +195,8 @@ export interface ListConversationsOptions {
   unread?: boolean;
   /** Server-side `?page=` filter: a managed channel nanoid. */
   channel?: string;
+  /** Server-side `?q=` search. Empty means "no filter". */
+  search?: string;
   /**
    * The channel descriptor to stamp on rows when `channel` is set. Internal —
    * `listConversationsWithChannels` passes the row it already holds.
@@ -210,12 +212,11 @@ export interface ListConversationsOptions {
  * list shows.
  *
  * It deliberately does NOT follow the `next` link the way `unwrapAll` in
- * `socialmanager.ts` does. That viewset reads `?page=` as a *managed-page
- * nanoid* filter while the shared paginator also reads `?page=` as a *page
- * number*, so the two collide: following `next` would send `?page=2`, which
- * filters on a nanoid of "2" and silently returns nothing. `page_size` is
- * collision-free, so the window is widened that way instead. Re-check this
- * before adding pagination controls.
+ * `socialmanager.ts` does. The inbox viewset pages on `?p=`, so following
+ * `next` here would work — but only because the channel filter and the page
+ * number were given different keys. Re-check that before teaching this to
+ * follow `next`, and never assume `?page=` is the page number on this endpoint:
+ * it is the managed-channel filter.
  */
 function unwrapConversations(payload: unknown): SocialConversation[] {
   if (Array.isArray(payload)) return payload as SocialConversation[];
@@ -240,6 +241,10 @@ export type ConversationRow = SocialConversation;
  * `channel` is left null here — see `listConversationsWithChannels`, which is
  * what the inbox list actually calls. This wrapper stays the single-thread
  * primitive so the per-channel resolution has something to build on.
+ *
+ * On this endpoint `?page=` is the managed-channel filter and the page *number*
+ * is `?p=`, so the two no longer collide and `page_size` can be asked for on
+ * either kind of request.
  */
 export async function listConversations(
   opts: ListConversationsOptions,
@@ -247,6 +252,7 @@ export async function listConversations(
   const params = new URLSearchParams({ page_size: "100" });
   if (opts.unread) params.set("unread", "1");
   if (opts.channel) params.set("page", opts.channel);
+  if (opts.search) params.set("q", opts.search);
 
   const rows = await serverFetch<unknown>(`${BASE}/?${params.toString()}`, {
     workspace: opts.workspace,
@@ -271,9 +277,13 @@ export async function listConversations(
  * It is one request per channel rather than a join, and that is the trade: a
  * workspace has a handful of channels and the list is capped at 100 threads, so
  * the fan-out is small, while a server-side join on the hot inbox path is not.
- * The requests go out together, and a channel that fails resolves to an empty
- * list rather than failing the whole inbox — one disconnected Page must not
- * blank the agent's screen.
+ * The requests go out together.
+ *
+ * One channel failing resolves to an empty list rather than failing the whole
+ * inbox — one disconnected Page must not blank the agent's screen. Every channel
+ * failing is different: that is the server refusing the request, not a channel
+ * being quiet, so it throws and the UI reports it instead of showing an inbox
+ * that is empty because it could not be read.
  *
  * A thread whose channel is not in the returned set keeps `channel: null`. That
  * happens when the channel was disconnected but the thread survives, and the row
@@ -292,11 +302,10 @@ export async function listConversationsWithChannels(
     );
   }
 
-  // `page_size` is not passed alongside `?page=`: that query key means two
-  // things here — the channel filter to this viewset, and the page number to
-  // the shared paginator — so the two collide. Asking for the channel only
-  // keeps the default page size and lets the backend order and cap the list.
-  const perChannel = await Promise.all(
+  // The requests go out together. `page_size` travels with the channel filter:
+  // the endpoint pages on `?p=`, so asking for a wider window no longer collides
+  // with the filter and a busy channel is not truncated to the default page.
+  const windows = await Promise.all(
     channels.map(async (channel) => {
       try {
         return await listConversations({
@@ -305,10 +314,14 @@ export async function listConversationsWithChannels(
           channelDescriptor: channel,
         });
       } catch {
-        return [] as SocialConversation[];
+        return null;
       }
     }),
   );
+
+  if (windows.every((rows) => rows === null)) {
+    throw new Error("The inbox could not be loaded.");
+  }
 
   // One dedupe pass: a thread is on exactly one channel, but a redelivery or a
   // concurrent insert can land in two channel windows before the first write
@@ -316,8 +329,8 @@ export async function listConversationsWithChannels(
   // because the map preserves the order `channels` was given in.
   const seen = new Set<string>();
   const merged: SocialConversation[] = [];
-  for (const rows of perChannel) {
-    for (const row of rows) {
+  for (const rows of windows) {
+    for (const row of rows ?? []) {
       if (seen.has(row.nanoid)) continue;
       seen.add(row.nanoid);
       merged.push(row);

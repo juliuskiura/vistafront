@@ -44,6 +44,7 @@ export async function GET(request: Request) {
     const conversations = await listConversationsWithChannels({
       workspace,
       unread: params.get("unread") === "1",
+      search: params.get("q") ?? "",
       channels,
     });
     return NextResponse.json(conversations, {
@@ -63,7 +64,9 @@ export async function GET(request: Request) {
  *
  * `platform` is the *door* — `instagramfb` for a channel connected through a
  * Facebook Page — which is what `PlatformGlyph` resolves to a brand, so such a
- * channel wears the Instagram icon rather than an unbranded text badge.
+ * channel wears the Instagram icon rather than an unbranded text badge. The row
+ * carries no platform *name*: `auth_destination` on the platform rows the
+ * section layout already loads names that brand authoritatively.
  */
 async function listConnectedChannels(
   workspace: string,
