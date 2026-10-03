@@ -6,7 +6,7 @@ import { RefreshCw, Sparkles, Users } from "lucide-react";
 import type { PostComment, ScheduledPost } from "@/lib/api/types";
 import { getPostsSyncStatusAction, listPostCommentsAction, syncCommentsAction } from "../../../actions";
 import { Button } from "@/components/ui/button";
-import { formatDate } from "./platform-gradients";
+import { formatMediumDateTime } from "@/lib/dates";
 
 interface PostCommentsBodyProps {
   post: ScheduledPost;
@@ -124,7 +124,7 @@ export function PostCommentsBody({ post, workspace }: PostCommentsBodyProps) {
                       {c.author_name || "Anonymous"}
                     </span>
                     <span className="shrink-0 text-[10px] text-muted-foreground">
-                      {formatDate(c.published_at)}
+                      {formatMediumDateTime(c.published_at)}
                     </span>
                   </div>
                   <p className="mt-0.5 whitespace-pre-wrap break-words text-sm text-slate-700">{c.content}</p>
@@ -159,7 +159,9 @@ export function PostCommentsBody({ post, workspace }: PostCommentsBodyProps) {
                     <span className="rounded-full bg-primary-100 px-2 py-0.5 text-[10px] font-medium capitalize text-primary-600">
                       {c.status}
                     </span>
-                    <span className="shrink-0 text-[10px] text-muted-foreground">{formatDate(c.published_at)}</span>
+                    <span className="shrink-0 text-[10px] text-muted-foreground">
+                      {formatMediumDateTime(c.published_at)}
+                    </span>
                   </div>
                   <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">{c.content}</p>
                 </div>

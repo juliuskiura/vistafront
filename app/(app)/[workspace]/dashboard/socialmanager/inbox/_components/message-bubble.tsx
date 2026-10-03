@@ -1,6 +1,10 @@
 import { formatMediumDate } from "@/lib/dates";
 import { FileText } from "@/lib/icons";
-import type { SocialMessage } from "@/lib/api/inbox";
+import {
+  senderLabel,
+  showAuthorFor,
+  type SocialMessage,
+} from "@/lib/api/inbox";
 import { cn } from "@/lib/utils";
 
 /**
@@ -10,10 +14,18 @@ import { cn } from "@/lib/utils";
  * Page) sits left, outbound (a reply we sent) sits right in the accent colour.
  * That field is the contract — there is no "is this ours" check against the
  * Page id, which would break the moment a Page was renamed or reconnected.
+ *
+ * The author line is printed on inbound bubbles only, and only when the sender
+ * is actually resolved. Every outbound message in a thread is written by the
+ * same Page, so labelling them all would repeat one fact down the right-hand
+ * column and push the conversation down the screen.
  */
 export function MessageBubble({ message }: { message: SocialMessage }) {
   const isOutbound = message.direction === "outbound";
   const timestamp = message.sent_at ?? message.created_at;
+  const author = showAuthorFor(message)
+    ? senderLabel(message.sender, message.sender_name, message.sender_id)
+    : null;
 
   return (
     <div
@@ -22,6 +34,10 @@ export function MessageBubble({ message }: { message: SocialMessage }) {
         isOutbound ? "items-end" : "items-start",
       )}
     >
+      {author && (
+        <p className="mb-1 px-1 text-xs font-medium text-gray-500">{author}</p>
+      )}
+
       <div
         className={cn(
           "max-w-[80%] rounded-2xl px-3 py-2 text-sm",

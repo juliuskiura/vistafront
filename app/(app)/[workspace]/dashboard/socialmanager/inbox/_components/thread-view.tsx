@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 
-import type { SocialConversationDetail } from "@/lib/api/inbox";
+import { senderLabel, type SocialConversationDetail } from "@/lib/api/inbox";
 import { useApiFetch } from "@/lib/context";
 import { AlertCircle, Loader } from "@/lib/icons";
 
@@ -69,16 +69,27 @@ export function ThreadView({
     );
   }
 
+  // A person's name costs one platform lookup on their first message, cached
+  // server-side on the sender row — so this never makes a request of its own.
+  const participantName = senderLabel(
+    data.participant_sender,
+    data.participant_name,
+    data.participant_id,
+  );
+
   return (
     <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white">
       <header className="flex items-center gap-3 border-b border-gray-100 px-4 py-3">
         <InboxAvatar
-          src={data.participant_picture_url}
-          name={data.participant_display_name}
+          src={
+            data.participant_sender?.picture_url ||
+            data.participant_picture_url
+          }
+          name={participantName}
         />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-gray-900">
-            {data.participant_display_name}
+            {participantName}
           </p>
           <p className="truncate text-xs text-gray-500">
             via {data.page.page_name}
@@ -120,5 +131,6 @@ async function fetchThread(
   if (!res.ok) {
     throw new Error(`The conversation could not be loaded (${res.status}).`);
   }
-  return (await res.json()) as SocialConversationDetail;
+  const payload: unknown = await res.json();
+  return payload as SocialConversationDetail;
 }

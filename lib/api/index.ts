@@ -224,6 +224,8 @@ export {
   getInboxSummary,
   listConversations,
   replyToConversation,
+  senderLabel,
+  showAuthorFor,
   type ListConversationsOptions,
   type SocialConversation,
   type SocialConversationDetail,
@@ -231,6 +233,7 @@ export {
   type SocialInboxSummary,
   type SocialMessage,
   type SocialMessageAttachment,
+  type SocialMessageSender,
 } from "./inbox";
 
 export {

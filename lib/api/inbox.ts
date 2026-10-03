@@ -29,6 +29,31 @@ export interface SocialMessageAttachment {
 }
 
 /**
+ * One resolved sender, as the backend cached it.
+ *
+ * The messaging webhook names a sender id and no name at all, so the name cost
+ * one `/{psid}?fields=first_name,last_name,profile_pic` read on the *first*
+ * message from a person and is served from this row ever after. `profile_status`
+ * is what separates "we have never asked" from "we asked and the platform had
+ * nothing" — both of which arrive here with an empty `display_name`, and which
+ * are worth rendering differently.
+ */
+export interface SocialMessageSender {
+  nanoid: string | null;
+  /** The platform id. A Messenger PSID, or the Page's own id on a reply. */
+  external_sender_id: string;
+  /** Empty when the platform would not name this sender. */
+  display_name: string;
+  first_name: string;
+  last_name: string;
+  picture_url: string;
+  /** True when the sender is the connected Page rather than a person. */
+  is_page: boolean;
+  profile_status: "pending" | "resolved" | "unavailable";
+  profile_fetched_at: string | null;
+}
+
+/**
  * One message inside a thread.
  *
  * Field names mirror `SocialMessageSerializer` exactly. Several are empty
@@ -43,7 +68,16 @@ export interface SocialMessage {
   direction: "inbound" | "outbound";
   /** Inbound: the person's page-scoped id. Outbound: the Page's own id. */
   sender_id: string;
+  /** Legacy denormalised name. Prefer `sender.display_name`. */
   sender_name: string;
+  /**
+   * Whoever wrote this message — the customer inbound, the Page outbound.
+   *
+   * Always a key, `null` when unresolved. The backend sends it explicitly
+   * rather than omitting it, so `undefined` here would mean a response from a
+   * server old enough to have the bug, not "no sender".
+   */
+  sender: SocialMessageSender | null;
   /** Empty for attachment-only messages. */
   text: string;
   message_type: string;
@@ -73,6 +107,8 @@ export interface SocialConversation {
   participant_name: string;
   /** Never empty: the backend falls back to the participant id. */
   participant_display_name: string;
+  /** The resolved person, when the backend has read their profile. */
+  participant_sender: SocialMessageSender | null;
   /** May be empty — render a fallback avatar rather than a broken image. */
   participant_picture_url: string;
   /** Nullable until the thread has a first message. */
@@ -82,6 +118,40 @@ export interface SocialConversation {
   is_active: boolean;
   needs_reauth: boolean;
   created_at: string;
+}
+
+/**
+ * The label to print for a sender or participant.
+ *
+ * Prefers the resolved profile name, falls back to the denormalised name from
+ * the raw event, and only then to the platform id — which is what an unnamed
+ * sender looks like, and is still better than a blank row. `pending` means the
+ * backend has not asked the platform about this person yet, which is worth a
+ * gentler label than an id: it is not that there is no name, it is that nobody
+ * has looked.
+ */
+export function senderLabel(
+  sender: SocialMessageSender | null,
+  fallbackName = "",
+  fallbackId = "",
+): string {
+  if (sender?.display_name) return sender.display_name;
+  if (fallbackName) return fallbackName;
+  if (sender?.profile_status === "pending") return "Messenger contact";
+  return fallbackId || sender?.external_sender_id || "Unknown sender";
+}
+
+/**
+ * Whether an outbound bubble should name the Page.
+ *
+ * False by default, and deliberately not derived from `sender.is_page`: a
+ * single thread is written by one Page, so repeating its name down the
+ * right-hand column is noise. Opt in when a view genuinely interleaves
+ * senders — two Pages in one transcript, say — where the label carries
+ * information rather than repeating it.
+ */
+export function showAuthorFor(message: SocialMessage): boolean {
+  return message.direction === "inbound" && Boolean(message.sender?.display_name);
 }
 
 /** A thread with its message history, from the detail endpoint. */

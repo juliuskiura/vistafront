@@ -3,7 +3,7 @@
 import { AlertCircle, MessageSquare, Search } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { SocialConversation } from "@/lib/api/inbox";
+import { senderLabel, type SocialConversation } from "@/lib/api/inbox";
 
 import { ThreadRow } from "./thread-row";
 
@@ -45,6 +45,17 @@ export function ThreadList({
       )
     : conversations;
 
+  // The avatar and the row title are both the person, so the label is computed
+  // once here rather than twice in `ThreadRow` with two chances to disagree.
+  const labelled = visible.map((conversation) => ({
+    conversation,
+    label: senderLabel(
+      conversation.participant_sender,
+      conversation.participant_name,
+      conversation.participant_id,
+    ),
+  }));
+
   return (
     <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white">
       <div className="border-b border-gray-100 p-3">
@@ -83,11 +94,14 @@ export function ThreadList({
           />
         ) : (
           <ul className="divide-y divide-gray-100">
-            {visible.map((conversation) => (
+            {labelled.map(({ conversation, label }) => (
               <li key={conversation.nanoid}>
                 <ThreadRow
-                  participantName={conversation.participant_display_name}
-                  participantPictureUrl={conversation.participant_picture_url}
+                  participantName={label}
+                  participantPictureUrl={
+                    conversation.participant_sender?.picture_url ||
+                    conversation.participant_picture_url
+                  }
                   preview={conversation.last_message_preview}
                   lastMessageAt={conversation.last_message_at}
                   unreadCount={conversation.unread_count}
