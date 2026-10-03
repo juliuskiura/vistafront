@@ -38,10 +38,15 @@ export function ThreadList({
 }: ThreadListProps) {
   const term = search.trim().toLowerCase();
   const visible = term
-    ? conversations.filter(
-        (conversation) =>
-          conversation.participant_display_name.toLowerCase().includes(term) ||
-          conversation.last_message_preview.toLowerCase().includes(term),
+    ? conversations.filter((conversation) =>
+        [
+          conversation.participant_display_name,
+          conversation.last_message_preview,
+          // The channel name is searchable too: an agent with five connected
+          // Pages often knows which one a customer wrote to before they know
+          // the customer's name.
+          conversation.channel?.page_name ?? "",
+        ].some((field) => field.toLowerCase().includes(term)),
       )
     : conversations;
 
@@ -106,6 +111,7 @@ export function ThreadList({
                   lastMessageAt={conversation.last_message_at}
                   unreadCount={conversation.unread_count}
                   needsReauth={conversation.needs_reauth}
+                  channel={conversation.channel}
                   selected={conversation.nanoid === selectedId}
                   onSelect={() => onSelect(conversation.nanoid)}
                 />

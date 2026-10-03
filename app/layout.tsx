@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import Script from "next/script";
 
 import {
   SessionRefreshProvider,
@@ -56,10 +55,9 @@ export default async function RootLayout({
       className={`${inter.variable} ${outfit.variable} ${jakarta.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col">
-        <Script
-          id="theme-theme"
-          strategy="beforeInteractive"
+      <head>
+        <script
+          suppressHydrationWarning
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
@@ -73,6 +71,8 @@ export default async function RootLayout({
             `,
           }}
         />
+      </head>
+      <body className="min-h-full flex flex-col">
         <ToastProvider>
           <QueryProvider>
             {/* Owns `router.refresh()`, which is the only client-side way to

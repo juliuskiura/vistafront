@@ -1,11 +1,11 @@
 import { formatMediumDate } from "@/lib/dates";
-import { FileText } from "@/lib/icons";
 import {
   senderLabel,
   showAuthorFor,
   type SocialMessage,
 } from "@/lib/api/inbox";
 import { cn } from "@/lib/utils";
+import { MessageAttachment } from "./message-attachment";
 
 /**
  * One message in the transcript.
@@ -52,14 +52,21 @@ export function MessageBubble({ message }: { message: SocialMessage }) {
           <ul className="mt-2 space-y-1">
             {message.attachments.map((attachment) => (
               <li key={attachment.url}>
-                <Attachment attachment={attachment} outbound={isOutbound} />
+                <MessageAttachment
+                  attachment={attachment}
+                  outbound={isOutbound}
+                />
               </li>
             ))}
           </ul>
         )}
 
         {message.attachments.length === 0 && !message.text && (
-          <p className="italic opacity-70">Unsupported message type</p>
+          <p className="text-xs italic opacity-70">
+            {message.message_type
+              ? `${message.message_type} message`
+              : "Empty message"}
+          </p>
         )}
       </div>
 
@@ -70,61 +77,5 @@ export function MessageBubble({ message }: { message: SocialMessage }) {
         {formatMediumDate(timestamp)}
       </time>
     </div>
-  );
-}
-
-function Attachment({
-  attachment,
-  outbound,
-}: {
-  attachment: SocialMessage["attachments"][number];
-  outbound: boolean;
-}) {
-  const label = attachment.title || attachment.type || "Attachment";
-
-  // The provider normalises attachments but does not guarantee a URL on every
-  // one. Rendering an `<a href="">` would reload the page when clicked, so an
-  // unlinked attachment is shown as plain text instead.
-  if (!attachment.url) {
-    return (
-      <span
-        className={cn(
-          "inline-flex items-center gap-1.5 text-xs",
-          outbound ? "text-white/80" : "text-gray-500",
-        )}
-      >
-        <FileText className="size-3.5" aria-hidden="true" />
-        {label}
-      </span>
-    );
-  }
-
-  if (attachment.type === "image") {
-    return (
-      <a href={attachment.url} target="_blank" rel="noreferrer" className="block">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={attachment.url}
-          alt={label}
-          className="max-h-48 rounded-lg object-cover"
-          loading="lazy"
-        />
-      </a>
-    );
-  }
-
-  return (
-    <a
-      href={attachment.url}
-      target="_blank"
-      rel="noreferrer"
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs underline underline-offset-2",
-        outbound ? "bg-white/15" : "bg-gray-50",
-      )}
-    >
-      <FileText className="size-3.5" aria-hidden="true" />
-      {label}
-    </a>
   );
 }

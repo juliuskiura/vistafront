@@ -1,6 +1,7 @@
 "use client";
 
 import { formatMediumDate } from "@/lib/dates";
+import { PlatformGlyph } from "@/components/platform-icon";
 import { cn } from "@/lib/utils";
 
 import { InboxAvatar } from "./inbox-avatar";
@@ -12,6 +13,8 @@ export interface ThreadRowProps {
   lastMessageAt: string | null;
   unreadCount: number;
   needsReauth: boolean;
+  /** Null when the channel could not be resolved — see the list route. */
+  channel: { page_name: string; platform_slug: string } | null;
   selected: boolean;
   onSelect: () => void;
 }
@@ -30,6 +33,7 @@ export function ThreadRow({
   lastMessageAt,
   unreadCount,
   needsReauth,
+  channel,
   selected,
   onSelect,
 }: ThreadRowProps) {
@@ -63,6 +67,20 @@ export function ThreadRow({
             {formatMediumDate(lastMessageAt)}
           </span>
         </span>
+
+        {/* Which connected channel this thread belongs to. A workspace with
+            several Pages has one inbox, and the same person can write to two
+            of them, so the row is ambiguous without it. Hidden entirely when
+            unresolved — an unattributed thread is better than one labelled
+            with the wrong channel. */}
+        {channel && (
+          <span className="mt-0.5 flex items-center gap-1.5">
+            <PlatformGlyph platform={channel.platform_slug} size="sm" />
+            <span className="truncate text-[11px] text-gray-400">
+              {channel.page_name}
+            </span>
+          </span>
+        )}
 
         <span className="mt-0.5 flex items-center gap-2">
           <span

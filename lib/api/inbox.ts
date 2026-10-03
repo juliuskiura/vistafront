@@ -89,6 +89,22 @@ export interface SocialMessage {
   created_at: string;
 }
 
+/**
+ * The channel a thread arrived on, attached to the list row.
+ *
+ * The list serializer does not include it — it denormalises only a preview, so
+ * the inbox query never joins the page table. The client resolves it instead,
+ * from the per-channel list the endpoint already supports via `?page=`.
+ */
+export interface ConversationChannel {
+  /** The managed channel's nanoid — the `?page=` filter value. */
+  nanoid: string;
+  /** The channel's display name, e.g. "Vistasolve Technologies". */
+  page_name: string;
+  /** The door slug, e.g. `instagramfb`. Resolved to a brand for the icon. */
+  platform_slug: string;
+}
+
 /** The Page a thread belongs to. Only present on the detail serializer. */
 export interface SocialConversationPage {
   nanoid: string;
@@ -117,6 +133,11 @@ export interface SocialConversation {
   unread_count: number;
   is_active: boolean;
   needs_reauth: boolean;
+  /**
+   * Null until the client resolves it, and null forever on a thread whose
+   * channel is no longer connected — see `listConversationsByChannel`.
+   */
+  channel: ConversationChannel | null;
   created_at: string;
 }
 
@@ -172,6 +193,13 @@ export interface ListConversationsOptions {
   workspace: string;
   /** Server-side `?unread=1` filter. */
   unread?: boolean;
+  /** Server-side `?page=` filter: a managed channel nanoid. */
+  channel?: string;
+  /**
+   * The channel descriptor to stamp on rows when `channel` is set. Internal —
+   * `listConversationsWithChannels` passes the row it already holds.
+   */
+  channelDescriptor?: ConversationChannel;
 }
 
 /**
@@ -195,16 +223,115 @@ function unwrapConversations(payload: unknown): SocialConversation[] {
   return Array.isArray(page?.results) ? page.results : [];
 }
 
-/** Threads for the active workspace, newest activity first. */
-export function listConversations(
+/**
+ * A conversation row as the inbox list consumes it: the API shape, plus the
+ * channel resolved client-side.
+ *
+ * `SocialConversation.channel` is declared `ConversationChannel | null`, so a
+ * thread from any source is already a valid `ConversationRow`. The alias
+ * exists so the list's props say what they mean — "a thread, possibly without a
+ * channel" — instead of repeating the union at every signature.
+ */
+export type ConversationRow = SocialConversation;
+
+/**
+ * Threads for the active workspace, newest activity first.
+ *
+ * `channel` is left null here — see `listConversationsWithChannels`, which is
+ * what the inbox list actually calls. This wrapper stays the single-thread
+ * primitive so the per-channel resolution has something to build on.
+ */
+export async function listConversations(
   opts: ListConversationsOptions,
 ): Promise<SocialConversation[]> {
   const params = new URLSearchParams({ page_size: "100" });
   if (opts.unread) params.set("unread", "1");
+  if (opts.channel) params.set("page", opts.channel);
 
-  return serverFetch<unknown>(`${BASE}/?${params.toString()}`, {
+  const rows = await serverFetch<unknown>(`${BASE}/?${params.toString()}`, {
     workspace: opts.workspace,
   }).then(unwrapConversations);
+
+  // The list endpoint does not denormalise the channel onto each row, so it is
+  // filled in from the filter that produced the row.
+  return opts.channel
+    ? rows.map((row) => ({ ...row, channel: opts.channelDescriptor ?? null }))
+    : rows;
+}
+
+/**
+ * Threads with their channel resolved, for the inbox list.
+ *
+ * The list endpoint deliberately denormalises only a preview so the inbox query
+ * never joins the page table (see `SocialConversationSerializer`). That leaves
+ * the channel unavailable per row, so this walks the connected channels and asks
+ * the same endpoint once per channel, using the `?page=` filter it already
+ * supports.
+ *
+ * It is one request per channel rather than a join, and that is the trade: a
+ * workspace has a handful of channels and the list is capped at 100 threads, so
+ * the fan-out is small, while a server-side join on the hot inbox path is not.
+ * The requests go out together, and a channel that fails resolves to an empty
+ * list rather than failing the whole inbox — one disconnected Page must not
+ * blank the agent's screen.
+ *
+ * A thread whose channel is not in the returned set keeps `channel: null`. That
+ * happens when the channel was disconnected but the thread survives, and the row
+ * then renders without a channel badge rather than a wrong one.
+ */
+export async function listConversationsWithChannels(
+  opts: ListConversationsOptions & {
+    /** Connected channels to attribute threads to. */
+    channels: readonly ConversationChannel[];
+  },
+): Promise<SocialConversation[]> {
+  const { channels, ...listOpts } = opts;
+  if (channels.length === 0) {
+    return listConversations(listOpts).then((rows) =>
+      rows.map((row) => ({ ...row, channel: null })),
+    );
+  }
+
+  // `page_size` is not passed alongside `?page=`: that query key means two
+  // things here — the channel filter to this viewset, and the page number to
+  // the shared paginator — so the two collide. Asking for the channel only
+  // keeps the default page size and lets the backend order and cap the list.
+  const perChannel = await Promise.all(
+    channels.map(async (channel) => {
+      try {
+        return await listConversations({
+          ...listOpts,
+          channel: channel.nanoid,
+          channelDescriptor: channel,
+        });
+      } catch {
+        return [] as SocialConversation[];
+      }
+    }),
+  );
+
+  // One dedupe pass: a thread is on exactly one channel, but a redelivery or a
+  // concurrent insert can land in two channel windows before the first write
+  // settles. The first channel to claim a thread wins, which is deterministic
+  // because the map preserves the order `channels` was given in.
+  const seen = new Set<string>();
+  const merged: SocialConversation[] = [];
+  for (const rows of perChannel) {
+    for (const row of rows) {
+      if (seen.has(row.nanoid)) continue;
+      seen.add(row.nanoid);
+      merged.push(row);
+    }
+  }
+
+  // Re-sort client-side: the per-channel windows each arrive newest-first, so
+  // concatenating them would group by channel rather than by recency. `Date`
+  // handles both null and ISO forms, and a null sorts last.
+  return merged.sort(
+    (a, b) =>
+      new Date(b.last_message_at ?? b.created_at).getTime() -
+      new Date(a.last_message_at ?? a.created_at).getTime(),
+  );
 }
 
 /**
