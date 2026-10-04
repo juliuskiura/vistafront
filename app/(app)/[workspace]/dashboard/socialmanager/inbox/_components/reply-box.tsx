@@ -1,22 +1,29 @@
 "use client";
 
-import { useState, type KeyboardEvent } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState, type KeyboardEvent } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import type { SocialConversationDetail, SocialMessage } from "@/lib/api/inbox";
+import type {
+  ConstraintWarning,
+  ReplyCheck,
+  SocialConversationDetail,
+  SocialMessage,
+} from "@/lib/api/inbox";
 import { useApiFetch } from "@/lib/context";
 import { AlertCircle, Send } from "@/lib/icons";
 
-/** Mirrors the backend's own limit so the user is told before a round-trip. */
-const MAX_LENGTH = 2000;
+import { ConstraintNotices } from "./constraint-notices";
 
 export interface ReplyBoxProps {
   conversation: SocialConversationDetail;
   workspace: string;
   onSent: () => void;
 }
+
+/** How long to wait after the last keystroke before asking the platform. */
+const CHECK_DEBOUNCE_MS = 400;
 
 /**
  * The composer under a thread.
@@ -25,21 +32,59 @@ export interface ReplyBoxProps {
  * outbound call whose failures are worth showing inline, and the reply has to
  * land in the thread's own query cache immediately — a Server Action round
  * trip would leave the transcript frozen while Meta is being called.
+ *
+ * The length limit used to live here as a `MAX_LENGTH` constant. That was a
+ * number with a wrong story attached: Instagram allows 1000 *bytes* and
+ * Messenger 2000 characters, so one local constant either blocked valid
+ * Messenger replies or waved over-long Instagram ones through to be refused by
+ * Meta. The limit now comes from the platform, is shown while the user types,
+ * and is enforced again by the backend on send.
  */
 export function ReplyBox({ conversation, workspace, onSent }: ReplyBoxProps) {
   const [text, setText] = useState("");
+  const [debounced, setDebounced] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // Soft breaches on a message that has already gone out. They are kept here
+  // because the composer clears the text on success, and this is the user's
+  // only chance to read what was wrong with it.
+  const [sentWarnings, setSentWarnings] = useState<ConstraintWarning[]>([]);
   const apiFetch = useApiFetch();
   const queryClient = useQueryClient();
 
   const blocked = conversation.page.needs_reauth;
+  const trimmed = text.trim();
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(text), CHECK_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [text]);
+
+  // What the platform would say about this draft. Debounced because it is a
+  // round trip and nobody needs an answer per keystroke.
+  const check = useQuery({
+    queryKey: [
+      "socialmanager-reply-check",
+      workspace,
+      conversation.nanoid,
+      debounced,
+    ],
+    queryFn: () =>
+      runCheck(conversation.nanoid, debounced, workspace, apiFetch),
+    enabled: Boolean(debounced.trim()) && !blocked,
+    staleTime: 30_000,
+  });
+
+  const warnings: ConstraintWarning[] = check.data?.warnings ?? [];
+  const hardBreach = warnings.some((w) => w.severity === "error");
 
   const send = useMutation({
     mutationFn: (body: string) =>
       sendReply(conversation.nanoid, body, workspace, apiFetch),
-    onSuccess: (message) => {
+    onSuccess: ({ message, warnings: soft }) => {
       setText("");
+      setDebounced("");
       setError(null);
+      setSentWarnings(soft ?? []);
       queryClient.setQueryData<SocialConversationDetail>(
         ["socialmanager-thread", workspace, conversation.nanoid],
         (current) =>
@@ -60,10 +105,8 @@ export function ReplyBox({ conversation, workspace, onSent }: ReplyBoxProps) {
     },
   });
 
-  const trimmed = text.trim();
-  const tooLong = text.length > MAX_LENGTH;
-
-  const canSend = !send.isPending && !blocked && Boolean(trimmed) && !tooLong;
+  const canSend =
+    !send.isPending && !blocked && Boolean(trimmed) && !hardBreach;
 
   function submit() {
     if (!canSend) return;
@@ -94,6 +137,11 @@ export function ReplyBox({ conversation, workspace, onSent }: ReplyBoxProps) {
     );
   }
 
+  // Once the user starts typing again, the old send's warnings no longer
+  // describe anything on screen, so the draft's own findings take over.
+  const shownWarnings =
+    text === "" && sentWarnings.length > 0 ? sentWarnings : warnings;
+
   return (
     <form
       onSubmit={(event) => {
@@ -113,6 +161,12 @@ export function ReplyBox({ conversation, workspace, onSent }: ReplyBoxProps) {
         className="resize-none"
       />
 
+      <ConstraintNotices
+        warnings={shownWarnings}
+        limits={check.data?.limits}
+        draft={text}
+      />
+
       {error && (
         <p role="alert" className="flex items-start gap-1.5 text-sm text-red-600">
           <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
@@ -122,13 +176,9 @@ export function ReplyBox({ conversation, workspace, onSent }: ReplyBoxProps) {
 
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs text-gray-400">
-          {tooLong ? (
-            <span className="text-red-600">
-              {text.length - MAX_LENGTH} characters over the limit.
-            </span>
-          ) : (
-            "Enter to send · Shift+Enter for a new line"
-          )}
+          {hardBreach
+            ? "Fix the highlighted problem to send this."
+            : "Enter to send · Shift+Enter for a new line"}
         </p>
         <Button type="submit" size="sm" disabled={!canSend}>
           <Send className="size-4" aria-hidden="true" />
@@ -138,6 +188,12 @@ export function ReplyBox({ conversation, workspace, onSent }: ReplyBoxProps) {
     </form>
   );
 }
+
+/** `{ message, warnings }` — the stored row plus any soft breaches on it. */
+type ReplyResult = {
+  message: SocialMessage;
+  warnings?: ConstraintWarning[];
+};
 
 /**
  * POST through the Route Handler, which returns the backend's own
@@ -150,7 +206,7 @@ async function sendReply(
   text: string,
   workspace: string,
   apiFetch: ReturnType<typeof useApiFetch>,
-): Promise<SocialMessage> {
+): Promise<ReplyResult> {
   const res = await apiFetch(
     `/api/socialmanager/inbox/${nanoid}/reply?workspace=${encodeURIComponent(workspace)}`,
     {
@@ -165,7 +221,51 @@ async function sendReply(
     const error = (payload as { error?: string } | null)?.error;
     throw new Error(error || `The reply was not sent (${res.status}).`);
   }
-  return (payload ?? {}) as SocialMessage;
+  const body = (payload ?? {}) as SocialMessage & {
+    warnings?: ConstraintWarning[];
+  };
+  const { warnings, ...message } = body;
+  return { message: message as SocialMessage, warnings };
+}
+
+/**
+ * Ask the platform what is wrong with the draft.
+ *
+ * A failure here is deliberately silent: this is advice, not the send, and a
+ * broken advice panel must never stop someone replying.
+ */
+async function runCheck(
+  nanoid: string,
+  text: string,
+  workspace: string,
+  apiFetch: ReturnType<typeof useApiFetch>,
+): Promise<ReplyCheck> {
+  try {
+    const res = await apiFetch(
+      `/api/socialmanager/inbox/${nanoid}/check?workspace=${encodeURIComponent(workspace)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      },
+    );
+    if (!res.ok) return emptyCheck();
+    const payload: unknown = await res.json().catch(() => null);
+    const body = payload as Partial<ReplyCheck> | null;
+    return {
+      warnings: Array.isArray(body?.warnings) ? body.warnings : [],
+      limits: body?.limits ?? emptyCheck().limits,
+    };
+  } catch {
+    return emptyCheck();
+  }
+}
+
+function emptyCheck(): ReplyCheck {
+  return {
+    warnings: [],
+    limits: { max_characters: null, max_bytes: null, counts_bytes: false },
+  };
 }
 
 function describeError(cause: unknown): string {

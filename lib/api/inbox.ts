@@ -87,6 +87,49 @@ export interface SocialMessage {
   /** Nullable; falls back to `created_at` when absent. */
   sent_at: string | null;
   created_at: string;
+  /**
+   * Soft constraint breaches on this reply, present only when there are some.
+   *
+   * The message *was* delivered — a bare link Instagram will not make tappable,
+   * say — so it is not an error. It rides back on the response because the
+   * composer clears the text on success and this is the user's only chance to
+   * read it.
+   */
+  warnings?: ConstraintWarning[];
+}
+
+/**
+ * One platform constraint the outgoing text breaks.
+ *
+ * `severity` decides what the UI does: `error` means the platform documents a
+ * hard limit and the send is refused, `warning` means it may well be accepted
+ * and the user should check it. Both are shown — the difference is whether the
+ * Send button is blocked, not whether the user is told.
+ */
+export interface ConstraintWarning {
+  /** Stable id, e.g. `message_too_long`, `link_not_formatted`. */
+  code: string;
+  severity: "error" | "warning";
+  /** Written for the user, naming the limit and what was measured. */
+  message: string;
+  limit: number | null;
+  actual: number | null;
+  /** `"characters"` or `"bytes"` — Instagram counts bytes, Messenger counts
+   *  characters, so a counter in the wrong unit is worse than none. */
+  unit: "characters" | "bytes";
+}
+
+/** The limits the platform puts on one message, as the platform states them. */
+export interface MessageLimits {
+  max_characters: number | null;
+  max_bytes: number | null;
+  counts_bytes: boolean;
+}
+
+/** What a reply would break, before it is sent. */
+export interface ReplyCheck {
+  warnings: ConstraintWarning[];
+  limits: MessageLimits;
 }
 
 /**
@@ -373,9 +416,11 @@ export function getInboxSummary(workspace: string): Promise<SocialInboxSummary> 
  *
  * A blocking outbound Graph call, so the caller must show a pending state.
  *
- * @throws `ServerFetchError` with status 400 for blank or over-long text,
- *   409 when the Page is disconnected or has no messaging provider, and 502
- *   when the platform call fails. All carry `{ error: string }` in the body.
+ * @throws `ServerFetchError` with status 400 for blank text or a reply that
+ *   breaks a hard platform limit (the body carries `warnings` and `limits` so
+ *   the UI can say what to shorten), 409 when the Page is disconnected or has
+ *   no messaging provider, and 502 when the platform call fails. All carry
+ *   `{ error: string }`.
  */
 export function replyToConversation(
   nanoid: string,
@@ -383,6 +428,26 @@ export function replyToConversation(
   workspace: string,
 ): Promise<SocialMessage> {
   return serverMutate<SocialMessage>(`${BASE}/${nanoid}/reply/`, {
+    method: "POST",
+    body: { text },
+    workspace,
+  });
+}
+
+/**
+ * Ask what is wrong with a reply before sending it.
+ *
+ * Called as the user types so a limit is visible while it can still be fixed,
+ * instead of arriving as a platform refusal after the fact. Reads the
+ * provider's own limits and rules — no platform call is made and nothing is
+ * stored, so it is cheap enough to run on a debounce.
+ */
+export function checkReply(
+  nanoid: string,
+  text: string,
+  workspace: string,
+): Promise<ReplyCheck> {
+  return serverMutate<ReplyCheck>(`${BASE}/${nanoid}/check/`, {
     method: "POST",
     body: { text },
     workspace,
