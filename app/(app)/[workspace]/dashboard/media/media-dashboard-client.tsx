@@ -14,9 +14,9 @@ import {
   Image as ImageIcon,
   ArrowUpRight,
   Play,
-} from "lucide-react";
+} from "@/lib/icons";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { AssetSelectionToolbar } from "@/components/media/asset-selection-toolbar";
 import type { Asset, MediaStats } from "@/lib/api";
 

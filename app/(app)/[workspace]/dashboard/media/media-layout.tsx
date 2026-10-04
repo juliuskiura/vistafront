@@ -11,7 +11,7 @@ import {
   Search,
   Upload,
   Wrench,
-} from "lucide-react";
+} from "@/lib/icons";
 import {
   WorkspaceInnerNav,
   type InnerNavGroup,
