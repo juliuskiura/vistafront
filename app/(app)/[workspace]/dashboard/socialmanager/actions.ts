@@ -12,6 +12,7 @@ import {
   publishPost,
   retryPost,
   cancelPost,
+  getPost,
   duplicatePost,
   deletePost,
   startAiTailor,
@@ -279,27 +280,85 @@ export async function createPostAction(
 /**
  * Turn a failed post call into something worth showing.
  *
- * The backend returns `drf_standardized_errors` bodies, so a validation refusal
- * arrives as `errors: [{attr, detail}]`. Those details name the actual problem
- * ("A reel needs a video file attached."), which is far more useful than a
- * generic failure — and it is the only place the user learns why.
+ * `serverMutate` throws `ServerFetchError`, whose `body` is the raw response
+ * *text* — not a parsed object. Reading `body.errors` off it therefore always
+ * found `undefined` and every refusal was reported as "Failed to save post.",
+ * which is how a retry could be refused by the backend ("Only a failed post can
+ * be retried", "This post has no failed channels to retry") while the user was
+ * told something else entirely. Parse the text first, then read the two shapes
+ * the backend actually sends:
+ *
+ *   * `{error, error_type}` — what the publish/retry/cancel endpoints return.
+ *   * `{errors: [{attr, detail}]}` — DRF's `drf_standardized_errors`, which is
+ *     where a serializer refusal puts the real reason ("A reel needs a video").
  */
-function describePostError(error: unknown): string {
-  const body = (error as { body?: unknown } | null)?.body;
-  if (body && typeof body === "object") {
-    const errors = (body as { errors?: unknown }).errors;
-    if (Array.isArray(errors)) {
-      const details = errors
-        .map((entry) =>
-          entry && typeof entry === "object"
-            ? String((entry as { detail?: unknown }).detail ?? "")
-            : String(entry ?? ""),
-        )
-        .filter(Boolean);
-      if (details.length) return details.join(" ");
-    }
+function describePostError(error: unknown, fallback = "Failed to save post."): string {
+  const body = parseErrorBody((error as { body?: unknown } | null)?.body);
+  if (body) {
+    const details = [
+      body.error,
+      ...(Array.isArray(body.errors)
+        ? body.errors.map((entry) =>
+            entry && typeof entry === "object"
+              ? (entry as { detail?: unknown }).detail
+              : entry,
+          )
+        : []),
+    ]
+      .map((value) => (typeof value === "string" ? value.trim() : ""))
+      .filter(Boolean);
+    if (details.length) return details.join(" ");
   }
-  return "Failed to save post.";
+  return fallback;
+}
+
+/** Read a `ServerFetchError` body into an object, whether it arrived as JSON
+ *  text or already parsed. Unparseable bodies yield null, not a throw. */
+function parseErrorBody(body: unknown): Record<string, unknown> | null {
+  if (body && typeof body === "object") return body as Record<string, unknown>;
+  if (typeof body !== "string" || !body.trim()) return null;
+  try {
+    const parsed = JSON.parse(body);
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : null;
+  } catch {
+    // A proxy error page rather than a JSON body: show nothing rather than
+    // dumping HTML into the banner.
+    return null;
+  }
+}
+
+/**
+ * Re-read a post after a delivery action.
+ *
+ * The response of a delivery action is authoritative — the backend re-reads the
+ * row so it describes the delivery that just ran — but the UI re-reads too, for
+ * one reason: the frontend and the backend deploy independently here. Against a
+ * backend that still serves the recipients it prefetched *before* the delivery
+ * (the bug this guards), a successful retry would render as the same failure,
+ * keep the Retry button on screen, and the next click would re-post the same
+ * content to channels that had already succeeded. One extra GET costs less than
+ * a duplicate post on a live account.
+ */
+async function rereadPost(
+  nanoid: string,
+  workspace: string,
+  fallback: ScheduledPost,
+): Promise<ScheduledPost> {
+  return getPost(nanoid, workspace).catch(() => fallback);
+}
+
+/**
+ * Invalidate both the list route and the post's own detail route.
+ *
+ * `revalidatePath("/…/socialmanager")` only covers the index segment, so the
+ * detail page — which server-fetches the post in `[postId]/page.tsx` — kept its
+ * cached render and went back to showing the pre-retry failure on the next
+ * navigation.
+ */
+function revalidatePostPaths(nanoid: string, workspace: string): void {
+  const base = `/${workspace}/dashboard/socialmanager`;
+  revalidatePath(base);
+  revalidatePath(`${base}/${nanoid}`);
 }
 
 export async function updatePostAction(
@@ -337,12 +396,13 @@ export async function publishPostAction(
   let post: ScheduledPost;
   try {
     post = await publishPost(nanoid, workspace);
-  } catch {
-    return { status: "error", message: "Failed to publish post." };
+  } catch (error) {
+    return { status: "error", message: describePostError(error, "Failed to publish post.") };
   }
 
-  revalidatePath(`/${workspace}/dashboard/socialmanager`);
-  return { status: "success", post };
+  const fresh = await rereadPost(nanoid, workspace, post);
+  revalidatePostPaths(nanoid, workspace);
+  return { status: "success", post: fresh };
 }
 
 export async function retryPostAction(
@@ -356,11 +416,16 @@ export async function retryPostAction(
     // The backend refuses a retry with nothing to retry, and says why in the
     // body. Pass that through: "this post has no failed channels" is a very
     // different thing for the user to read than "Failed to retry post."
-    return { status: "error", message: describePostError(error) };
+    return { status: "error", message: describePostError(error, "Failed to retry post.") };
   }
 
-  revalidatePath(`/${workspace}/dashboard/socialmanager`);
-  return { status: "success", post };
+  // Read the post back rather than trusting the delivery response alone: if any
+  // caller still hands back pre-delivery channel states, a successful retry
+  // would render as the same failure and leave the Retry button on screen, one
+  // click away from a duplicate post.
+  const fresh = await rereadPost(nanoid, workspace, post);
+  revalidatePostPaths(nanoid, workspace);
+  return { status: "success", post: fresh };
 }
 
 export async function cancelPostAction(
@@ -370,12 +435,13 @@ export async function cancelPostAction(
   let post: ScheduledPost;
   try {
     post = await cancelPost(nanoid, workspace);
-  } catch {
-    return { status: "error", message: "Failed to cancel post." };
+  } catch (error) {
+    return { status: "error", message: describePostError(error, "Failed to cancel post.") };
   }
 
-  revalidatePath(`/${workspace}/dashboard/socialmanager`);
-  return { status: "success", post };
+  const fresh = await rereadPost(nanoid, workspace, post);
+  revalidatePostPaths(nanoid, workspace);
+  return { status: "success", post: fresh };
 }
 
 export async function duplicatePostAction(

@@ -437,6 +437,23 @@ function PostActionsMenu({
  * Main component
  * ────────────────────────────────────────────────────────────────────── */
 
+/** One line saying what a retry actually did, read off the post *after* it.
+ *
+ * A retry either lands on every failed channel or on none of them, and "the
+ * button did nothing" was the only feedback available when the outcome was not
+ * read back. Channels that already published are excluded from the count —
+ * they were skipped, not retried. */
+function retryOutcome(post: ScheduledPost): string {
+  const failed = post.recipients.filter((r) => r.status === "failed");
+  const published = post.recipients.filter((r) => r.status === "published");
+  if (!failed.length) {
+    return published.length > 1
+      ? `Retry finished — all ${published.length} channels are published.`
+      : "Retry finished — the channel is published.";
+  }
+  return `Retry finished — ${failed.length} of ${post.recipients.length} channels still failed. See the details below.`;
+}
+
 interface Props {
   post: ScheduledPost;
   comments: PostComment[];
@@ -470,7 +487,12 @@ export function PostDetailClient({
   const [comments, setComments] = useState<PostComment[]>(initialComments);
   const [syncingComments, setSyncingComments] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  /** Which delivery action is in flight. A retry that takes several seconds
+   *  (Meta's container poll can run for minutes on a video) left the button
+   *  live, and a second click ran a second publish against the same channels. */
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
 
   const onRefreshComments = useCallback(async () => {
     setSyncingComments(true);
@@ -496,6 +518,25 @@ export function PostDetailClient({
   const handleAction = useCallback(
     async (action: string) => {
       setError(null);
+      setNotice(null);
+      // A second delivery must never race the first: the overflow menu reaches
+      // the same handler as the button row, so the disabled attribute is not
+      // the only guard.
+      if (pendingAction !== null && (action === "retry" || action === "publish")) {
+        return;
+      }
+      if (action === "retry" || action === "publish") {
+        // A delivery action with nothing to send cannot succeed: the provider
+        // bails with "Post must have content or media" after the round trip.
+        // Say so here rather than surfacing a refusal that looks like a
+        // platform failure.
+        const hasMedia = (post.media_image_urls?.length || post.media_urls?.length || 0) > 0;
+        if (!post.content?.trim() && !hasMedia) {
+          setError("This post has no caption and no media to publish. Add one first.");
+          return;
+        }
+      }
+      setPendingAction(action);
       try {
         switch (action) {
           case "edit": {
@@ -531,6 +572,7 @@ export function PostDetailClient({
             const res = await retryPostAction(post.nanoid, workspaceDomain);
             if (res.status === "success" && "post" in res) {
               setPost(res.post);
+              setNotice(retryOutcome(res.post));
             } else if (res.status === "error") {
               setError(res.message || "Retry failed.");
             }
@@ -538,7 +580,9 @@ export function PostDetailClient({
           }
           case "publish": {
             const res = await publishPostAction(post.nanoid, workspaceDomain);
-            if ("post" in res) {
+            if (res.status === "error") {
+              setError(res.message || "Failed to publish post.");
+            } else if ("post" in res) {
               setPost(res.post);
             }
             break;
@@ -552,9 +596,11 @@ export function PostDetailClient({
         }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Action failed");
+      } finally {
+        setPendingAction(null);
       }
     },
-    [post, workspaceDomain, router, basePath],
+    [post, workspaceDomain, router, basePath, pendingAction],
   );
 
   /** Route a menu entry: destructive ones open the dialog instead of firing.
@@ -604,6 +650,13 @@ export function PostDetailClient({
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">
           <AlertTriangle className="mr-1 inline size-4" />
           {error}
+        </div>
+      )}
+
+      {notice && (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-700">
+          <RefreshCw className="mr-1 inline size-4" />
+          {notice}
         </div>
       )}
 
@@ -725,15 +778,18 @@ export function PostDetailClient({
               {retryCheck.available && (
                 <Button
                   size="sm"
+                  disabled={pendingAction !== null}
                   className="gap-1.5 bg-gradient-to-r from-primary-600 to-violet-600 text-white hover:from-primary-500 hover:to-violet-500"
                   onClick={() => handleAction("retry")}
                 >
-                  <RefreshCw className="size-3.5" /> Retry failed channels
+                  <RefreshCw className={`size-3.5 ${pendingAction === "retry" ? "animate-spin" : ""}`} />
+                  {pendingAction === "retry" ? "Retrying…" : "Retry failed channels"}
                 </Button>
               )}
               {(post.status === "failed" || post.status === "draft") && (
                 <Button
                   size="sm"
+                  disabled={pendingAction !== null}
                   className="gap-1.5 bg-gradient-to-r from-primary-600 to-violet-600 text-white hover:from-primary-500 hover:to-violet-500"
                   onClick={() => handleAction("publish")}
                 >
