@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
+import { LegalLinks } from "@/components/auth/legal-links";
 
 /**
  * Full-screen centered layout for auth / account-recovery screens.
@@ -8,6 +9,11 @@ import { cn } from "@/lib/utils";
  * Encapsulates the radial-gradient backdrop (4 drifting brand glows +
  * a top radial wash) so every entry screen stays focused on its content.
  * Renders a <main> landmark for accessibility.
+ *
+ * The legal links render here, once, for every screen that uses this shell —
+ * login, signup, forgot-password, reset-confirm, activation and restricted. They
+ * are required on each of those, and putting them in the shell rather than in
+ * each form means a new auth screen cannot ship without them.
  *
  * The premium glow utilities (.auth-glow / .auth-glow--* / auth-drift-*)
  * are defined in app/globals.css.
@@ -42,6 +48,8 @@ export function AuthShell({
         )}
       >
         {children}
+
+        <LegalLinks className="mt-6 border-t border-border/60 pt-4" />
       </div>
     </main>
   );

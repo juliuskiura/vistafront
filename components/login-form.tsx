@@ -151,7 +151,11 @@ export function LoginForm({ action }: Props) {
             size="sm"
             className="flex-1 shrink gap-1.5 border-primary/30 text-primary hover:bg-primary/5 hover:text-primary"
           >
-            <a href="https://vistasolve.com">
+            <a
+              href="https://vistasolve.com"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               Vistasolve Home
               <ExternalLink className="h-3.5 w-3.5" />
             </a>

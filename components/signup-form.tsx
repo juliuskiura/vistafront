@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { AuthCard } from "@/components/auth/auth-card";
+import { PRIVACY_HREF, TERMS_HREF } from "@/lib/legal-links";
 import { initialAuthState } from "@/lib/auth/action-state";
 import { signupAction } from "@/app/(auth)/signup/actions";
 
@@ -155,13 +156,23 @@ export function SignupForm() {
             />
             <span>
               I agree to the Vistasolve{" "}
-              <Link href="/terms" className="text-primary hover:underline">
+              <a
+                href={TERMS_HREF}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+              >
                 terms
-              </Link>{" "}
+              </a>{" "}
               and{" "}
-              <Link href="/privacy" className="text-primary hover:underline">
+              <a
+                href={PRIVACY_HREF}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+              >
                 privacy policy
-              </Link>
+              </a>
               .
             </span>
           </label>
