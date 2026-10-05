@@ -33,6 +33,7 @@ import {
 import type { ScheduledPost, PostComment, MetricSnapshot, ManagedChannel } from "@/lib/api/types";
 import { PlatformGlyph, usePlatformStyleResolver } from "@/components/platform-icon";
 import { usePlatformBrand } from "@/lib/social/platform-brand-context";
+import { CommentModeration } from "@/components/socialmanager/comment-moderation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -273,10 +274,18 @@ function CommentsSection({
   comments,
   onRefresh,
   syncing,
+  pageByNanoid,
+  workspaceDomain,
+  failed = false,
 }: {
   comments: PostComment[];
   onRefresh: () => void;
   syncing: boolean;
+  /** Channel lookup, so each comment's moderation resolves its own platform. */
+  pageByNanoid: Map<string, ManagedChannel>;
+  workspaceDomain: string;
+  /** The comment query itself failed — not the same as there being none. */
+  failed?: boolean;
 }) {
   return (
     <div className="rounded-xl border border-neutral-200 bg-white">
@@ -292,7 +301,21 @@ function CommentsSection({
           Refresh
         </button>
       </div>
-      {comments.length === 0 ? (
+      {failed ? (
+        /* Deliberately not the empty state. A failed query rendered as "no
+           comments yet" is indistinguishable from a post nobody has commented
+           on, and it points at Sync — which re-pulls from Meta and cannot fix a
+           broken read. */
+        <div className="p-6 text-center text-sm text-neutral-500">
+          <p className="font-medium text-neutral-700">
+            Could not load comments.
+          </p>
+          <p className="mt-1 text-xs">
+            This is a problem reading VistaSolve, not with the post. Syncing will
+            not help — try Refresh, and contact support if it keeps failing.
+          </p>
+        </div>
+      ) : comments.length === 0 ? (
         <div className="p-6 text-center text-sm text-neutral-500">
           No comments yet.{" "}
           <button
@@ -305,20 +328,53 @@ function CommentsSection({
         </div>
       ) : (
         <div className="max-h-[320px] space-y-4 overflow-y-auto p-5">
-          {comments.map((c) => (
-            <div key={c.nanoid} className="flex gap-3">
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-500 to-violet-600 text-xs font-bold text-white">
-                {c.author_name?.charAt(0).toUpperCase() ?? "?"}
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-neutral-900">{c.author_name}</p>
-                  <span className="text-[10px] text-neutral-400">{timeAgo(c.created_at)}</span>
+          {comments.map((c) => {
+            // Resolved per comment, not per post: a post fanned out to a
+            // Facebook Page and an Instagram account has one recipient each,
+            // so reading recipients[0] would offer Edit on an IG comment, which
+            // Instagram has no operation for.
+            const platform = pageByNanoid.get(c.managed_page)?.platform;
+            return (
+              <div key={c.nanoid} className="flex gap-3">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-500 to-violet-600 text-xs font-bold text-white">
+                  {c.author_name?.charAt(0).toUpperCase() ?? "?"}
                 </div>
-                <p className="mt-0.5 text-sm text-neutral-700">{c.content}</p>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-neutral-900">
+                      {c.author_name}
+                    </p>
+                    <span className="text-[10px] text-neutral-400">
+                      {timeAgo(c.created_at)}
+                    </span>
+                  </div>
+                  <p
+                    className={
+                      c.is_hidden
+                        ? "mt-0.5 text-sm text-neutral-400 line-through"
+                        : "mt-0.5 text-sm text-neutral-700"
+                    }
+                  >
+                    {c.content}
+                  </p>
+                  {c.is_edited && (
+                    <p className="mt-0.5 text-[10px] text-neutral-400">
+                      Edited by a moderator
+                    </p>
+                  )}
+                  <CommentModeration
+                    commentNanoid={c.nanoid}
+                    workspace={workspaceDomain}
+                    platform={platform}
+                    isHidden={Boolean(c.is_hidden)}
+                    canModerate={Boolean(c.external_comment_id)}
+                    isOwnComment={c.comment_type === "internal"}
+                    onChanged={onRefresh}
+                  />
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -457,6 +513,15 @@ function retryOutcome(post: ScheduledPost): string {
 interface Props {
   post: ScheduledPost;
   comments: PostComment[];
+  /**
+   * True when the comment fetch failed rather than returned nothing.
+   *
+   * Without this the panel cannot tell an empty thread from a broken query, and
+   * both render as "No comments yet — Sync comments →", which sends the user to
+   * a button that cannot help. Defaults to false so a caller that does not care
+   * keeps the simple behaviour.
+   */
+  commentsFailed?: boolean;
   metrics: MetricSnapshot[];
   workspaceDomain: string;
   /**
@@ -470,6 +535,7 @@ interface Props {
 export function PostDetailClient({
   post: initialPost,
   comments: initialComments,
+  commentsFailed: commentsFailedOnLoad = false,
   metrics,
   workspaceDomain,
   pages,
@@ -485,6 +551,9 @@ export function PostDetailClient({
 
   const [post, setPost] = useState<ScheduledPost>(initialPost);
   const [comments, setComments] = useState<PostComment[]>(initialComments);
+  // Seeded from the server render, then owned by the refresh handler: a failed
+  // read must be able to *become* true after hydration too.
+  const [commentsFailed, setCommentsFailed] = useState(commentsFailedOnLoad);
   const [syncingComments, setSyncingComments] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -510,6 +579,11 @@ export function PostDetailClient({
       }
       const refreshed = await listPostCommentsAction(post.nanoid, workspaceDomain);
       setComments(refreshed);
+      setCommentsFailed(false);
+    } catch {
+      // Leave the previously rendered list in place — an empty panel would claim
+      // the post has no comments, which is a different and wrong statement.
+      setCommentsFailed(true);
     } finally {
       setSyncingComments(false);
     }
@@ -822,6 +896,9 @@ export function PostDetailClient({
         comments={comments}
         onRefresh={onRefreshComments}
         syncing={syncingComments}
+        pageByNanoid={pageByNanoid}
+        workspaceDomain={workspaceDomain}
+        failed={commentsFailed}
       />
 
       <ConfirmDialog

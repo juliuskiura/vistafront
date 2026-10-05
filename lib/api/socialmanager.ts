@@ -32,6 +32,7 @@ import type {
   SocialMediaPlatform,
   SyncChannelSelectionResult,
   SyncTaskResult,
+  ModerationTaskResult,
 } from "./types";
 
 /**
@@ -694,6 +695,71 @@ export function listPostComments(
     `/apis/socialmanager/comments/?${params.toString()}`,
     wsOpts(workspace),
   ).then((payload) => unwrapAll(payload, workspace));
+}
+
+/**
+ * Comment moderation — edit, hide/unhide, delete.
+ *
+ * All three reach the platform through a Celery task and answer `202` with a
+ * `task_id` before the change has happened, so the returned comment is the row
+ * *as it stands now*, not as it will be. Poll `commentModerationStatus` to know
+ * when the platform call has finished.
+ *
+ * These are deliberately separate from a plain `PATCH` on the comment. The
+ * generic route writes `content` locally only, which would leave our copy
+ * disagreeing with what the audience sees on the Page.
+ */
+export function editPostComment(
+  nanoid: string,
+  body: { content: string },
+  workspace: string,
+): Promise<PostComment & { task_id: string }> {
+  return serverMutate(`/apis/socialmanager/comments/${nanoid}/edit/`, {
+    body,
+    method: "POST",
+    workspace,
+  });
+}
+
+export function hidePostComment(
+  nanoid: string,
+  body: { hidden: boolean },
+  workspace: string,
+): Promise<PostComment & { task_id: string }> {
+  return serverMutate(`/apis/socialmanager/comments/${nanoid}/hide/`, {
+    body,
+    method: "POST",
+    workspace,
+  });
+}
+
+export function deletePostComment(
+  nanoid: string,
+  workspace: string,
+): Promise<{ task_id: string; status: string }> {
+  return serverMutate(`/apis/socialmanager/comments/${nanoid}/`, {
+    body: {},
+    method: "DELETE",
+    workspace,
+  });
+}
+
+/**
+ * Poll a moderation task.
+ *
+ * The endpoint is Celery's generic status view, so it wraps whatever the task
+ * returned in `result` and reports the task's own state in `status`. A
+ * successful delete reports `comment: null` inside `result`, because the row is
+ * gone by the time the task completes.
+ */
+export function commentModerationStatus(
+  taskId: string,
+  workspace: string,
+): Promise<{ status: string; result?: ModerationTaskResult | null }> {
+  return serverFetch<{ status: string; result?: ModerationTaskResult | null }>(
+    `/apis/socialmanager/posts/sync_status/?task_id=${encodeURIComponent(taskId)}`,
+    wsOpts(workspace),
+  );
 }
 
 /* ──────────────────────────────────────────────────────────────────────

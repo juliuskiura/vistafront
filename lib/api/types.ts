@@ -1501,6 +1501,19 @@ export interface PostComment {
   external_comment_id: string;
   content: string;
   status: PostCommentStatus;
+  /** Why the platform refused to publish this comment. Empty when it did not. */
+  error_message?: string;
+  /**
+   * True once a moderator hid this comment on the platform. Hiding is
+   * reversible, so the row survives it — unlike a delete, which removes it.
+   */
+  is_hidden?: boolean;
+  /** True once the body was changed by a moderator. There is no revision history. */
+  is_edited?: boolean;
+  /** Nanoid of the comment this one replies to, when it is a threaded reply. */
+  parent_comment?: string | null;
+  /** The parent's platform id, which can arrive before the parent row does. */
+  parent_external_comment_id?: string;
   scheduled_at: string | null;
   published_at: string | null;
   created_at: string;
@@ -1686,6 +1699,20 @@ export interface PostsSyncStatusResult {
     skipped: number;
     errors: { page: string; error: string }[];
   } | null;
+}
+
+/**
+ * Outcome of one comment moderation task.
+ *
+ * `comment` is null after a successful delete — the row is gone by the time the
+ * task finishes, so there is no nanoid left to report. `error` carries Meta's
+ * refusal verbatim, which is the only way the UI can explain why a hide did not
+ * take effect.
+ */
+export interface ModerationTaskResult {
+  status: string;
+  comment?: string | null;
+  error?: string;
 }
 
 export interface CommentsSyncResult {

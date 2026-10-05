@@ -49,6 +49,9 @@ import {
   deleteMediaSpec,
   listPostComments,
   syncComments,
+  editPostComment,
+  hidePostComment,
+  deletePostComment,
 } from "@/lib/api";
 import type {
   CampaignForm,
@@ -1008,5 +1011,85 @@ export async function syncCommentsAction(
     return await syncComments(body, workspace);
   } catch {
     return { error: "Failed to start comment sync." };
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Comment moderation
+ *
+ * Each of these queues a platform call and returns its Celery task id. The
+ * change is NOT applied when these resolve — the row still holds its old value
+ * — so the caller refreshes once the task reports back rather than treating a
+ * resolved promise as success.
+ * ────────────────────────────────────────────────────────────────────── */
+
+const CommentEditSchema = z.object({
+  content: z
+    .string()
+    .trim()
+    .min(1, "Comment text is required.")
+    .max(5000, "Comment is too long (5000 characters max)."),
+});
+
+export async function editPostCommentAction(
+  nanoid: string,
+  content: string,
+  workspace: string,
+): Promise<{ status: string; task_id?: string; message?: string }> {
+  const parsed = CommentEditSchema.safeParse({ content });
+  if (!parsed.success) {
+    const { fieldErrors } = flattenError(parsed.error);
+    return {
+      status: "error",
+      message: fieldErrors.content?.[0] ?? "Comment text is required.",
+    };
+  }
+
+  try {
+    const { task_id } = await editPostComment(
+      nanoid,
+      { content: parsed.data.content },
+      workspace,
+    );
+    return { status: "success", task_id };
+  } catch (error) {
+    return {
+      status: "error",
+      message: describePostError(error, "Could not edit the comment."),
+    };
+  }
+}
+
+export async function hidePostCommentAction(
+  nanoid: string,
+  hidden: boolean,
+  workspace: string,
+): Promise<{ status: string; task_id?: string; message?: string }> {
+  try {
+    const { task_id } = await hidePostComment(nanoid, { hidden }, workspace);
+    return { status: "success", task_id };
+  } catch (error) {
+    return {
+      status: "error",
+      message: describePostError(error, "Could not hide the comment."),
+    };
+  }
+}
+
+export async function deletePostCommentAction(
+  nanoid: string,
+  workspace: string,
+): Promise<{ status: string; task_id?: string; message?: string }> {
+  try {
+    const { task_id } = await deletePostComment(nanoid, workspace);
+    // The row is removed by the task, not here, so the post detail route is
+    // revalidated on the *next* render after the task lands. Revalidating now
+    // would re-render the same unchanged list and look like nothing happened.
+    return { status: "success", task_id };
+  } catch (error) {
+    return {
+      status: "error",
+      message: describePostError(error, "Could not delete the comment."),
+    };
   }
 }

@@ -148,7 +148,14 @@ export function PostCommentsSheet({
           )}
 
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-            {post && <PostCommentsBody key={post.nanoid} post={post} workspace={workspace} />}
+            {post && (
+              <PostCommentsBody
+                key={post.nanoid}
+                post={post}
+                workspace={workspace}
+                pageById={pageById}
+              />
+            )}
           </div>
 
           <SheetFooter className="flex-row items-center gap-2 bg-muted/40 sm:justify-between">

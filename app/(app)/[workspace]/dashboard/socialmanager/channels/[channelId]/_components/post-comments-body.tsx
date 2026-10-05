@@ -1,21 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, Sparkles, Users } from "lucide-react";
 
-import type { PostComment, ScheduledPost } from "@/lib/api/types";
+import type { ManagedChannel, PostComment, ScheduledPost } from "@/lib/api/types";
 import { getPostsSyncStatusAction, listPostCommentsAction, syncCommentsAction } from "../../../actions";
 import { Button } from "@/components/ui/button";
 import { formatMediumDateTime } from "@/lib/dates";
+import { CommentModeration } from "@/components/socialmanager/comment-moderation";
 
 interface PostCommentsBodyProps {
   post: ScheduledPost;
   workspace: string;
+  /** Channel lookup, so each comment's moderation resolves its own platform. */
+  pageById: Record<string, ManagedChannel>;
 }
 
-export function PostCommentsBody({ post, workspace }: PostCommentsBodyProps) {
+export function PostCommentsBody({ post, workspace, pageById }: PostCommentsBodyProps) {
   const [comments, setComments] = useState<PostComment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // "We could not read them" and "there are none" are different statements, and
+  // collapsing the first into the second is how a broken query ends up looking
+  // like an empty thread.
+  const [loadFailed, setLoadFailed] = useState(false);
   const [commentSyncTask, setCommentSyncTask] = useState<string | null>(null);
   const [syncingComments, setSyncingComments] = useState(false);
 
@@ -26,7 +33,10 @@ export function PostCommentsBody({ post, workspace }: PostCommentsBodyProps) {
         if (!cancelled) setComments(data);
       })
       .catch(() => {
-        if (!cancelled) setComments([]);
+        if (!cancelled) {
+          setComments([]);
+          setLoadFailed(true);
+        }
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
@@ -70,6 +80,25 @@ export function PostCommentsBody({ post, workspace }: PostCommentsBodyProps) {
     }
   };
 
+  /**
+   * Re-pull the thread after a moderation change.
+   *
+   * Deliberately re-fetches rather than patching local state: the moderation
+   * action only queues a Celery task, so the platform call may still be in
+   * flight and the server's row is the only trustworthy source. Polling
+   * `commentSyncTask` above then refreshes once more when the platform has
+   * actually acted.
+   */
+  const refetch = useCallback(async () => {
+    try {
+      setComments(await listPostCommentsAction(post.nanoid, workspace));
+      setLoadFailed(false);
+    } catch {
+      // Keep the last good list rather than blanking the thread.
+      setLoadFailed(true);
+    }
+  }, [post.nanoid, workspace]);
+
   const audience = comments.filter((c) => c.comment_type === "audience");
   const own = comments.filter((c) => c.comment_type === "internal");
 
@@ -101,7 +130,12 @@ export function PostCommentsBody({ post, workspace }: PostCommentsBodyProps) {
             {syncingComments ? "Syncing…" : "Sync"}
           </Button>
         </h4>
-        {audience.length === 0 ? (
+        {loadFailed ? (
+          <div className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-6 text-center text-xs text-muted-foreground">
+            Could not load comments. This is a problem reading VistaSolve, not
+            with the post — syncing will not help.
+          </div>
+        ) : audience.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-6 text-center text-xs text-muted-foreground">
             No audience comments yet.
           </div>
@@ -128,6 +162,15 @@ export function PostCommentsBody({ post, workspace }: PostCommentsBodyProps) {
                     </span>
                   </div>
                   <p className="mt-0.5 whitespace-pre-wrap break-words text-sm text-slate-700">{c.content}</p>
+                  <CommentModeration
+                    commentNanoid={c.nanoid}
+                    workspace={workspace}
+                    platform={pageById[c.managed_page]?.platform}
+                    isHidden={Boolean(c.is_hidden)}
+                    canModerate={Boolean(c.external_comment_id)}
+                    isOwnComment={c.comment_type === "internal"}
+                    onChanged={refetch}
+                  />
                 </div>
               </li>
             ))}
@@ -164,6 +207,15 @@ export function PostCommentsBody({ post, workspace }: PostCommentsBodyProps) {
                     </span>
                   </div>
                   <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">{c.content}</p>
+                  <CommentModeration
+                    commentNanoid={c.nanoid}
+                    workspace={workspace}
+                    platform={pageById[c.managed_page]?.platform}
+                    isHidden={Boolean(c.is_hidden)}
+                    canModerate={Boolean(c.external_comment_id)}
+                    isOwnComment
+                    onChanged={refetch}
+                  />
                 </div>
               </li>
             ))}

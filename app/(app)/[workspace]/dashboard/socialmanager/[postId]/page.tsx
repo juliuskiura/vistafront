@@ -13,14 +13,27 @@ export default async function PostDetailPage({
   await requireFeature(active, "socialmanager.posts");
   const ws = active.domain;
 
-  const [post, comments, metrics, pages] = await Promise.all([
+  // Comments are fetched apart from the rest because "we could not load them" and
+  // "this post has none" must not look the same. Coalescing a failure into an
+  // empty list renders "No comments yet — Sync comments →", which points the user
+  // at a button that cannot fix a broken query.
+  const commentsRequest = listPostComments({
+    postNanoid: postId,
+    workspace: ws,
+  })
+    .then((comments) => ({ comments, failed: false }))
+    .catch(() => ({ comments: [] as Awaited<ReturnType<typeof listPostComments>>, failed: true }));
+
+  const [post, commentsResult, metrics, pages] = await Promise.all([
     getPost(postId, ws).catch(() => null),
-    listPostComments({ postNanoid: postId, workspace: ws }).catch(() => []),
+    commentsRequest,
     listMetrics({ since: undefined, until: undefined, workspace: ws, managed_page: undefined, metric: undefined }).catch(() => []),
     // A post recipient carries only the page name, so the channel list is what
     // supplies the platform behind each recipient's icon.
     listPages({ workspace: ws }).catch(() => []),
   ]);
+
+  const comments = commentsResult.comments;
 
   if (!post) {
     return (
@@ -35,6 +48,7 @@ export default async function PostDetailPage({
     <PostDetailClient
       post={post}
       comments={comments}
+      commentsFailed={commentsResult.failed}
       metrics={metrics}
       pages={pages}
       workspaceDomain={ws}
