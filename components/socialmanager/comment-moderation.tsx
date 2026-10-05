@@ -102,9 +102,16 @@ export function CommentModeration({
   // offer. Facebook Page comments can be edited.
   const canEdit = canModerate && platform === "facebook";
 
-  // Instagram documents that a comment the media owner wrote on their own media
-  // stays visible even at hide=true, so the control would silently do nothing.
-  const canHide = canModerate && !(platform !== "facebook" && isOwnComment);
+  // Neither platform lets you hide a comment the account itself wrote.
+  // Instagram documents it (a comment the media owner wrote stays visible even
+  // at hide=true), and Facebook refuses the endpoint outright — verified live
+  // 2026-10-05: `POST /{comment-id} is_hidden=true|false` answers 403
+  // `(#200) Can not hide or unhide this comment`, and `can_hide` is `false` on
+  // exactly those comments. Offering the button there means the user waits out
+  // the poll and then reads Meta's raw refusal string. Delete is unaffected —
+  // `can_remove` is `true` on our own comments — which is why this failed in a
+  // way that looked selective.
+  const canHide = canModerate && !isOwnComment;
 
   // Nothing to offer: the comment never reached the platform, so there is
   // no object to hide, edit or delete on the Page.
