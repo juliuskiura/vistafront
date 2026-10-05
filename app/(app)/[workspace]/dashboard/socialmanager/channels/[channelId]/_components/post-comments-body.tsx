@@ -6,14 +6,108 @@ import { RefreshCw, Sparkles, Users } from "lucide-react";
 import type { ManagedChannel, PostComment, ScheduledPost } from "@/lib/api/types";
 import { getPostsSyncStatusAction, listPostCommentsAction, syncCommentsAction } from "../../../actions";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { formatMediumDateTime } from "@/lib/dates";
 import { CommentModeration } from "@/components/socialmanager/comment-moderation";
+import { CommentActions } from "@/components/socialmanager/comment-composer";
+import { PlatformGlyph } from "@/components/platform-icon";
+import { usePlatformBrand } from "@/lib/social/platform-brand-context";
 
 interface PostCommentsBodyProps {
   post: ScheduledPost;
   workspace: string;
   /** Channel lookup, so each comment's moderation resolves its own platform. */
   pageById: Record<string, ManagedChannel>;
+}
+
+/**
+ * Which channel a comment belongs to.
+ *
+ * A post can be published to several networks at once, and the comment thread
+ * interleaves them into one list — so without this there is no way to tell a
+ * Facebook comment from an Instagram one. That is not cosmetic: the two need
+ * different actions, since Instagram publishes no comment-edit operation at
+ * all, so a moderator looking at the wrong channel would click a button that
+ * cannot work.
+ *
+ * Renders nothing when the channel is unknown rather than guessing, because an
+ * unlabelled comment is better than a confidently wrong label.
+ */
+function ChannelLabel({
+  channel,
+  brandOf,
+}: {
+  channel: ManagedChannel | undefined;
+  brandOf: (platform?: string) => string | undefined;
+}) {
+  if (!channel) return null;
+  return (
+    <span className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
+      <PlatformGlyph platform={brandOf(channel.platform)} size="sm" />
+      <span className="truncate">{channel.platform_name || channel.page_name}</span>
+    </span>
+  );
+}
+
+/**
+ * A commenter's avatar, or a letter fallback.
+ *
+ * Facebook only: the provider expands `from{picture}` on the comment node it is
+ * already reading, so it costs no extra call. Instagram exposes no
+ * profile-picture field at all, so Instagram comments always use the fallback —
+ * a platform limitation, not a missing scope.
+ *
+ * The fallback keeps the existing two-letter initials, which read better than a
+ * single character for a full name. It is the primary design, not an error
+ * state: someone who has set no picture looks the same on every platform, and a
+ * broken image is worse than initials.
+ */
+function CommentAvatar({
+  url,
+  name,
+  fallback,
+  tone,
+}: {
+  url?: string;
+  name: string;
+  fallback: string;
+  tone: string;
+}) {
+  if (url) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- Meta's lookaside
+      // URL is remote and signed; next/image would cache it under our own
+      // storage, which is the local-copy decision still open in
+      // reading/0-pending-decisions.md.
+      <img
+        src={url}
+        alt={name}
+        className="mt-0.5 size-7 shrink-0 rounded-full object-cover"
+      />
+    );
+  }
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
+        tone,
+      )}
+    >
+      {fallback}
+    </span>
+  );
+}
+
+/** Two-letter initials, the fallback for a commenter with no picture. */
+function initials(name: string, whenBlank: string): string {
+  return (name || whenBlank)
+    .split(/\s+/)
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 }
 
 export function PostCommentsBody({ post, workspace, pageById }: PostCommentsBodyProps) {
@@ -25,6 +119,9 @@ export function PostCommentsBody({ post, workspace, pageById }: PostCommentsBody
   const [loadFailed, setLoadFailed] = useState(false);
   const [commentSyncTask, setCommentSyncTask] = useState<string | null>(null);
   const [syncingComments, setSyncingComments] = useState(false);
+  // A comment carries only its channel's nanoid, so this is the only way to
+  // name the network a comment came from on a post published to several.
+  const { brandOf } = usePlatformBrand();
 
   useEffect(() => {
     let cancelled = false;
@@ -143,15 +240,12 @@ export function PostCommentsBody({ post, workspace, pageById }: PostCommentsBody
           <ul className="space-y-2.5">
             {audience.map((c) => (
               <li key={c.nanoid} className="flex gap-2.5">
-                <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-slate-200 to-slate-300 text-[10px] font-bold text-slate-600">
-                  {(c.author_name || "A")
-                    .split(/\s+/)
-                    .map((p) => p[0])
-                    .filter(Boolean)
-                    .slice(0, 2)
-                    .join("")
-                    .toUpperCase()}
-                </span>
+                <CommentAvatar
+                  url={c.author_avatar_url}
+                  name={c.author_name || "Anonymous"}
+                  fallback={initials(c.author_name, "A")}
+                  tone="bg-gradient-to-br from-slate-200 to-slate-300 text-slate-600"
+                />
                 <div className="min-w-0 flex-1 rounded-2xl rounded-tl-sm border bg-card px-3 py-2 shadow-sm">
                   <div className="flex items-center justify-between gap-2">
                     <span className="truncate text-xs font-semibold text-slate-800">
@@ -161,16 +255,44 @@ export function PostCommentsBody({ post, workspace, pageById }: PostCommentsBody
                       {formatMediumDateTime(c.published_at)}
                     </span>
                   </div>
-                  <p className="mt-0.5 whitespace-pre-wrap break-words text-sm text-slate-700">{c.content}</p>
+                  <ChannelLabel channel={pageById[c.managed_page]} brandOf={brandOf} />
+                  <p
+                    className={
+                      c.is_hidden
+                        ? "mt-0.5 whitespace-pre-wrap break-words text-sm text-slate-400 line-through"
+                        : "mt-0.5 whitespace-pre-wrap break-words text-sm text-slate-700"
+                    }
+                  >
+                    {c.content}
+                  </p>
+                  {c.is_private_reply && (
+                    /* A direct message, not something posted publicly. Showing
+                       it as an ordinary reply is the one thing it must never be
+                       mistaken for. */
+                    <p className="mt-0.5 text-[10px] font-medium text-muted-foreground">
+                      Private reply — sent to the commenter only
+                    </p>
+                  )}
                   <CommentModeration
                     commentNanoid={c.nanoid}
                     workspace={workspace}
                     platform={pageById[c.managed_page]?.platform}
                     isHidden={Boolean(c.is_hidden)}
-                    canModerate={Boolean(c.external_comment_id)}
-                    isOwnComment={c.comment_type === "internal"}
+                    canModerate={
+                      Boolean(c.external_comment_id) && !c.is_private_reply
+                    }
+                    isOwnComment
                     onChanged={refetch}
                   />
+                  {c.comment_type === "audience" && !c.is_private_reply && (
+                    <CommentActions
+                      workspace={workspace}
+                      commentNanoid={c.nanoid}
+                      canReply={Boolean(c.external_comment_id)}
+                      canPrivateReply={Boolean(c.external_comment_id)}
+                      onQueued={refetch}
+                    />
+                  )}
                 </div>
               </li>
             ))}
@@ -188,15 +310,12 @@ export function PostCommentsBody({ post, workspace, pageById }: PostCommentsBody
           <ul className="space-y-2.5">
             {own.map((c) => (
               <li key={c.nanoid} className="flex gap-2.5">
-                <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-500 to-purple-600 text-[10px] font-bold text-white">
-                  {(c.author_name || "You")
-                    .split(/\s+/)
-                    .map((p) => p[0])
-                    .filter(Boolean)
-                    .slice(0, 2)
-                    .join("")
-                    .toUpperCase()}
-                </span>
+                <CommentAvatar
+                  url={c.author_avatar_url}
+                  name={c.author_name || "You"}
+                  fallback={initials(c.author_name, "You")}
+                  tone="bg-gradient-to-br from-primary-500 to-purple-600 text-white"
+                />
                 <div className="min-w-0 flex-1 rounded-2xl rounded-tl-sm border border-primary-100 bg-primary-50/50 px-3 py-2 shadow-sm">
                   <div className="flex items-center justify-between gap-2">
                     <span className="rounded-full bg-primary-100 px-2 py-0.5 text-[10px] font-medium capitalize text-primary-600">
@@ -206,6 +325,7 @@ export function PostCommentsBody({ post, workspace, pageById }: PostCommentsBody
                       {formatMediumDateTime(c.published_at)}
                     </span>
                   </div>
+                  <ChannelLabel channel={pageById[c.managed_page]} brandOf={brandOf} />
                   <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">{c.content}</p>
                   <CommentModeration
                     commentNanoid={c.nanoid}

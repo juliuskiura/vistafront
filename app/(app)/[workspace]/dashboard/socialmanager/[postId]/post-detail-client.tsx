@@ -14,6 +14,7 @@ import {
   MessageCircle,
   MoreVertical,
   Pause,
+  MessageSquare,
   RefreshCcw,
   RefreshCw,
   Send,
@@ -33,7 +34,12 @@ import {
 import type { ScheduledPost, PostComment, MetricSnapshot, ManagedChannel } from "@/lib/api/types";
 import { PlatformGlyph, usePlatformStyleResolver } from "@/components/platform-icon";
 import { usePlatformBrand } from "@/lib/social/platform-brand-context";
+import { cn } from "@/lib/utils";
 import { CommentModeration } from "@/components/socialmanager/comment-moderation";
+import {
+  CommentActions,
+  CommentComposer,
+} from "@/components/socialmanager/comment-composer";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -270,6 +276,145 @@ function EngagementKPIs({ post, comments, metrics }: { post: ScheduledPost; comm
   );
 }
 
+/**
+ * A commenter's avatar, or a letter fallback.
+ *
+ * The picture is fetched by expanding `from{picture}` on the comment node the
+ * provider is already reading, so it costs no extra API call. It exists for
+ * Facebook only — Instagram exposes no profile-picture field at all, so an
+ * Instagram comment always lands on the fallback.
+ *
+ * The letter fallback is the primary design, not an error state: a person who
+ * has set no profile picture looks identical on every platform, and a broken
+ * image is worse than an initial. `alt` is the author's name so a screen reader
+ * announces who the comment is from rather than "image".
+ */
+function CommentAvatar({
+  url,
+  name,
+  className,
+}: {
+  url?: string;
+  name: string;
+  className?: string;
+}) {
+  if (url) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- Meta's lookaside
+      // URL is remote, signed and short-lived; next/image would re-optimise it
+      // into our own cache, which is the local-copy decision still open in
+      // reading/0-pending-decisions.md.
+      <img
+        src={url}
+        alt={name}
+        className={cn("shrink-0 rounded-full object-cover", className)}
+      />
+    );
+  }
+  return (
+    <div
+      aria-hidden
+      className={cn(
+        "flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-500 to-violet-600 font-bold text-white",
+        className,
+      )}
+    >
+      {name?.charAt(0).toUpperCase() ?? "?"}
+    </div>
+  );
+}
+
+/**
+ * "Comment again" on a published post, with a channel picker.
+ *
+ * The picker is not decoration. A post published to a Facebook Page and an
+ * Instagram account has one recipient each, and the backend requires a
+ * recipient — so defaulting to the first would comment on whichever network
+ * happened to be listed first. With one channel there is nothing to choose and
+ * the control is hidden rather than shown disabled.
+ */
+function NewCommentBox({
+  recipients,
+  pageByNanoid,
+  workspaceDomain,
+  onQueued,
+}: {
+  recipients: ScheduledPost["recipients"];
+  pageByNanoid: Map<string, ManagedChannel>;
+  workspaceDomain: string;
+  onQueued: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const { brandOf } = usePlatformBrand();
+
+  const published = recipients.filter(
+    (r) => r.status === "published" && Boolean(r.external_post_id),
+  );
+
+  if (published.length === 0) {
+    /* Nothing to comment on: no channel published this post, so there is no
+       object on the platform to attach a comment to. */
+    return (
+      <p className="text-xs text-neutral-500">
+        Nothing to comment on — this post has no published channel yet.
+      </p>
+    );
+  }
+
+  if (!open) {
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setOpen(true)}
+        className="h-8 gap-1.5 px-3 text-xs"
+      >
+        <MessageSquare className="size-3.5" />
+        Add a comment
+      </Button>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {published.length > 1 && (
+        <div className="flex flex-wrap gap-1.5">
+          {published.map((r) => {
+            const channel = pageByNanoid.get(r.managed_page);
+            return (
+              <span
+                key={r.nanoid}
+                className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-[11px] text-neutral-600"
+              >
+                <PlatformGlyph platform={brandOf(channel?.platform)} size="sm" />
+                {channel?.platform_name || r.managed_page_name}
+              </span>
+            );
+          })}
+        </div>
+      )}
+      <CommentComposer
+        mode="create"
+        workspace={workspaceDomain}
+        recipientNanoid={published[0].nanoid}
+        onQueued={() => {
+          setOpen(false);
+          onQueued();
+        }}
+        onCancel={() => setOpen(false)}
+      />
+      {published.length > 1 && (
+        <p className="text-[11px] text-neutral-500">
+          Commenting on{" "}
+          {pageByNanoid.get(published[0].managed_page)?.platform_name ??
+            published[0].managed_page_name}
+          . A post on several channels takes one comment at a time.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function CommentsSection({
   comments,
   onRefresh,
@@ -277,6 +422,7 @@ function CommentsSection({
   pageByNanoid,
   workspaceDomain,
   failed = false,
+  recipients,
 }: {
   comments: PostComment[];
   onRefresh: () => void;
@@ -286,7 +432,19 @@ function CommentsSection({
   workspaceDomain: string;
   /** The comment query itself failed — not the same as there being none. */
   failed?: boolean;
+  /**
+   * The post's published channels, for the new-comment composer.
+   *
+   * A channel picker rather than a default because a post published to a
+   * Facebook Page and an Instagram account must be commented on deliberately —
+   * picking the first recipient would silently post to the wrong network.
+   */
+  recipients: ScheduledPost["recipients"];
 }) {
+  // Resolves a door slug (`instagramfb`) to its brand (`instagram`) so both
+  // Instagram doors wear the Instagram glyph rather than a generic fallback.
+  const { brandOf } = usePlatformBrand();
+
   return (
     <div className="rounded-xl border border-neutral-200 bg-white">
       <div className="flex items-center justify-between border-b border-neutral-100 px-5 py-3">
@@ -301,81 +459,134 @@ function CommentsSection({
           Refresh
         </button>
       </div>
+
       {failed ? (
         /* Deliberately not the empty state. A failed query rendered as "no
            comments yet" is indistinguishable from a post nobody has commented
            on, and it points at Sync — which re-pulls from Meta and cannot fix a
            broken read. */
         <div className="p-6 text-center text-sm text-neutral-500">
-          <p className="font-medium text-neutral-700">
-            Could not load comments.
-          </p>
+          <p className="font-medium text-neutral-700">Could not load comments.</p>
           <p className="mt-1 text-xs">
             This is a problem reading VistaSolve, not with the post. Syncing will
             not help — try Refresh, and contact support if it keeps failing.
           </p>
         </div>
-      ) : comments.length === 0 ? (
-        <div className="p-6 text-center text-sm text-neutral-500">
-          No comments yet.{" "}
-          <button
-            type="button"
-            onClick={onRefresh}
-            className="font-semibold text-primary-600 hover:text-primary-700"
-          >
-            Sync comments →
-          </button>
-        </div>
       ) : (
-        <div className="max-h-[320px] space-y-4 overflow-y-auto p-5">
-          {comments.map((c) => {
-            // Resolved per comment, not per post: a post fanned out to a
-            // Facebook Page and an Instagram account has one recipient each,
-            // so reading recipients[0] would offer Edit on an IG comment, which
-            // Instagram has no operation for.
-            const platform = pageByNanoid.get(c.managed_page)?.platform;
-            return (
-              <div key={c.nanoid} className="flex gap-3">
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-500 to-violet-600 text-xs font-bold text-white">
-                  {c.author_name?.charAt(0).toUpperCase() ?? "?"}
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-neutral-900">
-                      {c.author_name}
-                    </p>
-                    <span className="text-[10px] text-neutral-400">
-                      {timeAgo(c.created_at)}
-                    </span>
+        <>
+          {/* Composer first, so "comment on this post" is the obvious action
+              rather than something scrolled past. */}
+          <div className="border-b border-neutral-100 p-5">
+            <NewCommentBox
+              recipients={recipients}
+              pageByNanoid={pageByNanoid}
+              workspaceDomain={workspaceDomain}
+              onQueued={onRefresh}
+            />
+          </div>
+
+          {comments.length === 0 ? (
+            <div className="p-6 text-center text-sm text-neutral-500">
+              No comments yet.{" "}
+              <button
+                type="button"
+                onClick={onRefresh}
+                className="font-semibold text-primary-600 hover:text-primary-700"
+              >
+                Sync comments →
+              </button>
+            </div>
+          ) : (
+            <div className="max-h-[320px] space-y-4 overflow-y-auto p-5">
+              {comments.map((c) => {
+                // Resolved per comment, not per post: a post fanned out to a
+                // Facebook Page and an Instagram account has one recipient each,
+                // so reading recipients[0] would offer Edit on an IG comment,
+                // which Instagram has no operation for.
+                const channel = pageByNanoid.get(c.managed_page);
+                const platform = channel?.platform;
+                return (
+                  <div key={c.nanoid} className="flex gap-3">
+                    <CommentAvatar
+                      url={c.author_avatar_url}
+                      name={c.author_name}
+                      className="size-8 text-xs"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold text-neutral-900">
+                          {c.author_name}
+                        </p>
+                        <span className="text-[10px] text-neutral-400">
+                          {timeAgo(c.created_at)}
+                        </span>
+                      </div>
+                      {/* Which channel this comment lives on. A post published to
+                          more than one network shows one thread of comments, and
+                          without this there is no way to tell a Facebook comment
+                          from an Instagram one — which matters most when the two
+                          need different actions, since Instagram has no comment
+                          edit at all. */}
+                      {channel && (
+                        <p className="mt-0.5 flex items-center gap-1 text-[10px] text-neutral-400">
+                          <PlatformGlyph
+                            platform={brandOf(platform)}
+                            size="sm"
+                          />
+                          <span className="truncate">
+                            {channel.platform_name || channel.page_name}
+                          </span>
+                        </p>
+                      )}
+                      <p
+                        className={
+                          c.is_hidden
+                            ? "mt-0.5 text-sm text-neutral-400 line-through"
+                            : "mt-0.5 text-sm text-neutral-700"
+                        }
+                      >
+                        {c.content}
+                      </p>
+                      {c.is_edited && (
+                        <p className="mt-0.5 text-[10px] text-neutral-400">
+                          Edited by a moderator
+                        </p>
+                      )}
+                      {c.is_private_reply && (
+                        /* A private reply is a direct message, not something the
+                           public can see. Labelling it as a normal reply would be
+                           the one thing it must never be mistaken for. */
+                        <p className="mt-0.5 text-[10px] font-medium text-neutral-500">
+                          Private reply — sent to the commenter only
+                        </p>
+                      )}
+                      <CommentModeration
+                        commentNanoid={c.nanoid}
+                        workspace={workspaceDomain}
+                        platform={platform}
+                        isHidden={Boolean(c.is_hidden)}
+                        canModerate={
+                          Boolean(c.external_comment_id) && !c.is_private_reply
+                        }
+                        isOwnComment={c.comment_type === "internal"}
+                        onChanged={onRefresh}
+                      />
+                      {c.comment_type === "audience" && !c.is_private_reply && (
+                        <CommentActions
+                          workspace={workspaceDomain}
+                          commentNanoid={c.nanoid}
+                          canReply={Boolean(c.external_comment_id)}
+                          canPrivateReply={Boolean(c.external_comment_id)}
+                          onQueued={onRefresh}
+                        />
+                      )}
+                    </div>
                   </div>
-                  <p
-                    className={
-                      c.is_hidden
-                        ? "mt-0.5 text-sm text-neutral-400 line-through"
-                        : "mt-0.5 text-sm text-neutral-700"
-                    }
-                  >
-                    {c.content}
-                  </p>
-                  {c.is_edited && (
-                    <p className="mt-0.5 text-[10px] text-neutral-400">
-                      Edited by a moderator
-                    </p>
-                  )}
-                  <CommentModeration
-                    commentNanoid={c.nanoid}
-                    workspace={workspaceDomain}
-                    platform={platform}
-                    isHidden={Boolean(c.is_hidden)}
-                    canModerate={Boolean(c.external_comment_id)}
-                    isOwnComment={c.comment_type === "internal"}
-                    onChanged={onRefresh}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -566,12 +777,13 @@ export function PostDetailClient({
   const onRefreshComments = useCallback(async () => {
     setSyncingComments(true);
     try {
-      const page = post.recipients[0]?.managed_page;
+      // No `managed_page`. The backend walks every published recipient of the
+      // post and reads each channel with its own token, which is what we want.
+      // Passing `recipients[0].managed_page` alongside `scheduled_post` looked
+      // like it scoped the sync to one channel but is inert — the task resolves
+      // the post first and drops the page — so it only misled the next reader.
       const res = await syncCommentsAction(
-        {
-          scheduled_post: post.nanoid,
-          managed_page: page,
-        },
+        { scheduled_post: post.nanoid },
         workspaceDomain,
       );
       if ("task_id" in res && res.task_id) {
@@ -899,6 +1111,7 @@ export function PostDetailClient({
         pageByNanoid={pageByNanoid}
         workspaceDomain={workspaceDomain}
         failed={commentsFailed}
+        recipients={post.recipients}
       />
 
       <ConfirmDialog

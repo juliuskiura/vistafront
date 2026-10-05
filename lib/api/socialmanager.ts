@@ -745,6 +745,61 @@ export function deletePostComment(
 }
 
 /**
+ * Post a new top-level comment on a published post.
+ *
+ * `recipientNanoid` is required, not optional: a post published to a Facebook
+ * Page and an Instagram account has one recipient each, and omitting it would
+ * leave the backend to guess — which is how a comment ends up on the wrong
+ * network.
+ *
+ * Answers 201 with the PENDING row and a `task_id`; the platform call happens
+ * after this resolves.
+ */
+export function createPostComment(
+  body: { recipient: string; content: string },
+  workspace: string,
+): Promise<PostComment & { task_id: string }> {
+  return serverMutate("/apis/socialmanager/comments/", {
+    body,
+    method: "POST",
+    workspace,
+  });
+}
+
+/** Reply publicly, threaded under an inbound comment. */
+export function replyPostComment(
+  nanoid: string,
+  body: { text: string },
+  workspace: string,
+): Promise<PostComment & { task_id: string }> {
+  return serverMutate(`/apis/socialmanager/comments/${nanoid}/reply/`, {
+    body,
+    method: "POST",
+    workspace,
+  });
+}
+
+/**
+ * Send a private direct reply to the author of a comment.
+ *
+ * Nothing public is created. The limits differ per platform and the backend
+ * enforces the knowable ones: Instagram allows one per comment within 7 days,
+ * Facebook one per comment with a window Meta does not publish. A 400 here is
+ * the backend explaining which rule was hit, so surface it verbatim.
+ */
+export function privateReplyPostComment(
+  nanoid: string,
+  body: { text: string },
+  workspace: string,
+): Promise<PostComment & { task_id: string }> {
+  return serverMutate(`/apis/socialmanager/comments/${nanoid}/private_reply/`, {
+    body,
+    method: "POST",
+    workspace,
+  });
+}
+
+/**
  * Poll a moderation task.
  *
  * The endpoint is Celery's generic status view, so it wraps whatever the task

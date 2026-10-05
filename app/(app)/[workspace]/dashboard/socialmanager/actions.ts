@@ -52,6 +52,9 @@ import {
   editPostComment,
   hidePostComment,
   deletePostComment,
+  createPostComment,
+  replyPostComment,
+  privateReplyPostComment,
 } from "@/lib/api";
 import type {
   CampaignForm,
@@ -1011,6 +1014,127 @@ export async function syncCommentsAction(
     return await syncComments(body, workspace);
   } catch {
     return { error: "Failed to start comment sync." };
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Writing comments
+ *
+ * All three queue a Celery task and resolve before the platform has been
+ * called. The change is NOT applied when these resolve — the row still holds
+ * its old value — so the caller polls the task rather than treating a resolved
+ * promise as success. See `002` §2 B1 for why a resolved promise here means
+ * "queued", not "done".
+ * ────────────────────────────────────────────────────────────────────── */
+
+const CommentBodySchema = z.object({
+  content: z
+    .string()
+    .trim()
+    .min(1, "Comment text is required.")
+    .max(5000, "Comment is too long (5000 characters max)."),
+});
+
+export async function createPostCommentAction(
+  recipient: string,
+  content: string,
+  workspace: string,
+): Promise<{ status: string; task_id?: string; message?: string }> {
+  if (!recipient) {
+    return {
+      status: "error",
+      message: "Pick a channel to comment on.",
+    };
+  }
+  const parsed = CommentBodySchema.safeParse({ content });
+  if (!parsed.success) {
+    const { fieldErrors } = flattenError(parsed.error);
+    return {
+      status: "error",
+      message: fieldErrors.content?.[0] ?? "Comment text is required.",
+    };
+  }
+
+  try {
+    const { task_id } = await createPostComment(
+      { recipient, content: parsed.data.content },
+      workspace,
+    );
+    return { status: "success", task_id };
+  } catch (error) {
+    return {
+      status: "error",
+      message: describePostError(error, "Could not post the comment."),
+    };
+  }
+}
+
+export async function replyPostCommentAction(
+  nanoid: string,
+  text: string,
+  workspace: string,
+): Promise<{ status: string; task_id?: string; message?: string }> {
+  const parsed = CommentBodySchema.safeParse({ content: text });
+  if (!parsed.success) {
+    const { fieldErrors } = flattenError(parsed.error);
+    return {
+      status: "error",
+      message: fieldErrors.content?.[0] ?? "Reply text is required.",
+    };
+  }
+
+  try {
+    const { task_id } = await replyPostComment(
+      nanoid,
+      { text: parsed.data.content },
+      workspace,
+    );
+    return { status: "success", task_id };
+  } catch (error) {
+    return {
+      status: "error",
+      message: describePostError(error, "Could not send the reply."),
+    };
+  }
+}
+
+/**
+ * Send a private direct reply.
+ *
+ * A 400 from the backend is not a generic failure here — it is the platform's
+ * rule being quoted back ("already been sent", "within 7 days"), because those
+ * are the refusals a user can actually do something about. `describePostError`
+ * passes the server's message through, so it surfaces verbatim.
+ */
+export async function privateReplyPostCommentAction(
+  nanoid: string,
+  text: string,
+  workspace: string,
+): Promise<{ status: string; task_id?: string; message?: string }> {
+  const parsed = CommentBodySchema.safeParse({ content: text });
+  if (!parsed.success) {
+    const { fieldErrors } = flattenError(parsed.error);
+    return {
+      status: "error",
+      message: fieldErrors.content?.[0] ?? "Message text is required.",
+    };
+  }
+
+  try {
+    const { task_id } = await privateReplyPostComment(
+      nanoid,
+      { text: parsed.data.content },
+      workspace,
+    );
+    return { status: "success", task_id };
+  } catch (error) {
+    return {
+      status: "error",
+      message: describePostError(
+        error,
+        "Could not send the private reply.",
+      ),
+    };
   }
 }
 

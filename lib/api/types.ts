@@ -1510,6 +1510,30 @@ export interface PostComment {
   is_hidden?: boolean;
   /** True once the body was changed by a moderator. There is no revision history. */
   is_edited?: boolean;
+  /**
+   * True when this row records a private direct message we sent to the author
+   * of `parent_comment`, rather than anything posted publicly.
+   *
+   * Render it as "replied privately". A client that treats it as a normal reply
+   * would show a DM as something the public can see, which is the one thing it
+   * is not. Moderation controls must not be offered on these rows — the backend
+   * refuses them, because the stored `external_comment_id` is a *message* id.
+   */
+  is_private_reply?: boolean;
+  /**
+   * The comment author's profile picture, when the platform has one.
+   *
+   * **Facebook only.** Instagram exposes no profile-picture field at all —
+   * `profile_pic_url`, `profile_picture_url`, `picture` and `media` are all
+   * rejected as nonexistent — so this is always empty for an Instagram comment
+   * and the UI falls back to a letter avatar. That is a platform limitation, not
+   * a missing scope, so it will not change with App Review.
+   *
+   * The URL is Meta's signed, short-lived lookaside form. It displays fine from
+   * storage; storing the bytes locally instead is an open decision recorded in
+   * `reading/0-pending-decisions.md`.
+   */
+  author_avatar_url?: string;
   /** Nanoid of the comment this one replies to, when it is a threaded reply. */
   parent_comment?: string | null;
   /** The parent's platform id, which can arrive before the parent row does. */
