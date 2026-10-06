@@ -1401,6 +1401,7 @@ export interface SocialAccount {
   account_name: string;
   account_first_name: string;
   account_last_name: string;
+  account_email: string;
   short_name: string;
   /** Which door this identity signed in through — see
    *  {@link ManagedChannel.login_type}. */

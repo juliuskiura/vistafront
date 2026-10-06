@@ -16,10 +16,12 @@ interface Props {
   channels: ManagedChannel[];
   workspaceDomain: string;
   pageToAccountNanoid: Record<string, string>;
+  /** The connected account's email per channel (when the platform released one). */
+  pageToAccountEmail: Record<string, string>;
   /**
-   * A live `POST /pages/{nanoid}/verify/` answer per active channel, resolved on
-   * the server before first paint. `undefined` for a channel we chose not to
-   * check (see the cap in `page.tsx`) and for every disconnected channel.
+   * A live `POST /pages/{nanoid}/verify/` answer per active channel, resolved
+   * on the server before first paint. Drives the card's Connected indicator:
+   * a channel only shows green once the platform confirms its token works.
    */
   verdicts?: Record<string, VerifyVerdict>;
   /**
@@ -36,6 +38,7 @@ export function ChannelsClient({
   channels,
   workspaceDomain,
   pageToAccountNanoid,
+  pageToAccountEmail,
   verdicts = {},
   accounts = [],
 }: Props) {
@@ -173,6 +176,7 @@ export function ChannelsClient({
               page={page}
               ws={ws}
               canConnect={canConnect}
+              accountEmail={pageToAccountEmail[page.nanoid] ?? ""}
               health={describeChannelHealth({
                 verdict: page.is_active ? verdicts[page.nanoid] : undefined,
                 tokenExpiresAt: page.token_expires_at,

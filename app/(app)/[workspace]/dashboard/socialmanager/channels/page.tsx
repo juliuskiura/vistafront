@@ -2,15 +2,14 @@ import { requireWorkspace } from "@/lib/auth/server";
 import { requireFeature } from "@/lib/features/guard";
 import { listAccounts, verifyPage } from "@/lib/api";
 import type { SocialAccount } from "@/lib/api/types";
-import { ChannelsClient } from "./channels-client";
 import type { VerifyVerdict } from "./_components/channel-health-label";
+import { ChannelsClient } from "./channels-client";
 
 /**
- * How many active channels we ask Meta about on one page render. Each check is
- * one outbound Graph call (`GET /{page_id}?fields=id` with the token publishing
- * would use), so an unbounded list would make opening this screen slower than
- * the work it reports on. Past the cap a card reads "Not checked" rather than
- * claiming a health nobody measured.
+ * How many active channels the page re-verifies against the platform on each
+ * load. The live answer drives the card's Connected indicator, so a channel
+ * whose token is dead stops showing green even if its row is active. Capped so
+ * the server request stays fast on accounts with many pages.
  */
 const VERIFY_BUDGET = 12;
 
@@ -37,37 +36,40 @@ export default async function ChannelsPage({
     return map;
   }, {});
 
-  // A card that only reads its own row cannot tell a working token from a
-  // missing one: `token_expires_at` is null for every healthy Facebook page
-  // token, so the old code rendered "Active" for channels that had no token at
-  // all. Ask Meta instead, before first paint, so the first frame is truthful.
-  // A disconnected channel needs no check — nothing will be published to it.
-  const toVerify = channels
-    .filter((page) => page.is_active)
-    .slice(0, VERIFY_BUDGET)
-    .map((page) => page.nanoid);
+  // The email of the account the channel was connected as, when the platform
+  // released one. Shown on the card so a workspace can see which account owns a
+  // connection; empty for logins whose platform returned no address (e.g. an
+  // Instagram login with no `email` grant).
+  const pageToAccountEmail = channels.reduce<Record<string, string>>((map, page) => {
+    const account = accounts.find((a) => a.managed_pages?.some((p) => p.nanoid === page.nanoid));
+    if (account?.account_email) map[page.nanoid] = account.account_email;
+    return map;
+  }, {});
 
+  // Live confirmations from `POST /pages/{nanoid}/verify/` (a `GET /{page_id}`
+  // with the publishing token) of which channels can actually connect. Only
+  // active channels are asked, within the budget above.
+  const toVerify = channels.filter((page) => page.is_active).slice(0, VERIFY_BUDGET);
   const settled = await Promise.allSettled(
-    toVerify.map((nanoid) => verifyPage(nanoid, ws)),
+    toVerify.map((page) =>
+      verifyPage(page.nanoid, ws).then((verdict) => ({ nanoid: page.nanoid, verdict })),
+    ),
   );
-
-  const verdicts: Record<string, VerifyVerdict> = {};
-  settled.forEach((result, index) => {
-    // A rejected check is still an answer: the platform could not confirm the
-    // channel, which is exactly what the card needs to say.
-    verdicts[toVerify[index]] =
-      result.status === "fulfilled"
-        ? result.value
-        : { ok: false, error: result.reason?.message ?? "Check failed" };
-  });
+  const verdicts = settled.reduce<Record<string, VerifyVerdict>>((map, result) => {
+    if (result.status === "fulfilled" && typeof result.value.verdict.ok === "boolean") {
+      map[result.value.nanoid] = result.value.verdict;
+    }
+    return map;
+  }, {});
 
   return (
     <ChannelsClient
       channels={channels}
       workspaceDomain={ws}
-pageToAccountNanoid={pageToAccountNanoid}
-        verdicts={verdicts}
-        accounts={accounts}
-      />
+      pageToAccountNanoid={pageToAccountNanoid}
+      pageToAccountEmail={pageToAccountEmail}
+      verdicts={verdicts}
+      accounts={accounts}
+    />
   );
 }

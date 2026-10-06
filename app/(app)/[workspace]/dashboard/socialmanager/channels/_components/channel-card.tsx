@@ -8,29 +8,12 @@ import { ChannelAvatar } from "@/components/socialmanager/channel-avatar";
 import { usePlatformBrand } from "@/lib/social/platform-brand-context";
 import { useRouter } from "next/navigation";
 import {
-  ShieldCheck,
-  AlertCircle,
-  Lock,
   Unlink,
   RefreshCw,
   ChevronRight,
 } from "@/lib/icons";
 import type { ManagedChannel, SocialPlatform } from "@/lib/api/types";
 import type { ChannelHealth } from "./channel-health-label";
-
-const TONE_TEXT: Record<ChannelHealth["tone"], string> = {
-  ok: "text-emerald-600",
-  warn: "text-amber-600",
-  bad: "text-rose-600",
-  unknown: "text-slate-500",
-};
-
-const TONE_ICON: Record<ChannelHealth["tone"], typeof ShieldCheck> = {
-  ok: ShieldCheck,
-  warn: AlertCircle,
-  bad: Lock,
-  unknown: AlertCircle,
-};
 
 function toLocalDateTime(value: string): string {
   const date = new Date(value);
@@ -46,6 +29,13 @@ function toLocalDateTime(value: string): string {
 interface ChannelCardProps {
   page: ManagedChannel;
   ws: string;
+  /** The email of the account that connected this channel (may be empty). */
+  accountEmail: string;
+  /**
+   * Live health: whether the platform confirmed this channel's token works
+   * right now. The Connected indicator reflects this — a channel whose token
+   * is dead shows disconnected even if its row is still marked active.
+   */
   health: ChannelHealth;
   syncing: boolean;
   onSync: (page: ManagedChannel) => void;
@@ -57,6 +47,7 @@ interface ChannelCardProps {
 export function ChannelCard({
   page,
   ws,
+  accountEmail,
   health,
   syncing,
   onSync,
@@ -68,8 +59,9 @@ export function ChannelCard({
   const styleOf = usePlatformStyleResolver();
   const { brandOf } = usePlatformBrand();
   const style = styleOf(page.platform);
-  const isConnected = page.is_active;
-  const HealthIcon = TONE_ICON[health.tone];
+  // Connected ⇔ the platform confirmed the token is live. `is_active` says the
+  // row is enabled, which is not the same as "can this page actually connect".
+  const isConnected = health.tone === "ok" || health.tone === "warn";
 
   return (
     <Card className="p-5 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden flex flex-col justify-between">
@@ -93,12 +85,30 @@ export function ChannelCard({
             <span className="capitalize">{style.label}</span>
           </span>
           {isConnected ? (
-            <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+            <span
+              className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1"
+              title={health.label}
+            >
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Connected
             </span>
+          ) : health.tone === "bad" ? (
+            <span
+              className="bg-rose-50 text-rose-700 border border-rose-200 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1"
+              title={`${health.label} — ${health.detail}`}
+            >
+              <Unlink className="w-3 h-3 text-rose-600" />
+              Disconnected
+            </span>
+          ) : page.is_active ? (
+            <span className="bg-slate-100 text-slate-500 border border-slate-200 text-[10px] px-2 py-0.5 rounded-full font-bold">
+              Unverified
+            </span>
           ) : (
-            <span className="bg-rose-50 text-rose-700 border border-rose-200 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+            <span
+              className="bg-rose-50 text-rose-700 border border-rose-200 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1"
+              title={health.detail}
+            >
               <Unlink className="w-3 h-3 text-rose-600" />
               Disconnected
             </span>
@@ -157,17 +167,11 @@ export function ChannelCard({
             </span>
           </div>
           <div className="flex justify-between items-start gap-3 text-slate-600">
-            <span className="shrink-0">Token Health:</span>
-            <span className={`text-right ${TONE_TEXT[health.tone]}`}>
-              <span className="font-medium inline-flex items-center gap-1">
-                <HealthIcon className="w-3 h-3" />
-                {health.label}
-              </span>
-              {health.detail && (
-                <span className="block text-[10px] text-slate-500 mt-0.5">
-                  {health.detail}
-                </span>
-              )}
+            <span className="shrink-0">Main Account:</span>
+            <span
+              className={`text-right font-medium ${accountEmail ? "text-slate-900 break-all" : "text-slate-400"}`}
+            >
+              {accountEmail || "—"}
             </span>
           </div>
           {page.updated_at && (
