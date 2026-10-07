@@ -53,7 +53,9 @@ import {
   duplicatePostAction,
   syncCommentsAction,
   listPostCommentsAction,
+  getPostAction,
 } from "../actions";
+import { LiveRecipients, isLiveCopy, waitForLiveTask } from "./_components";
 
 /* ──────────────────────────────────────────────────────────────────────
  * Helpers
@@ -774,6 +776,15 @@ export function PostDetailClient({
    *  live, and a second click ran a second publish against the same channels. */
   const [pendingAction, setPendingAction] = useState<string | null>(null);
 
+  /** Re-read the post after a background task settles.
+   *
+   * A failed read leaves the rendered copy alone rather than clearing the
+   * card: a stale row is a smaller lie than an empty page. */
+  const refreshPost = useCallback(async () => {
+    const fresh = await getPostAction(post.nanoid, workspaceDomain);
+    if (fresh) setPost(fresh);
+  }, [post.nanoid, workspaceDomain]);
+
   const onRefreshComments = useCallback(async () => {
     setSyncingComments(true);
     try {
@@ -874,8 +885,36 @@ export function PostDetailClient({
             break;
           }
           case "delete": {
-            await deletePostAction(post.nanoid, workspaceDomain);
+            const res = await deletePostAction(post.nanoid, workspaceDomain);
+            if (res.status === "error") {
+              // Close first: the banner sits behind the overlay, so leaving the
+              // dialog open would hide the only place the failure appears.
+              setDeleteDialogOpen(false);
+              setError(res.message || "Failed to delete post.");
+              break;
+            }
+            if (!res.task_id) {
+              // 204 — nothing was live on the platform, so the row is already
+              // gone and there is nothing left to wait for.
+              setDeleteDialogOpen(false);
+              router.push(`${basePath}`);
+              break;
+            }
+            // 202 — the post is still on every page until the platform calls
+            // land. Navigating now would show it in the list while it is being
+            // removed, and on a refusal the row survives anyway.
+            const outcome = await waitForLiveTask(res.task_id, workspaceDomain);
             setDeleteDialogOpen(false);
+            if (!outcome.ok) {
+              setError(outcome.failure);
+              await refreshPost();
+              break;
+            }
+            // `outcome.warnings` (a platform with no delete API) cannot be
+            // shown after this navigation, and only a provider that can
+            // publish can produce a live copy — today that is Meta alone, which
+            // implements `delete_post`. Surfacing it would mean staying on a
+            // page whose rows are already gone.
             router.push(`${basePath}`);
             break;
           }
@@ -886,7 +925,7 @@ export function PostDetailClient({
         setPendingAction(null);
       }
     },
-    [post, workspaceDomain, router, basePath, pendingAction],
+    [post, workspaceDomain, router, basePath, pendingAction, refreshPost],
   );
 
   /** Route a menu entry: destructive ones open the dialog instead of firing.
@@ -906,6 +945,10 @@ export function PostDetailClient({
 
   const retryCheck = retryAvailability(post);
   const retryBlockedReason = retryCheck.available ? null : retryCheck.reason;
+  /** Copies that are on a Page right now — the only rows whose fate the
+   *  delete confirmation can honestly describe, and the only ones a platform
+   *  has to be called about. */
+  const liveCopies = post.recipients.filter(isLiveCopy);
 
   const statusCfg = STATUS_STYLES[post.status] ?? STATUS_STYLES.draft;
   const StatusIcon = statusCfg.icon;
@@ -1082,7 +1125,11 @@ export function PostDetailClient({
                   <Send className="size-3.5" /> Publish now
                 </Button>
               )}
-              {post.status === "draft" && (
+              {/* Deleting a draft is free. Deleting a post that reached a page
+                  is not: it has to call the platform once per page, which is
+                  why this button only exists when there is something to remove
+                  there. */}
+              {(post.status === "draft" || liveCopies.length > 0) && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -1096,6 +1143,14 @@ export function PostDetailClient({
           </div>
         </div>
       </Card>
+
+      {/* ── Published copies: per-page edit / delete on the live post ── */}
+      <LiveRecipients
+        recipients={post.recipients}
+        workspace={workspaceDomain}
+        pageByNanoid={pageByNanoid}
+        onChanged={refreshPost}
+      />
 
       {/* ── Engagement KPIs ── */}
       <EngagementKPIs post={post} comments={comments} metrics={metrics} />
@@ -1117,10 +1172,15 @@ export function PostDetailClient({
       <ConfirmDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
-        title="Delete draft post?"
-        description="This will permanently delete this draft. This action cannot be undone."
+        title={liveCopies.length ? "Delete this post everywhere?" : "Delete draft post?"}
+        description={
+          liveCopies.length
+            ? `This removes the post from ${liveCopies.length} published page${liveCopies.length === 1 ? "" : "s"}, then deletes it. This action cannot be undone.`
+            : "This will permanently delete this draft. This action cannot be undone."
+        }
         confirmLabel="Delete"
         variant="destructive"
+        confirming={pendingAction === "delete"}
         onConfirm={() => handleAction("delete")}
       />
     </div>

@@ -15,6 +15,9 @@ import {
   getPost,
   duplicatePost,
   deletePost,
+  getLivePostTaskStatus,
+  pushRecipientUpdate,
+  pushRecipientDelete,
   startAiTailor,
   createHashtag,
   createQueue,
@@ -63,6 +66,8 @@ import type {
   PostQueue,
   PostQueueItem,
   PostComment,
+  DeletePostResult,
+  LivePostTaskResult,
 } from "@/lib/api/types";
 import type {
   CampaignActionState,
@@ -984,15 +989,127 @@ export async function deleteMediaSpecAction(
 export async function deletePostAction(
   nanoid: string,
   workspace: string,
-): Promise<{ status: string; message?: string }> {
+): Promise<{ status: string; message?: string; task_id?: string }> {
+  let result: DeletePostResult;
   try {
-    await deletePost(nanoid, workspace);
-  } catch {
-    return { status: "error", message: "Failed to delete post." };
+    result = await deletePost(nanoid, workspace);
+  } catch (error) {
+    return {
+      status: "error",
+      message: describePostError(error, "Failed to delete post."),
+    };
   }
 
   revalidatePath(`/${workspace}/dashboard/socialmanager`);
-  return { status: "success", message: "Post deleted." };
+
+  if (!result?.task_id) {
+    // 204: nothing was live on the platform, so the row is already gone.
+    return { status: "success", message: "Post deleted." };
+  }
+
+  // 202: the backend still has to call Graph once per page. The caller polls
+  // this task id and only navigates once it settles — leaving now would strand
+  // the user on a list showing a post whose deletion has not finished.
+  return {
+    status: "success",
+    task_id: result.task_id,
+    message: `Deleting from ${result.live_pages ?? "each"} page(s)…`,
+  };
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Live post edits — pushing copy to a post that is already on the Page
+ *
+ * These are the counterpart of `updatePostAction`, which writes the master copy
+ * locally only. A row that reads as edited while the Page still shows the old
+ * text is invisible to everyone except the audience, so both of these reach
+ * Meta first and resolve as "queued" — the change is NOT applied when they
+ * resolve, and the caller polls the task rather than treating a resolved
+ * promise as success.
+ * ────────────────────────────────────────────────────────────────────── */
+
+const RecipientEditSchema = z.object({
+  content: z
+    .string()
+    .trim()
+    .min(1, "Post content is required."),
+});
+
+export async function pushRecipientUpdateAction(
+  recipientNanoid: string,
+  content: string,
+  workspace: string,
+): Promise<{ status: string; task_id?: string; message?: string }> {
+  const parsed = RecipientEditSchema.safeParse({ content });
+  if (!parsed.success) {
+    const { fieldErrors } = flattenError(parsed.error);
+    return {
+      status: "error",
+      message: fieldErrors.content?.[0] ?? "Post content is required.",
+    };
+  }
+
+  try {
+    const { task_id } = await pushRecipientUpdate(
+      recipientNanoid,
+      { content: parsed.data.content },
+      workspace,
+    );
+    return { status: "success", task_id };
+  } catch (error) {
+    return {
+      status: "error",
+      message: describePostError(error, "Could not update the page copy."),
+    };
+  }
+}
+
+export async function pushRecipientDeleteAction(
+  recipientNanoid: string,
+  workspace: string,
+): Promise<{ status: string; task_id?: string; message?: string }> {
+  try {
+    const { task_id } = await pushRecipientDelete(recipientNanoid, workspace);
+    return { status: "success", task_id };
+  } catch (error) {
+    return {
+      status: "error",
+      message: describePostError(error, "Could not delete the page copy."),
+    };
+  }
+}
+
+/**
+ * Poll one live-post task to completion.
+ *
+ * Terminal once Celery answers `SUCCESS` or `FAILURE`; `result.error` then
+ * carries the platform's refusal verbatim, which is the only way to explain why
+ * an edit did not take effect. `warning`/`warnings` report a copy whose
+ * platform has no delete API.
+ */
+export async function getLivePostTaskStatusAction(
+  taskId: string,
+  workspace: string,
+): Promise<{ status: string; result?: LivePostTaskResult | null }> {
+  return getLivePostTaskStatus(taskId, workspace);
+}
+
+/**
+ * Re-read a post after a background task has settled.
+ *
+ * Returns `null` rather than falling back to the caller's stale copy: the whole
+ * point is to show the state the task produced, and a fallback would silently
+ * keep rendering the pre-task values.
+ */
+export async function getPostAction(
+  nanoid: string,
+  workspace: string,
+): Promise<ScheduledPost | null> {
+  try {
+    return await getPost(nanoid, workspace);
+  } catch {
+    return null;
+  }
 }
 
 /* ──────────────────────────────────────────────────────────────────────

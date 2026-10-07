@@ -7,8 +7,10 @@ import type {
   ChannelCapabilitiesResponse,
   ConnectedInstagramResult,
   ContentConstraint,
+  DeletePostResult,
   DiscoverChannelsResult,
   Hashtag,
+  LivePostTaskResult,
   ManagedChannel,
   MediaConstraint,
   WebhookConfig,
@@ -22,6 +24,7 @@ import type {
   PostCommentType,
   PostQueue,
   PostQueueItem,
+  PostRecipient,
   PostsSyncStatusResult,
   ReconnectPageResult,
   RevokeAccountResult,
@@ -574,12 +577,85 @@ export function updatePost(
   });
 }
 
-export function deletePost(nanoid: string, workspace: string): Promise<void> {
-  return serverMutate<void>(`/apis/socialmanager/posts/${nanoid}/`, {
+/**
+ * Delete a post — everywhere it reached, then the row itself.
+ *
+ * The backend answers `204` when nothing is live on the platform (a draft, or a
+ * post whose deliveries all failed), and `202` with a `task_id` when it has to
+ * call Graph once per page. Poll that id with {@link getLivePostTaskStatus} and
+ * only navigate away once it settles: an early redirect would strand the user on
+ * a list showing a post whose deletion has not actually finished.
+ */
+export function deletePost(
+  nanoid: string,
+  workspace: string,
+): Promise<DeletePostResult> {
+  return serverMutate<DeletePostResult>(`/apis/socialmanager/posts/${nanoid}/`, {
     body: {},
     method: "DELETE",
     workspace,
   });
+}
+
+/**
+ * Push edited copy to one page's live post, then mirror it onto the row.
+ *
+ * Distinct from `updatePost` (a `PATCH`), which writes the master copy locally
+ * only. This reaches Meta first and the row is written only once Meta accepts,
+ * so the two can never disagree — which is the whole point, since a reader on
+ * the Page must never see text this app claims was changed.
+ *
+ * Answers `202` with the unchanged row plus a `task_id`.
+ */
+export function pushRecipientUpdate(
+  recipientNanoid: string,
+  body: { content: string },
+  workspace: string,
+): Promise<PostRecipient & { task_id: string }> {
+  return serverMutate(`/apis/socialmanager/recipients/${recipientNanoid}/push-update/`, {
+    body,
+    method: "POST",
+    workspace,
+  });
+}
+
+/**
+ * Delete one page's live post, then the row that delivered it.
+ *
+ * The row survives until the task finishes, so a refusal on the platform leaves
+ * something to retry rather than a copy nobody in this system can act on again.
+ * Answers `202` with `task_id` and `status: "deleting"`.
+ */
+export function pushRecipientDelete(
+  recipientNanoid: string,
+  workspace: string,
+): Promise<{ task_id: string; status: string }> {
+  return serverMutate(`/apis/socialmanager/recipients/${recipientNanoid}/push-delete/`, {
+    body: {},
+    method: "POST",
+    workspace,
+  });
+}
+
+/**
+ * Poll any live-post task (edit one page, delete one page, delete everywhere).
+ *
+ * Same `sync_status` endpoint the comment moderation and sync tasks use, but the
+ * result payload differs, so this is a separate wrapper rather than a widening
+ * of {@link getPostsSyncStatus} — a caller that expects `{created, skipped}`
+ * must not silently receive `{status, error}`.
+ *
+ * `status` is Celery's own (`PENDING` → `STARTED` → `SUCCESS`/`FAILURE`);
+ * `result` only appears once the task is ready.
+ */
+export function getLivePostTaskStatus(
+  taskId: string,
+  workspace: string,
+): Promise<{ status: string; result?: LivePostTaskResult | null }> {
+  return serverFetch<{ status: string; result?: LivePostTaskResult | null }>(
+    `/apis/socialmanager/posts/sync_status/?task_id=${encodeURIComponent(taskId)}`,
+    wsOpts(workspace),
+  );
 }
 
 export function publishPost(nanoid: string, workspace: string): Promise<ScheduledPost> {

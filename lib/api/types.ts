@@ -1740,6 +1740,41 @@ export interface ModerationTaskResult {
   error?: string;
 }
 
+/**
+ * Outcome of one live-post task: editing a published copy on its Page, or
+ * deleting it (one page, or every page the post reached).
+ *
+ * `recipient` / `post` are `null` after a successful delete — the row is gone by
+ * the time the task finishes, so there is no nanoid left to report. `error`
+ * carries the platform's refusal verbatim, which is the only way the UI can
+ * explain why an edit did not take effect.
+ *
+ * `warning` (single-page delete) and `warnings` (delete everywhere) explain a
+ * copy whose platform has no delete API: the local row was removed anyway, and
+ * saying so is the only honest alternative to trapping the row forever.
+ */
+export interface LivePostTaskResult {
+  status: string;
+  recipient?: string | null;
+  post?: string | null;
+  error?: string;
+  warning?: string;
+  warnings?: string[];
+}
+
+/**
+ * What `DELETE /posts/{nanoid}/` answers.
+ *
+ * `204` (nothing live on the platform) yields `{}`. `202` carries a `task_id`
+ * to poll — the platform call is one Graph request per page, so it never
+ * happens on the request thread.
+ */
+export interface DeletePostResult {
+  task_id?: string;
+  status?: string;
+  live_pages?: number;
+}
+
 export interface CommentsSyncResult {
   task_id: string;
 }
