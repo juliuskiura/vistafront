@@ -9,11 +9,13 @@ import { usePlatformBrand } from "@/lib/social/platform-brand-context";
 import { useRouter } from "next/navigation";
 import {
   Unlink,
-  RefreshCw,
   ChevronRight,
+  Settings,
 } from "@/lib/icons";
+import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
 import type { ManagedChannel, SocialPlatform } from "@/lib/api/types";
 import type { ChannelHealth } from "./channel-health-label";
+import { ChannelActionsSheet } from "./channel-actions-sheet";
 
 function toLocalDateTime(value: string): string {
   const date = new Date(value);
@@ -193,34 +195,29 @@ export function ChannelCard({
           View details
           <ChevronRight className="w-3 h-3" />
         </button>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => onSync(page)}
-            disabled={syncing}
-            title="Re-reads this account's pages and mints a fresh token for each"
-            className="text-[11px] font-semibold text-primary hover:text-primary-700 flex items-center gap-1 transition-colors disabled:opacity-60 disabled:cursor-wait"
-          >
-            <RefreshCw className={`w-3 h-3 ${syncing ? "animate-spin" : ""}`} />
-            Sync Audience
-          </button>
-          <Button
-            onClick={() =>
-              isConnected
-                ? onDisconnect(page)
-                : onReconnect(page.platform as SocialPlatform)
-            }
-            disabled={!isConnected && !canConnect}
-            variant={isConnected ? "outline" : "default"}
-            className={
-              isConnected
-                ? "border-rose-200 text-rose-700 hover:bg-rose-50"
-                : "bg-emerald-600 text-white hover:bg-emerald-700"
-            }
-            size="sm"
-          >
-            {isConnected ? "Disconnect" : "Reconnect"}
-          </Button>
-        </div>
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              className="shrink-0 rounded-full"
+              title="Settings for this channel"
+            >
+              <Settings className="w-4 h-4" />
+            </Button>
+          </SheetTrigger>
+
+          <SheetContent side="right" className="sm:max-w-md">
+            <ChannelActionsSheet
+              page={page}
+              ws={ws}
+              canConnect={canConnect}
+              onSync={onSync}
+              onDisconnect={onDisconnect}
+              onReconnect={onReconnect}
+            />
+          </SheetContent>
+        </Sheet>
       </div>
     </Card>
   );

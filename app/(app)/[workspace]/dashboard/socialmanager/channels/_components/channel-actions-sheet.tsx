@@ -1,0 +1,106 @@
+"use client";
+
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { SheetClose, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { RefreshCw, ShieldAlert, X, Settings } from "@/lib/icons";
+import type { ManagedChannel, SocialPlatform } from "@/lib/api/types";
+import { VSButton } from "@/components/shared/components/customUi/VSButton";
+
+interface ChannelActionsSheetProps {
+  page: ManagedChannel;
+  ws: string;
+  canConnect: boolean;
+  onSync: (page: ManagedChannel) => void;
+  onDisconnect: (page: ManagedChannel) => void;
+  onReconnect: (platform: SocialPlatform) => void;
+}
+
+export function ChannelActionsSheet({
+  page,
+  ws,
+  canConnect,
+  onSync,
+  onDisconnect,
+  onReconnect,
+}: ChannelActionsSheetProps) {
+  const [syncing, setSyncing] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      await onSync(page);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    setDisconnecting(true);
+    try {
+      await onDisconnect(page);
+    } finally {
+      setDisconnecting(false);
+    }
+  };
+
+  return (
+    <SheetContent side="right" className="sm:max-w-md p-0">
+      <SheetHeader className="p-5 pb-4 flex items-center justify-between border-b border-sidebar-divider">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+         
+          <SheetTitle className="text-lg font-semibold text-slate-900 truncate">
+            {page.page_name || "Untitled Channel"}
+          </SheetTitle>
+        </div>
+     
+      </SheetHeader>
+
+      <div className="p-5 space-y-4">
+        <div className="space-y-1">
+          <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide">Actions</h3>
+          <p className="text-xs text-slate-600">Manage this channel&apos;s connection</p>
+        </div>
+
+        <SheetClose asChild>
+          <Button
+            onClick={handleSync}
+            disabled={syncing || !canConnect}
+            className="w-full justify-start gap-3 h-14 p-4"
+            variant="outline"
+          >
+            <div className="bg-slate-50 p-2 rounded-lg shrink-0">
+              <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""} text-slate-600`} />
+            </div>
+            <div className="flex flex-col items-start flex-1 min-w-0">
+              <span className="font-medium text-sm truncate">Sync Audience</span>
+              <span className="text-xs text-slate-500 truncate">
+                Refresh token
+              </span>
+            </div>
+          </Button>
+        </SheetClose>
+
+        <SheetClose asChild>
+          <Button
+            onClick={handleDisconnect}
+            disabled={disconnecting || !canConnect}
+            className="w-full justify-start gap-3 h-14 p-4"
+            variant="secondary"
+          >
+            <div className=" p-2 rounded-lg shrink-0">
+              <ShieldAlert className="w-4 h-4 " />
+            </div>
+            <div className="flex flex-col items-start flex-1 min-w-0">
+              <span className="font-medium text-sm truncate">Disable</span>
+              <span className="text-xs truncate">
+                Temporarily stop using it
+              </span>
+            </div>
+          </Button>
+        </SheetClose>
+      </div>
+    </SheetContent>
+  );
+}
