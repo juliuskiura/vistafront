@@ -49,12 +49,12 @@ export function ChannelActionsSheet({
     <SheetContent side="right" className="sm:max-w-md p-0">
       <SheetHeader className="p-5 pb-4 flex items-center justify-between border-b border-sidebar-divider">
         <div className="flex items-center gap-3 min-w-0 flex-1">
-         
+
           <SheetTitle className="text-lg font-semibold text-slate-900 truncate">
             {page.page_name || "Untitled Channel"}
           </SheetTitle>
         </div>
-     
+
       </SheetHeader>
 
       <div className="p-5 space-y-4">
@@ -63,43 +63,44 @@ export function ChannelActionsSheet({
           <p className="text-xs text-slate-600">Manage this channel&apos;s connection</p>
         </div>
 
-        <SheetClose asChild>
-          <Button
-            onClick={handleSync}
-            disabled={syncing || !canConnect}
-            className="w-full justify-start gap-3 h-14 p-4"
-            variant="outline"
-          >
-            <div className="bg-slate-50 p-2 rounded-lg shrink-0">
-              <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""} text-slate-600`} />
-            </div>
-            <div className="flex flex-col items-start flex-1 min-w-0">
-              <span className="font-medium text-sm truncate">Sync Audience</span>
-              <span className="text-xs text-slate-500 truncate">
-                Refresh token
-              </span>
-            </div>
-          </Button>
-        </SheetClose>
+        <Button
+          onClick={handleSync}
+          disabled={syncing || !canConnect}
+          className="w-full justify-start gap-3 h-14 p-4"
+          variant="outline"
+        >
+          <div className="bg-slate-50 p-2 rounded-lg shrink-0">
+            <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""} text-slate-600`} />
+          </div>
+          <div className="flex flex-col items-start flex-1 min-w-0">
+            <span className="font-medium text-sm truncate">Sync Audience</span>
+            <span className="text-xs text-slate-500 truncate">
+              Refresh token
+            </span>
+          </div>
+        </Button>
 
-        <SheetClose asChild>
-          <Button
-            onClick={handleDisconnect}
-            disabled={disconnecting || !canConnect}
-            className="w-full justify-start gap-3 h-14 p-4"
-            variant="secondary"
-          >
-            <div className=" p-2 rounded-lg shrink-0">
-              <ShieldAlert className="w-4 h-4 " />
-            </div>
-            <div className="flex flex-col items-start flex-1 min-w-0">
-              <span className="font-medium text-sm truncate">Disable</span>
-              <div className="text-xs truncate">
-                Keep the connection, but SocialManager temporarily stops using it
-              </div>
-            </div>
-          </Button>
-        </SheetClose>
+        <Button
+          onClick={handleDisconnect}
+          disabled={disconnecting || !canConnect}
+          className="w-full justify-start gap-3 p-4 h-auto"
+          variant="secondary"
+        >
+          <div className="p-2 rounded-lg shrink-0">
+            <ShieldAlert className="w-4 h-4" />
+          </div>
+
+          <div className="flex flex-col items-start flex-1 min-w-0">
+            <span className="font-medium text-sm">
+              Disable
+            </span>
+
+            <span className="text-xs whitespace-normal break-words text-left">
+              Keep the connection, but SocialManager temporarily stops using it
+            </span>
+          </div>
+        </Button>
+
       </div>
     </SheetContent>
   );
