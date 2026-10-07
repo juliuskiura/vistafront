@@ -94,9 +94,9 @@ export function ChannelActionsSheet({
             </div>
             <div className="flex flex-col items-start flex-1 min-w-0">
               <span className="font-medium text-sm truncate">Disable</span>
-              <span className="text-xs truncate">
-                Temporarily stop using it
-              </span>
+              <div className="text-xs truncate">
+                Keep the connection, but SocialManager temporarily stops using it
+              </div>
             </div>
           </Button>
         </SheetClose>
