@@ -349,9 +349,9 @@ export function SocialHomePageClient({
                     </td>
                     <td className="whitespace-nowrap px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <span className="flex items-center gap-1 text-xs text-neutral-600" title="Audience comments">
+                        <span className="flex items-center gap-1 text-xs text-neutral-600" title="Comments">
                           <MessageCircle className="size-3.5 text-neutral-400" />
-                          {post.comments_count ?? 0}
+                           {post.comment_count ?? 0}
                         </span>
                         <span className="flex items-center gap-1 text-xs text-neutral-600" title="Reactions">
                           <Heart className="size-3.5 text-rose-400" />

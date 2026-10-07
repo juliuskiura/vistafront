@@ -241,7 +241,7 @@ function PostMediaPreview({ post }: { post: ScheduledPost }) {
 
 function EngagementKPIs({ post, comments, metrics }: { post: ScheduledPost; comments: PostComment[]; metrics: MetricSnapshot[] }) {
   const reactions = post.reactions_count ?? 0;
-  const commentCount = post.comments_count ?? comments.length;
+  const commentCount = post.comment_count ?? comments.length;
   const shares = metrics.filter((m) => m.metric.toLowerCase().includes("share")).reduce((s, m) => s + m.value, 0);
   const saves = metrics.filter((m) => m.metric.toLowerCase().includes("save")).reduce((s, m) => s + m.value, 0);
   const clicks = metrics.filter((m) => m.metric.toLowerCase().includes("click")).reduce((s, m) => s + m.value, 0);

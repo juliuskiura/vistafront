@@ -82,7 +82,7 @@ export function PostCommentsSheet({
               <div className="mt-4 grid grid-cols-3 gap-2">
                 <div className="rounded-xl bg-white/10 p-3 text-center ring-1 ring-white/15 backdrop-blur-sm">
                   <MessageCircle className="mx-auto size-4 text-white/80" />
-                  <p className="mt-1 text-lg font-semibold leading-none">{post?.comments_count ?? 0}</p>
+                  <p className="mt-1 text-lg font-semibold leading-none">{post?.comment_count ?? 0}</p>
                   <p className="mt-0.5 text-[10px] uppercase tracking-wide text-white/70">Comments</p>
                 </div>
                 <div className="rounded-xl bg-white/10 p-3 text-center ring-1 ring-white/15 backdrop-blur-sm">

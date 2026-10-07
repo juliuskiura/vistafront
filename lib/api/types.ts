@@ -1494,7 +1494,23 @@ export type PostCommentStatus = "pending" | "published" | "failed" | "received";
 export interface PostComment {
   id: string;
   nanoid: string;
+  /**
+   * Nanoid of the delivery (post × channel) this comment lives on.
+   *
+   * A comment belongs to exactly one channel's copy of the post, so this is
+   * the field that says where it is: use it to reach the recipient, and from
+   * there the post and the page. The two fields below are the same answer
+   * spelled out for rendering, never a second source of truth.
+   */
+  recipient: string;
   scheduled_post: string;
+  /**
+   * Nanoid of the channel this comment sits on.
+   *
+   * Keyed by nanoid because every channel lookup on this side is — comment
+   * rows go straight into `pageByNanoid` / `pageById`, both of which are
+   * nanoid-keyed.
+   */
   managed_page: string;
   comment_type: PostCommentType;
   author_name: string;
@@ -1578,7 +1594,10 @@ export interface ScheduledPost {
   published_at: string | null;
   is_queue_item: boolean;
   synced_from_channel: boolean;
-  comments_count: number;
+  /** Comments summed across every delivery of the post. Counted on the server
+   *  from the comment rows (`ScheduledPost.comment_count`), never stored, so it
+   *  cannot lag behind the thread it is displayed above. */
+  comment_count: number;
   reactions_count: number;
   recipients: PostRecipient[];
   created_at: string;
