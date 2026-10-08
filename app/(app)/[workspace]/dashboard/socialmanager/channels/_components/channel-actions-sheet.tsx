@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { SheetClose, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { RefreshCw, ShieldAlert, X, Settings } from "@/lib/icons";
+import { RefreshCw, ShieldAlert, Unplug, X, Settings } from "@/lib/icons";
 import type { ManagedChannel, SocialPlatform } from "@/lib/api/types";
 import { VSButton } from "@/components/shared/components/customUi/VSButton";
 
@@ -12,6 +12,7 @@ interface ChannelActionsSheetProps {
   ws: string;
   canConnect: boolean;
   onSync: (page: ManagedChannel) => void;
+  onDisable: (page: ManagedChannel) => void;
   onDisconnect: (page: ManagedChannel) => void;
   onReconnect: (platform: SocialPlatform) => void;
 }
@@ -21,11 +22,12 @@ export function ChannelActionsSheet({
   ws,
   canConnect,
   onSync,
+  onDisable,
   onDisconnect,
   onReconnect,
 }: ChannelActionsSheetProps) {
   const [syncing, setSyncing] = useState(false);
-  const [disconnecting, setDisconnecting] = useState(false);
+  const [disabling, setDisabling] = useState(false);
 
   const handleSync = async () => {
     setSyncing(true);
@@ -36,12 +38,12 @@ export function ChannelActionsSheet({
     }
   };
 
-  const handleDisconnect = async () => {
-    setDisconnecting(true);
+  const handleDisable = async () => {
+    setDisabling(true);
     try {
-      await onDisconnect(page);
+      await onDisable(page);
     } finally {
-      setDisconnecting(false);
+      setDisabling(false);
     }
   };
 
@@ -81,8 +83,8 @@ export function ChannelActionsSheet({
         </Button>
 
         <Button
-          onClick={handleDisconnect}
-          disabled={disconnecting || !canConnect}
+          onClick={handleDisable}
+          disabled={disabling || !canConnect}
           className="w-full justify-start gap-3 p-4 h-auto"
           variant="secondary"
         >
@@ -97,6 +99,27 @@ export function ChannelActionsSheet({
 
             <span className="text-xs whitespace-normal break-words text-left">
               Keep the connection, but SocialManager temporarily stops using it
+            </span>
+          </div>
+        </Button>
+
+        <Button
+          onClick={() => onDisconnect(page)}
+          disabled={!canConnect}
+          className="w-full justify-start gap-3 p-4 h-auto"
+          variant="destructive"
+        >
+          <div className="p-2 rounded-lg shrink-0">
+            <Unplug className="w-4 h-4" />
+          </div>
+
+          <div className="flex flex-col items-start flex-1 min-w-0">
+            <span className="font-medium text-sm">
+              Disconnect
+            </span>
+
+            <span className="text-xs whitespace-normal break-words text-left opacity-90">
+              Revoke platform access for this channel — reconnect it to use it again.
             </span>
           </div>
         </Button>

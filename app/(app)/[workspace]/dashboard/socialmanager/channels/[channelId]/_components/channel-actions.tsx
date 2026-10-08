@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Unplug } from "lucide-react";
+import { CheckCircle2, Unplug } from "@/lib/icons";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SocialIcon } from "@/components/social-icons";
 import type { ConnectedInstagramResult, PostsSyncStatusResult } from "@/lib/api/types";
-import { disconnectChannelAction } from "../../../actions";
+import { disableChannelAction } from "../../../actions";
 
 export type SyncResult = NonNullable<PostsSyncStatusResult["result"]>;
 export type InstagramResult = ConnectedInstagramResult;
@@ -29,16 +29,16 @@ export function ChannelActions({
 }: ChannelActionsProps) {
   const ws = workspaceDomain.toLowerCase();
   const router = useRouter();
-  const [disconnectOpen, setDisconnectOpen] = useState(false);
-  const [revoking, setRevoking] = useState(false);
+  const [disableOpen, setDisableOpen] = useState(false);
+  const [disabling, setDisabling] = useState(false);
 
-  const handleRevoke = async () => {
-    setRevoking(true);
+  const handleDisable = async () => {
+    setDisabling(true);
     try {
-      await disconnectChannelAction(channelId, ws);
+      await disableChannelAction(channelId, ws);
       router.refresh();
     } finally {
-      setRevoking(false);
+      setDisabling(false);
     }
   };
 
@@ -90,23 +90,23 @@ export function ChannelActions({
       <Button
         variant="destructive"
         size="sm"
-        onClick={() => setDisconnectOpen(true)}
-        disabled={revoking}
+        onClick={() => setDisableOpen(true)}
+        disabled={disabling}
         className="gap-2"
       >
         <Unplug className="size-4" />
-        {revoking ? "Disconnecting…" : "Disconnect Channel"}
+        {disabling ? "Disabling…" : "Disable Channel"}
       </Button>
 
       <ConfirmDialog
-        open={disconnectOpen}
-        onOpenChange={setDisconnectOpen}
-        title="Disconnect channel?"
-        description="This will revoke access to this channel and remove it from your connected channels. Posts already published will not be deleted."
-        confirmLabel={revoking ? "Disconnecting…" : "Disconnect"}
+        open={disableOpen}
+        onOpenChange={setDisableOpen}
+        title="Disable channel?"
+        description="This channel will stop appearing in the composer and nothing will be published to it. Your platform connection is not revoked and nothing is deleted — re-enable it at any time."
+        confirmLabel={disabling ? "Disabling…" : "Disable"}
         variant="destructive"
-        onConfirm={handleRevoke}
-        confirming={revoking}
+        onConfirm={handleDisable}
+        confirming={disabling}
       />
     </>
   );

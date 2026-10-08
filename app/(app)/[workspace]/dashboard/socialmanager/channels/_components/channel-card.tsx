@@ -41,6 +41,7 @@ interface ChannelCardProps {
   health: ChannelHealth;
   syncing: boolean;
   onSync: (page: ManagedChannel) => void;
+  onDisable: (page: ManagedChannel) => void;
   onDisconnect: (page: ManagedChannel) => void;
   onReconnect: (platform: SocialPlatform) => void;
   canConnect: boolean;
@@ -53,6 +54,7 @@ export function ChannelCard({
   health,
   syncing,
   onSync,
+  onDisable,
   onDisconnect,
   onReconnect,
   canConnect,
@@ -213,6 +215,7 @@ export function ChannelCard({
               ws={ws}
               canConnect={canConnect}
               onSync={onSync}
+              onDisable={onDisable}
               onDisconnect={onDisconnect}
               onReconnect={onReconnect}
             />

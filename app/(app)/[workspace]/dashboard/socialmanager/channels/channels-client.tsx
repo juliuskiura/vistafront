@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useConnectAccount } from "@/lib/context";
 import { RefreshCw, AlertCircle, Plus } from "@/lib/icons";
-import { syncAccountAction, disconnectChannelAction } from "../actions";
+import { syncAccountAction, disableChannelAction, revokeAccountAction } from "../actions";
 import { ChannelCard } from "./_components/channel-card";
 import { describeChannelHealth, type VerifyVerdict } from "./_components/channel-health-label";
 import type { ManagedChannel, SocialAccount, SocialPlatform } from "@/lib/api/types";
@@ -44,9 +44,12 @@ export function ChannelsClient({
 }: Props) {
   const ws = workspaceDomain.toLowerCase();
   const { open: openConnectAccount, canConnect } = useConnectAccount();
-  const [disconnectTarget, setDisconnectTarget] = useState<ManagedChannel | null>(
+  const [disableTarget, setDisableTarget] = useState<ManagedChannel | null>(
     null,
   );
+  const [disabling, setDisabling] = useState(false);
+  const [disconnectTarget, setDisconnectTarget] =
+    useState<ManagedChannel | null>(null);
   const [disconnecting, setDisconnecting] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const router = useRouter();
@@ -77,17 +80,35 @@ export function ChannelsClient({
     [ws, router, pageToAccountNanoid],
   );
 
+  const handleConfirmDisable = useCallback(async () => {
+    if (!disableTarget) return;
+    setDisabling(true);
+    try {
+      await disableChannelAction(disableTarget.nanoid, ws);
+      router.refresh();
+    } finally {
+      setDisabling(false);
+      setDisableTarget(null);
+    }
+  }, [disableTarget, ws, router]);
+
+  // True platform revocation: the backend revokes at the *account* level
+  // (`POST /accounts/{nanoid}/revoke/`), deactivating the account and all
+  // its channels. Resolves the channel's owning account via
+  // `pageToAccountNanoid` — unlike Disable, which only flips one row.
   const handleConfirmDisconnect = useCallback(async () => {
     if (!disconnectTarget) return;
+    const accountNanoid = pageToAccountNanoid[disconnectTarget.nanoid];
+    if (!accountNanoid) return;
     setDisconnecting(true);
     try {
-      await disconnectChannelAction(disconnectTarget.nanoid, ws);
+      await revokeAccountAction(accountNanoid, ws);
       router.refresh();
     } finally {
       setDisconnecting(false);
       setDisconnectTarget(null);
     }
-  }, [disconnectTarget, ws, router]);
+  }, [disconnectTarget, ws, router, pageToAccountNanoid]);
 
   const handleReconnect = useCallback(
     (platform: SocialPlatform) =>
@@ -184,6 +205,7 @@ export function ChannelsClient({
               })}
               syncing={syncingId === page.nanoid}
               onSync={handleSync}
+              onDisable={setDisableTarget}
               onDisconnect={setDisconnectTarget}
               onReconnect={handleReconnect}
             />
@@ -192,12 +214,25 @@ export function ChannelsClient({
       )}
 
       <ConfirmDialog
+        open={disableTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDisableTarget(null);
+        }}
+        title="Disable channel?"
+        description="This channel will stop appearing in the composer and nothing will be published to it. Your Meta connection is not revoked and nothing is deleted — reconnect it at any time."
+        confirmLabel={disabling ? "Disabling…" : "Disable"}
+        variant="destructive"
+        onConfirm={handleConfirmDisable}
+        confirming={disabling}
+      />
+
+      <ConfirmDialog
         open={disconnectTarget !== null}
         onOpenChange={(open) => {
           if (!open) setDisconnectTarget(null);
         }}
         title="Disconnect channel?"
-        description="This channel will stop appearing in the composer and nothing will be published to it. Your Meta connection is not revoked and nothing is deleted — reconnect it at any time."
+        description="This will revoke platform access for this channel's account and remove its channels from your workspace. Posts already published will not be deleted. This cannot be undone — you'll need to reconnect to use it again."
         confirmLabel={disconnecting ? "Disconnecting…" : "Disconnect"}
         variant="destructive"
         onConfirm={handleConfirmDisconnect}

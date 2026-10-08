@@ -690,18 +690,18 @@ export async function verifyPageAction(
   }
 }
 
-export async function disconnectChannelAction(
+export async function disableChannelAction(
   nanoid: string,
   workspace: string,
 ): Promise<AccountActionState> {
   try {
     await updateManagedChannel(nanoid, { is_active: false }, workspace);
   } catch {
-    return { status: "error", message: "Failed to disconnect channel." };
+    return { status: "error", message: "Failed to disable channel." };
   }
 
   revalidatePath(`/${workspace}/dashboard/socialmanager`);
-  return { status: "success", message: "Channel disconnected." };
+  return { status: "success", message: "Channel disabled." };
 }
 
 export async function getConnectedInstagramAction(
