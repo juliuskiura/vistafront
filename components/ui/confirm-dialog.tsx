@@ -16,10 +16,17 @@ interface ConfirmDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
-  description: string;
+  /**
+   * Plain string (rendered as-is) or rich content (e.g. a bulleted list of
+   * consequences). Rich content renders in a scrollable region so long
+   * warnings stay readable on small screens.
+   */
+  description: string | React.ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: "default" | "destructive";
+  /** Dialog width: `sm` (default, `max-w-sm`) or `md` (`max-w-md`). */
+  size?: "sm" | "md";
   onConfirm: () => void | Promise<void>;
   confirming?: boolean;
 }
@@ -32,6 +39,7 @@ export function ConfirmDialog({
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
   variant = "default",
+  size = "sm",
   onConfirm,
   confirming = false,
 }: ConfirmDialogProps) {
@@ -39,7 +47,11 @@ export function ConfirmDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="max-w-sm"
+        className={
+          size === "md"
+            ? "max-h-[85vh] max-w-md overflow-y-auto"
+            : "max-h-[85vh] max-w-sm overflow-y-auto"
+        }
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <DialogHeader>
@@ -49,7 +61,13 @@ export function ConfirmDialog({
             )}
             <DialogTitle>{title}</DialogTitle>
           </div>
-          <DialogDescription>{description}</DialogDescription>
+          <DialogDescription asChild={typeof description !== "string"}>
+            {typeof description === "string" ? (
+              description
+            ) : (
+              <div className="max-h-64 overflow-y-auto pr-1">{description}</div>
+            )}
+          </DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button

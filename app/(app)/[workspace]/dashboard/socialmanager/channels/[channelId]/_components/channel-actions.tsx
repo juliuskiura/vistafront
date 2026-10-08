@@ -31,6 +31,8 @@ export function ChannelActions({
   const router = useRouter();
   const [disableOpen, setDisableOpen] = useState(false);
   const [disabling, setDisabling] = useState(false);
+  const [disconnectOpen, setDisconnectOpen] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
 
   const handleDisable = async () => {
     setDisabling(true);
@@ -39,6 +41,22 @@ export function ChannelActions({
       router.refresh();
     } finally {
       setDisabling(false);
+    }
+  };
+
+  // Per-page disconnect: deactivates ONLY this channel row, leaving the
+  // owning account and sibling channels untouched (same call as Disable —
+  // the backend has no per-page revocation endpoint, so the distinction is
+  // the destructive UX: Disconnect removes the page's access, Disable
+  // merely pauses it).
+  const handleDisconnect = async () => {
+    setDisconnecting(true);
+    try {
+      await disableChannelAction(channelId, ws);
+      router.push(`/${ws}/dashboard/socialmanager/channels`);
+      router.refresh();
+    } finally {
+      setDisconnecting(false);
     }
   };
 
@@ -87,16 +105,29 @@ export function ChannelActions({
         </Card>
       )}
 
-      <Button
-        variant="destructive"
-        size="sm"
-        onClick={() => setDisableOpen(true)}
-        disabled={disabling}
-        className="gap-2"
-      >
-        <Unplug className="size-4" />
-        {disabling ? "Disabling…" : "Disable Channel"}
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setDisableOpen(true)}
+          disabled={disabling}
+          className="gap-2"
+        >
+          <Unplug className="size-4" />
+          {disabling ? "Disabling…" : "Disable Channel"}
+        </Button>
+
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={() => setDisconnectOpen(true)}
+          disabled={disconnecting}
+          className="gap-2"
+        >
+          <Unplug className="size-4" />
+          {disconnecting ? "Disconnecting…" : "Disconnect"}
+        </Button>
+      </div>
 
       <ConfirmDialog
         open={disableOpen}
@@ -104,9 +135,36 @@ export function ChannelActions({
         title="Disable channel?"
         description="This channel will stop appearing in the composer and nothing will be published to it. Your platform connection is not revoked and nothing is deleted — re-enable it at any time."
         confirmLabel={disabling ? "Disabling…" : "Disable"}
-        variant="destructive"
+        variant="default"
         onConfirm={handleDisable}
         confirming={disabling}
+      />
+
+      <ConfirmDialog
+        open={disconnectOpen}
+        onOpenChange={setDisconnectOpen}
+        title="Disconnect channel?"
+        description={
+          <ul className="list-disc space-y-1.5 pl-5 text-left">
+            <li>
+              This page loses access — it stops appearing in the composer and
+              nothing will be published to it.
+            </li>
+            <li>Other pages on the same account stay connected.</li>
+            <li>Posts already published on the platform are not deleted.</li>
+            <li>
+              This channel&apos;s saved data is permanently deleted within 14
+              days — and if it is the account&apos;s last channel, the account
+              connection is removed as well.
+            </li>
+            <li>This cannot be undone — reconnect to use it again.</li>
+          </ul>
+        }
+        confirmLabel={disconnecting ? "Disconnecting…" : "Disconnect"}
+        variant="destructive"
+        size="md"
+        onConfirm={handleDisconnect}
+        confirming={disconnecting}
       />
     </>
   );

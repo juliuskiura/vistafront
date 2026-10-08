@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useConnectAccount } from "@/lib/context";
 import { RefreshCw, AlertCircle, Plus } from "@/lib/icons";
-import { syncAccountAction, disableChannelAction, revokeAccountAction } from "../actions";
+import { syncAccountAction, disableChannelAction } from "../actions";
 import { ChannelCard } from "./_components/channel-card";
 import { describeChannelHealth, type VerifyVerdict } from "./_components/channel-health-label";
 import type { ManagedChannel, SocialAccount, SocialPlatform } from "@/lib/api/types";
@@ -92,23 +92,23 @@ export function ChannelsClient({
     }
   }, [disableTarget, ws, router]);
 
-  // True platform revocation: the backend revokes at the *account* level
-  // (`POST /accounts/{nanoid}/revoke/`), deactivating the account and all
-  // its channels. Resolves the channel's owning account via
-  // `pageToAccountNanoid` — unlike Disable, which only flips one row.
+  // Per-page disconnect: deactivates ONLY this channel row (`is_active=false`),
+  // leaving the owning account and its sibling channels untouched. The
+  // backend has no per-page token-revocation endpoint (revoke is
+  // account-level), so this is a removal of this page's access from the
+  // workspace — the stored page token is no longer usable because the row is
+  // inactive — while the account stays connected.
   const handleConfirmDisconnect = useCallback(async () => {
     if (!disconnectTarget) return;
-    const accountNanoid = pageToAccountNanoid[disconnectTarget.nanoid];
-    if (!accountNanoid) return;
     setDisconnecting(true);
     try {
-      await revokeAccountAction(accountNanoid, ws);
+      await disableChannelAction(disconnectTarget.nanoid, ws);
       router.refresh();
     } finally {
       setDisconnecting(false);
       setDisconnectTarget(null);
     }
-  }, [disconnectTarget, ws, router, pageToAccountNanoid]);
+  }, [disconnectTarget, ws, router]);
 
   const handleReconnect = useCallback(
     (platform: SocialPlatform) =>
@@ -219,9 +219,9 @@ export function ChannelsClient({
           if (!open) setDisableTarget(null);
         }}
         title="Disable channel?"
-        description="This channel will stop appearing in the composer and nothing will be published to it. Your Meta connection is not revoked and nothing is deleted — reconnect it at any time."
+        description="This channel will stop appearing in the composer and nothing will be published to it. Your platform connection is not revoked and nothing is deleted — re-enable it at any time."
         confirmLabel={disabling ? "Disabling…" : "Disable"}
-        variant="destructive"
+        variant="default"
         onConfirm={handleConfirmDisable}
         confirming={disabling}
       />
@@ -232,9 +232,25 @@ export function ChannelsClient({
           if (!open) setDisconnectTarget(null);
         }}
         title="Disconnect channel?"
-        description="This will revoke platform access for this channel's account and remove its channels from your workspace. Posts already published will not be deleted. This cannot be undone — you'll need to reconnect to use it again."
+        description={
+          <ul className="list-disc space-y-1.5 pl-5 text-left">
+            <li>
+              This page loses access — it stops appearing in the composer and
+              nothing will be published to it.
+            </li>
+            <li>Other pages on the same account stay connected.</li>
+            <li>Posts already published on the platform are not deleted.</li>
+            <li>
+              This channel&apos;s saved data is permanently deleted within 14
+              days — and if it is the account&apos;s last channel, the account
+              connection is deleted as well.
+            </li>
+            <li>This cannot be undone — reconnect to use it again.</li>
+          </ul>
+        }
         confirmLabel={disconnecting ? "Disconnecting…" : "Disconnect"}
         variant="destructive"
+        size="md"
         onConfirm={handleConfirmDisconnect}
         confirming={disconnecting}
       />

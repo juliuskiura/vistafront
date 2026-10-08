@@ -119,7 +119,7 @@ export function ChannelActionsSheet({
             </span>
 
             <span className="text-xs whitespace-normal break-words text-left opacity-90">
-              Revoke platform access for this channel — reconnect it to use it again.
+              Remove this page's access — other pages on the same account stay connected.
             </span>
           </div>
         </Button>
