@@ -198,6 +198,7 @@ export function ChannelsClient({
               ws={ws}
               canConnect={canConnect}
               accountEmail={pageToAccountEmail[page.nanoid] ?? ""}
+              accountNanoid={pageToAccountNanoid[page.nanoid] ?? ""}
               health={describeChannelHealth({
                 verdict: page.is_active ? verdicts[page.nanoid] : undefined,
                 tokenExpiresAt: page.token_expires_at,

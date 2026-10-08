@@ -275,7 +275,7 @@ export function createAccount(
 
 export function updateAccount(
   nanoid: string,
-  body: Partial<SocialAccountForm>,
+  body: Partial<SocialAccountForm> & { account_email?: string },
   workspace: string,
 ): Promise<SocialAccount> {
   return serverMutate<SocialAccount>(`/apis/socialmanager/accounts/${nanoid}/`, {

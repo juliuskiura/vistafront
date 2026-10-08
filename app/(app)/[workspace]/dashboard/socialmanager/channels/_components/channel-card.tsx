@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SocialIcon, hasSocialIcon } from "@/components/social-icons";
@@ -11,11 +12,13 @@ import {
   Unlink,
   ChevronRight,
   Settings,
+  Plus,
 } from "@/lib/icons";
 import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
 import type { ManagedChannel, SocialPlatform } from "@/lib/api/types";
 import type { ChannelHealth } from "./channel-health-label";
 import { ChannelActionsSheet } from "./channel-actions-sheet";
+import { AccountEmailDialog } from "./account-email-dialog";
 
 function toLocalDateTime(value: string): string {
   const date = new Date(value);
@@ -33,6 +36,8 @@ interface ChannelCardProps {
   ws: string;
   /** The email of the account that connected this channel (may be empty). */
   accountEmail: string;
+  /** The owning account's nanoid — needed to save a manually-added email. */
+  accountNanoid: string;
   /**
    * Live health: whether the platform confirmed this channel's token works
    * right now. The Connected indicator reflects this — a channel whose token
@@ -51,6 +56,7 @@ export function ChannelCard({
   page,
   ws,
   accountEmail,
+  accountNanoid,
   health,
   syncing,
   onSync,
@@ -61,11 +67,17 @@ export function ChannelCard({
 }: ChannelCardProps) {
   const router = useRouter();
   const styleOf = usePlatformStyleResolver();
-  const { brandOf } = usePlatformBrand();
+  const { brandOf, nameOf } = usePlatformBrand();
   const style = styleOf(page.platform);
+  // Who the user signed in as: the platform whose dialog served the connect
+  // (e.g. Facebook for an Instagram-via-Facebook channel) — the one that
+  // declined to share an email. Falls back to the channel platform when the
+  // backend didn't denormalize `auth_dialog`.
+  const dialogName = nameOf(page.auth_dialog || page.platform) || page.platform;
   // Connected ⇔ the platform confirmed the token is live. `is_active` says the
   // row is enabled, which is not the same as "can this page actually connect".
   const isConnected = health.tone === "ok" || health.tone === "warn";
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
 
   return (
     <Card className="p-5 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden flex flex-col justify-between">
@@ -161,22 +173,39 @@ export function ChannelCard({
               </span>
             )}
           </div>
+          <div className="shrink-0 text-right">
+            <p className="text-sm font-bold text-slate-900 font-mono leading-none">
+              {page.follower_count ? page.follower_count.toLocaleString() : "—"}
+            </p>
+            <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-slate-500">
+              Followers
+            </p>
+          </div>
         </div>
 
-        <div className="mt-4 p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1.5 text-xs">
-          <div className="flex justify-between items-center text-slate-600">
-            <span>Followers:</span>
-            <span className="font-bold text-slate-900 font-mono">
-              {page.follower_count ? page.follower_count.toLocaleString() : "—"}
-            </span>
-          </div>
-          <div className="flex justify-between items-start gap-3 text-slate-600">
-            <span className="shrink-0">Main Account:</span>
-            <span
-              className={`text-right font-medium ${accountEmail ? "text-slate-900 break-all" : "text-slate-400"}`}
-            >
-              {accountEmail || "—"}
-            </span>
+        <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3 text-xs shadow-xs">
+          <div className="flex items-center justify-between gap-3">
+            <span className="shrink-0 font-semibold text-slate-900">Main Account</span>
+            {accountEmail ? (
+              <span className="text-right font-semibold text-slate-900 break-all">
+                {accountEmail}
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <span className="rounded-md bg-amber-100 px-2 py-0.5 font-bold text-amber-800">
+                  No email found
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setEmailDialogOpen(true)}
+                  aria-label={`Add email for ${page.page_name || "this channel"}`}
+                  className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-primary px-2 py-1 text-[11px] font-bold text-white shadow-xs transition-colors hover:bg-primary/90"
+                >
+                  <Plus className="size-3" />
+                  Add
+                </button>
+              </span>
+            )}
           </div>
           {page.updated_at && (
             <div className="flex justify-between items-center text-slate-400 text-[10px]">
@@ -222,6 +251,14 @@ export function ChannelCard({
           </SheetContent>
         </Sheet>
       </div>
+
+      <AccountEmailDialog
+        accountNanoid={accountNanoid}
+        workspaceDomain={ws}
+        dialogName={dialogName}
+        open={emailDialogOpen}
+        onOpenChange={setEmailDialogOpen}
+      />
     </Card>
   );
 }

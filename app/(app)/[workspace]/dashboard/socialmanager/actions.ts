@@ -38,6 +38,7 @@ import {
   getPostsSyncStatus,
   syncAnalytics,
   getAnalyticsSyncStatus,
+  updateAccount,
   createPlatform,
   updatePlatform,
   deletePlatform,
@@ -702,6 +703,42 @@ export async function disableChannelAction(
 
   revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", message: "Channel disabled." };
+}
+
+const AccountEmailSchema = z.object({
+  account_email: z.string().email("Enter a valid email address."),
+});
+
+/**
+ * Manually record the platform account's email.
+ *
+ * The platform only returns an email when the `email` permission was granted
+ * at connect time, so this is often empty (e.g. Instagram logins). The
+ * backend accepts `account_email` on PATCH — a later reconnect that returns
+ * an email updates it in place.
+ */
+export async function updateAccountEmailAction(
+  nanoid: string,
+  email: string,
+  workspace: string,
+): Promise<AccountActionState> {
+  const parsed = AccountEmailSchema.safeParse({ account_email: email });
+  if (!parsed.success) {
+    const { fieldErrors } = flattenError(parsed.error);
+    return {
+      status: "error",
+      message: fieldErrors.account_email?.[0] ?? "Enter a valid email address.",
+    };
+  }
+
+  try {
+    await updateAccount(nanoid, { account_email: parsed.data.account_email }, workspace);
+  } catch {
+    return { status: "error", message: "Failed to save email." };
+  }
+
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
+  return { status: "success", message: "Email saved." };
 }
 
 export async function getConnectedInstagramAction(
