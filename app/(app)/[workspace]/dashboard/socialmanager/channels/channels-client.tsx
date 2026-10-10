@@ -6,12 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useConnectAccount } from "@/lib/context";
-import { RefreshCw, AlertCircle, Loader2 } from "@/lib/icons";
-import { SocialIconSolid } from "@/components/social-icons";
-import { useConnectHandshake } from "@/components/socialmanager/connect-account-modal/_hooks/use-connect-handshake";
-import { syncAccountAction, disableChannelAction, oauthInitAction } from "../actions";
+import { RefreshCw, AlertCircle } from "@/lib/icons";
+import { syncAccountAction, disableChannelAction } from "../actions";
 import { ChannelCard } from "./_components/channel-card";
+import { ConnectChannels } from "./_components/connect-channels";
 import { describeChannelHealth, type VerifyVerdict } from "./_components/channel-health-label";
+import type { PlatformDoor } from "@/components/socialmanager/connect-account-modal/_components/platform-copy";
 import type { ManagedChannel, SocialAccount, SocialPlatform } from "@/lib/api/types";
 
 interface Props {
@@ -34,6 +34,15 @@ interface Props {
    * to pick — so they surface as a guided Reconnect notice instead.
    */
   accounts?: SocialAccount[];
+  /**
+   * The Instagram doors (grouped by `auth_destination`), resolved on the server
+   * so the direct "Connect Instagram" button can offer Door 1 (`instagramfb`)
+   * vs Door 2 (`instagram`) without a client fetch. Empty when the catalogue
+   * exposes no Instagram row.
+   */
+  instagramDoors?: PlatformDoor[];
+  /** Slug of the Instagram door to badge "Recommended", or `null`. */
+  recommendedDoorId?: SocialPlatform | null;
 }
 
 export function ChannelsClient({
@@ -43,6 +52,8 @@ export function ChannelsClient({
   pageToAccountEmail,
   verdicts = {},
   accounts = [],
+  instagramDoors = [],
+  recommendedDoorId = null,
 }: Props) {
   const ws = workspaceDomain.toLowerCase();
   const { open: openConnectAccount, canConnect } = useConnectAccount();
@@ -54,46 +65,7 @@ export function ChannelsClient({
     useState<ManagedChannel | null>(null);
   const [disconnecting, setDisconnecting] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
-  const [fbConnecting, setFbConnecting] = useState(false);
-  const [fbError, setFbError] = useState("");
   const router = useRouter();
-
-  // Direct Facebook connect: talks to the backend for the OAuth URL and opens
-  // the sign-in popup without routing the user through the platform picker.
-  const { begin, takeBaseline } = useConnectHandshake({
-    workspaceDomain: ws,
-    onSuccess: useCallback(() => {
-      setFbConnecting(false);
-      setFbError("");
-      router.refresh();
-    }, [router]),
-    onFailure: useCallback((message: string) => {
-      setFbConnecting(false);
-      setFbError(message);
-    }, []),
-  });
-
-  const handleConnectFacebook = useCallback(async () => {
-    if (!canConnect) return;
-    setFbConnecting(true);
-    setFbError("");
-    try {
-      const [result, baseline] = await Promise.all([
-        oauthInitAction({ platform: "facebook" }, ws),
-        takeBaseline(),
-      ]);
-      if ("error" in result) {
-        setFbConnecting(false);
-        setFbError(result.error || "We couldn't start the sign-in. Please try again.");
-        return;
-      }
-      begin(result.auth_url, "facebook", baseline);
-    } catch (err) {
-      setFbConnecting(false);
-      setFbError("Something went wrong while starting the sign-in.");
-      console.error(err);
-    }
-  }, [canConnect, ws, begin, takeBaseline]);
 
   const activeCount = channels.filter((page) => page.is_active).length;
 
@@ -172,30 +144,12 @@ export function ChannelsClient({
           Manage your connected social accounts. Posts created in the composer
           will automatically sync with your selected active channels.
         </p>
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <Button
-            onClick={handleConnectFacebook}
-            disabled={!canConnect || fbConnecting}
-            title={
-              canConnect
-                ? "Link your Facebook account to cross-post"
-                : "Your plan does not include social publishing"
-            }
-            className="flex items-center justify-center gap-2 bg-primary text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-xs transition-all shrink-0 disabled:opacity-60"
-          >
-            {fbConnecting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <SocialIconSolid name="facebook" className="h-4 w-4" />
-            )}
-            <span>{fbConnecting ? "Opening Facebook…" : "Connect Facebook"}</span>
-          </Button>
-          {fbError && (
-            <p className="text-xs text-red-600 font-medium max-w-md" role="alert">
-              {fbError}
-            </p>
-          )}
-        </div>
+        <ConnectChannels
+          ws={ws}
+          canConnect={canConnect}
+          instagramDoors={instagramDoors}
+          recommendedDoorId={recommendedDoorId}
+        />
       </div>
 
       {instagramPendingAccounts.length > 0 && (

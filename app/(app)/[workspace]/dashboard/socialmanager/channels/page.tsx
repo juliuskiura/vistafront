@@ -1,6 +1,7 @@
 import { requireWorkspace } from "@/lib/auth/server";
 import { requireFeature } from "@/lib/features/guard";
-import { listAccounts, verifyPage } from "@/lib/api";
+import { listAccounts, listPlatforms, verifyPage } from "@/lib/api";
+import { buildPlatformOptions } from "@/components/socialmanager/connect-account-modal/_components/platform-copy";
 import type { SocialAccount } from "@/lib/api/types";
 import type { VerifyVerdict } from "./_components/channel-health-label";
 import { ChannelsClient } from "./channels-client";
@@ -24,8 +25,15 @@ export default async function ChannelsPage({
   const ws = active.domain;
 
 
-  // No platform list here: ConnectAccountProvider owns that fetch and only runs
-  // it when the shared connect modal is actually opened.
+  // The Instagram doors (Door 1 `instagramfb`, Door 2 `instagram`), resolved
+  // here so the direct "Connect Instagram" button can offer the choice on first
+  // paint instead of fetching the catalogue client-side. `all: true` keeps an
+  // inactive door's row so it still renders as a "Coming soon" option.
+  const platforms = await listPlatforms({ all: true, workspace: ws }).catch(() => []);
+  const instagram = buildPlatformOptions(platforms).find((option) => option.id === "instagram") ?? null;
+  const instagramDoors = instagram?.doors ?? [];
+  const recommendedDoorId = instagram?.recommendedDoorId ?? null;
+
   const accounts = await listAccounts(ws).catch((): SocialAccount[] => []);
 
   const channels = accounts.flatMap((account) => account.managed_pages ?? []);
@@ -70,6 +78,8 @@ export default async function ChannelsPage({
       pageToAccountEmail={pageToAccountEmail}
       verdicts={verdicts}
       accounts={accounts}
+      instagramDoors={instagramDoors}
+      recommendedDoorId={recommendedDoorId}
     />
   );
 }

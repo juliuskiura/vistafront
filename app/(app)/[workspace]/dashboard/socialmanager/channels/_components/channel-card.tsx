@@ -230,11 +230,11 @@ export function ChannelCard({
           <SheetTrigger asChild>
             <Button
               variant="outline"
-              size="icon"
-              className="shrink-0 rounded-full"
+              className="shrink-0 gap-1.5 rounded-full px-3 text-xs"
               title="Settings for this channel"
             >
               <Settings className="w-4 h-4" />
+              Settings
             </Button>
           </SheetTrigger>
 

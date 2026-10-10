@@ -15,6 +15,12 @@ interface StepDoorsProps {
   recommendedDoorId: SocialPlatform | null;
   onBack: () => void;
   onSelectDoor: (door: PlatformDoor) => void;
+  /**
+   * Label for the dismiss button. The modal's doors step has a real previous
+   * step ("Back"); the standalone Instagram chooser has none, so it passes
+   * "Close" without changing the modal's behaviour.
+   */
+  backLabel?: string;
 }
 
 /**
@@ -37,6 +43,7 @@ export function StepDoors({
   recommendedDoorId,
   onBack,
   onSelectDoor,
+  backLabel = "Back",
 }: StepDoorsProps) {
   return (
     <div className="max-h-[min(60vh,480px)] space-y-5 overflow-y-auto px-6 py-6">
@@ -73,7 +80,7 @@ export function StepDoors({
                       <Clock className="h-3 w-3" /> Coming soon
                     </span>
                   </div>
-                  <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
+                  <p className="mt-1 text-[11px] leading-relaxed break-words text-slate-400">
                     Sign in with {door.dialogName} itself, no {door.name} setup needed. Not available just yet.
                   </p>
                 </div>
@@ -85,7 +92,7 @@ export function StepDoors({
             <Button
               key={door.id}
               variant="outline"
-              className="h-auto w-full cursor-pointer justify-start gap-4 p-4 text-left"
+              className="h-auto w-full cursor-pointer justify-start gap-4 whitespace-normal p-4 text-left"
               onClick={() => onSelectDoor(door)}
             >
               <div
@@ -104,7 +111,7 @@ export function StepDoors({
                     </span>
                   )}
                 </div>
-                <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                <p className="mt-1 text-[11px] leading-relaxed break-words text-slate-500">
                   {door.id === "instagram"
                     ? `Sign in on ${door.dialogName} directly — no Facebook Page needed. Requires a Business or Creator account; your profile becomes one publishing channel.`
                     : `Uses your ${door.dialogName} login to bring in the ${destinationName} account linked to it — usually the
@@ -118,7 +125,7 @@ export function StepDoors({
 
       <div className="flex items-center justify-end border-t border-slate-100 pt-3">
         <Button variant="ghost" size="sm" onClick={onBack}>
-          Back
+          {backLabel}
         </Button>
       </div>
     </div>
