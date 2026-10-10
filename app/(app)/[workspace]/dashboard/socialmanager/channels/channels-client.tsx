@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useConnectAccount } from "@/lib/context";
-import { RefreshCw, AlertCircle, Plus } from "@/lib/icons";
-import { syncAccountAction, disableChannelAction } from "../actions";
+import { RefreshCw, AlertCircle, Loader2 } from "@/lib/icons";
+import { SocialIconSolid } from "@/components/social-icons";
+import { useConnectHandshake } from "@/components/socialmanager/connect-account-modal/_hooks/use-connect-handshake";
+import { syncAccountAction, disableChannelAction, oauthInitAction } from "../actions";
 import { ChannelCard } from "./_components/channel-card";
 import { describeChannelHealth, type VerifyVerdict } from "./_components/channel-health-label";
 import type { ManagedChannel, SocialAccount, SocialPlatform } from "@/lib/api/types";
@@ -52,7 +54,46 @@ export function ChannelsClient({
     useState<ManagedChannel | null>(null);
   const [disconnecting, setDisconnecting] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [fbConnecting, setFbConnecting] = useState(false);
+  const [fbError, setFbError] = useState("");
   const router = useRouter();
+
+  // Direct Facebook connect: talks to the backend for the OAuth URL and opens
+  // the sign-in popup without routing the user through the platform picker.
+  const { begin, takeBaseline } = useConnectHandshake({
+    workspaceDomain: ws,
+    onSuccess: useCallback(() => {
+      setFbConnecting(false);
+      setFbError("");
+      router.refresh();
+    }, [router]),
+    onFailure: useCallback((message: string) => {
+      setFbConnecting(false);
+      setFbError(message);
+    }, []),
+  });
+
+  const handleConnectFacebook = useCallback(async () => {
+    if (!canConnect) return;
+    setFbConnecting(true);
+    setFbError("");
+    try {
+      const [result, baseline] = await Promise.all([
+        oauthInitAction({ platform: "facebook" }, ws),
+        takeBaseline(),
+      ]);
+      if ("error" in result) {
+        setFbConnecting(false);
+        setFbError(result.error || "We couldn't start the sign-in. Please try again.");
+        return;
+      }
+      begin(result.auth_url, "facebook", baseline);
+    } catch (err) {
+      setFbConnecting(false);
+      setFbError("Something went wrong while starting the sign-in.");
+      console.error(err);
+    }
+  }, [canConnect, ws, begin, takeBaseline]);
 
   const activeCount = channels.filter((page) => page.is_active).length;
 
@@ -118,35 +159,42 @@ export function ChannelsClient({
 
   return (
     <div className="space-y-6">
-      <div className="bg-card p-6 rounded-3xl border shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h2 className="font-bold text-slate-900 text-xl">
-              Connected Social Channels
-            </h2>
-            <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-0.5 rounded-full">
-              {activeCount} Active Channels
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 max-w-xl">
-            Manage your connected social accounts. Posts created in the composer
-            will automatically sync with your selected active channels.
-          </p>
+      <div className="bg-card p-6 rounded-3xl border shadow-2xs">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="font-bold text-slate-900 text-xl">
+            Connected Social Channels
+          </h2>
+          <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-0.5 rounded-full">
+            {activeCount} Active Channels
+          </span>
         </div>
-        <div className="flex flex-wrap items-center justify-center gap-2 shrink-0">
+        <p className="text-xs text-slate-500 max-w-xl">
+          Manage your connected social accounts. Posts created in the composer
+          will automatically sync with your selected active channels.
+        </p>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
           <Button
-            onClick={() => openConnectAccount()}
-            disabled={!canConnect}
+            onClick={handleConnectFacebook}
+            disabled={!canConnect || fbConnecting}
             title={
               canConnect
-                ? "Link a social account to cross-post"
+                ? "Link your Facebook account to cross-post"
                 : "Your plan does not include social publishing"
             }
             className="flex items-center justify-center gap-2 bg-primary text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-xs transition-all shrink-0 disabled:opacity-60"
           >
-            <Plus className="w-4 h-4" />
-            <span>Connect New Channel</span>
+            {fbConnecting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <SocialIconSolid name="facebook" className="h-4 w-4" />
+            )}
+            <span>{fbConnecting ? "Opening Facebook…" : "Connect Facebook"}</span>
           </Button>
+          {fbError && (
+            <p className="text-xs text-red-600 font-medium max-w-md" role="alert">
+              {fbError}
+            </p>
+          )}
         </div>
       </div>
 
