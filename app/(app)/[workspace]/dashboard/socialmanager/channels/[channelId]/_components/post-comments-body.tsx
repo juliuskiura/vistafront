@@ -13,6 +13,7 @@ import { CommentActions } from "@/components/socialmanager/comment-composer";
 import { PlatformGlyph } from "@/components/platform-icon";
 import { usePlatformBrand } from "@/lib/social/platform-brand-context";
 import { commentAuthor } from "@/lib/social/comment-author";
+import { supportsPrivateReply } from "@/lib/social/platform-capabilities";
 
 interface PostCommentsBodyProps {
   post: ScheduledPost;
@@ -292,7 +293,12 @@ export function PostCommentsBody({ post, workspace, pageById }: PostCommentsBody
                       workspace={workspace}
                       commentNanoid={c.nanoid}
                       canReply={Boolean(c.external_comment_id)}
-                      canPrivateReply={Boolean(c.external_comment_id)}
+                      canPrivateReply={
+                        Boolean(c.external_comment_id) &&
+                        supportsPrivateReply(
+                          brandOf(pageById[c.managed_page]?.platform),
+                        )
+                      }
                       onQueued={refetch}
                     />
                   )}

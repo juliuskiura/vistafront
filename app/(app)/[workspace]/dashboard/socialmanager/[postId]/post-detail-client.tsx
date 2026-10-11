@@ -35,6 +35,7 @@ import type { ScheduledPost, PostComment, MetricSnapshot, ManagedChannel } from 
 import { commentAuthor } from "@/lib/social/comment-author";
 import { PlatformGlyph, usePlatformStyleResolver } from "@/components/platform-icon";
 import { usePlatformBrand } from "@/lib/social/platform-brand-context";
+import { supportsPrivateReply } from "@/lib/social/platform-capabilities";
 import { cn } from "@/lib/utils";
 import { CommentModeration } from "@/components/socialmanager/comment-moderation";
 import {
@@ -580,7 +581,10 @@ function CommentsSection({
                           workspace={workspaceDomain}
                           commentNanoid={c.nanoid}
                           canReply={Boolean(c.external_comment_id)}
-                          canPrivateReply={Boolean(c.external_comment_id)}
+                          canPrivateReply={
+                            Boolean(c.external_comment_id) &&
+                            supportsPrivateReply(brandOf(platform))
+                          }
                           onQueued={onRefresh}
                         />
                       )}
