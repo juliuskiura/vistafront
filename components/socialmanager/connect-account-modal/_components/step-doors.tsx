@@ -103,13 +103,8 @@ export function StepDoors({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <h5 className="text-sm font-bold text-slate-900 transition-colors group-hover:text-primary-600">
-                    {door.id === "instagram" ? `Connect with ${door.dialogName}` : `Log in with ${door.dialogName}`}
-                  </h5>
-                  {door.id === recommendedDoorId && (
-                    <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                      Recommended
-                    </span>
-                  )}
+                    {door.id === "instagram" ? `Connect with ${door.dialogName}` : `Connect through ${door.dialogName}`}
+                  </h5>                 
                 </div>
                 <p className="mt-1 text-[11px] leading-relaxed break-words text-slate-500">
                   {door.id === "instagram"
