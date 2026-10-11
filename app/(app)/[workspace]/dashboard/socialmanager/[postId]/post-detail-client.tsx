@@ -446,7 +446,7 @@ function CommentsSection({
   // Resolves a door slug (`instagramfb`) to its brand (`instagram`) so both
   // Instagram doors wear the Instagram glyph rather than a generic fallback.
   const { brandOf } = usePlatformBrand();
-
+  
   return (
     <div className="rounded-xl border border-neutral-200 bg-white">
       <div className="flex items-center justify-between border-b border-neutral-100 px-5 py-3">
@@ -510,14 +510,14 @@ function CommentsSection({
                 return (
                   <div key={c.nanoid} className="flex gap-3">
                     <CommentAvatar
-                      url={c.author_avatar_url}
-                      name={c.author_name}
+                      url={c.commenter.picture_url}
+                      name={c.commenter.display_name}
                       className="size-8 text-xs"
                     />
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-semibold text-neutral-900">
-                          {c.author_name}
+                          {c.commenter.display_name}
                         </p>
                         <span className="text-[10px] text-neutral-400">
                           {timeAgo(c.created_at)}

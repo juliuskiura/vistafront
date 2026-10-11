@@ -74,13 +74,12 @@ export function SocialManagerLayout({
     { label: "New Post", icon: PenLine, href: `${basePath}/compose` },
   ];
 
-  // Opens the shared ConnectAccountModal (one instance, mounted by
-  // ConnectAccountProvider) instead of navigating to /channels and making the
-  // user start the OAuth flow from a second screen.
+  // Sends the user to the channels page to start the OAuth flow there instead
+  // of opening the shared ConnectAccountModal.
   if (canConnect) {
     actions.push({
       label: "Connect Account",
-      node: <ConnectAccountButton platforms={platforms} />,
+      node: <ConnectAccountButton platforms={platforms} href={`${basePath}/channels`} />,
     });
   }
 

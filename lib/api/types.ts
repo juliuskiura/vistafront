@@ -6,6 +6,8 @@
  * that broke.
  */
 
+import { SocialMessageSender } from "@/lib/api/inbox";
+
 export type WorkspaceRole = "owner" | "admin" | "member";
 export type InvitationRole = "admin" | "member";
 
@@ -1513,8 +1515,7 @@ export interface PostComment {
    */
   managed_page: string;
   comment_type: PostCommentType;
-  author_name: string;
-  author_platform_id: string;
+  commenter: SocialMessageSender;
   external_comment_id: string;
   content: string;
   status: PostCommentStatus;
