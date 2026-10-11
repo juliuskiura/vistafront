@@ -6,6 +6,7 @@ import { useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { InnerNavItemLink } from "./inner-nav-item-link";
+import { NavCountBadge } from "./nav-count-badge";
 
 export interface InnerNavItem {
   label: string;
@@ -14,6 +15,11 @@ export interface InnerNavItem {
   icon: LucideIcon;
   /** Exact-match basePath (used for the section home item). */
   end?: boolean;
+  /**
+   * Unread/inbox count rendered as a pill beside the label. Omitted (or zero)
+   * renders nothing, so a plain navigation item can leave it off entirely.
+   */
+  badge?: number;
   /**
    * Supporting line under the label in menus. Omit it and the row stays one
    * line tall, so a menu can mix plain navigation with described actions.
@@ -130,6 +136,7 @@ export function WorkspaceInnerNav({
               >
                 <item.icon className="h-4 w-4 shrink-0" />
                 <span className="whitespace-nowrap">{item.label}</span>
+                <NavCountBadge count={item.badge} />
               </Link>
             );
           })}
@@ -205,9 +212,10 @@ export function WorkspaceInnerNav({
             aria-expanded={mobileOpen}
             className="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
           >
-            <span className="flex items-center gap-2 truncate">
+            <span className="flex min-w-0 items-center gap-2 truncate">
               <MobileTriggerIcon className="h-4 w-4 shrink-0" />
-              {mobileTriggerLabel}
+              <span className="truncate">{mobileTriggerLabel}</span>
+              <NavCountBadge count={activeItem?.badge} />
             </span>
             <svg
               className={`h-4 w-4 shrink-0 transition-transform ${mobileOpen ? "rotate-180" : ""}`}

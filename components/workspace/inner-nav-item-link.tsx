@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import type { InnerNavItem } from "./workspace-inner-nav";
+import { NavCountBadge } from "./nav-count-badge";
 
 /**
  * One row of an inner-nav menu — the desktop group dropdown and the mobile
@@ -68,6 +69,8 @@ export function InnerNavItemLink({
           </span>
         )}
       </span>
+
+      <NavCountBadge count={item.badge} />
     </Link>
   );
 }

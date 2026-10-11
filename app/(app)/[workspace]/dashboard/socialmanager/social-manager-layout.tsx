@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useMemo } from "react";
 import {
   CalendarDays,
   LayoutDashboard,
@@ -16,10 +17,12 @@ import {
   type InnerNavGroup,
 } from "@/components/workspace/workspace-inner-nav";
 import { Banner, type BannerAction } from "@/components/banner";
+import { VSButton } from "@/components/shared/components/customUi/VSButton";
 import { ConnectAccountButton } from "@/components/socialmanager/connect-account-button";
 import { useConnectAccount } from "@/lib/context";
 import type { SocialMediaPlatform } from "@/lib/api/types";
 import { QUICK_ACTIONS } from "./quick-actions";
+import { useInboxUnread } from "./use-inbox-unread";
 
 /* ──────────────────────────────────────────────────────────────────────
  * Social Manager Layout
@@ -70,6 +73,19 @@ export function SocialManagerLayout({
 
   const isHome = pathname === basePath;
 
+  // "Unified Inbox" wears the workspace's unread total. While the user is in the
+  // inbox, its own thread-list poll invalidates this summary, so the layout
+  // stops its timer there rather than asking the backend twice per interval.
+  const isInbox = pathname.startsWith(`${basePath}/inbox`);
+  const unread = useInboxUnread(workspaceDomain, { poll: !isInbox });
+  const navItems = useMemo(
+    () =>
+      NAV_ITEMS.map((item) =>
+        item.href === "/inbox" ? { ...item, badge: unread } : item,
+      ),
+    [unread],
+  );
+
   const actions: BannerAction[] = [
     { label: "New Post", icon: PenLine, href: `${basePath}/compose` },
   ];
@@ -97,16 +113,18 @@ export function SocialManagerLayout({
         basePath={basePath}
         brandLabel="Social Manager"
         brandIcon={Share2}
-        items={NAV_ITEMS}
+        items={navItems}
         groups={NAV_GROUPS}
         trailing={
-          <Link
-            href={`${basePath}/compose`}
-            className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-gradient-to-r from-primary-600 to-secondary-600 px-2.5 py-1.5 text-xs font-bold text-white shadow-sm transition-all hover:from-primary-500 hover:to-secondary-500 md:px-3"
+          <VSButton
+            asChild
+            className="gap-2 rounded-lg border-transparent bg-gradient-to-r from-primary-600 to-secondary-600 px-6.5 py-3.5 text-xs font-bold text-white shadow-sm hover:from-primary-500 hover:to-secondary-500 md:px-3"
           >
-            <PenLine className="h-4 w-4" />
-            New Post
-          </Link>
+            <Link href={`${basePath}/compose`}>
+              <PenLine className="h-4 w-4" />
+              New Post
+            </Link>
+          </VSButton>
         }
       />
 

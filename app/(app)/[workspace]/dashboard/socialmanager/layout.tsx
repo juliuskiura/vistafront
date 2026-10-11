@@ -1,7 +1,17 @@
 import { requireWorkspace } from "@/lib/auth/server";
 import { listPlatforms } from "@/lib/api";
+import { getInboxSummary, type SocialInboxSummary } from "@/lib/api/inbox";
+import { inboxSummaryKey } from "@/lib/api/inbox-keys";
+import { LiveServerData } from "@/components/data/live-server-data";
 import { PlatformBrandProvider } from "@/lib/social/platform-brand-context";
 import { SocialManagerLayout } from "./social-manager-layout";
+
+/** Rendered when the summary is unavailable (feature off, backend error). */
+const EMPTY_SUMMARY: SocialInboxSummary = {
+  unread_total: 0,
+  unread_threads: 0,
+  threads: 0,
+};
 
 /**
  * Social Manager layout (Server Component).
@@ -21,6 +31,11 @@ import { SocialManagerLayout } from "./social-manager-layout";
  * card in the banner draws a disc per connectable network. It renders from the
  * list the server already has rather than opening its own request, so the card
  * is complete on first paint instead of filling in after a round trip.
+ *
+ * The unread summary is prefetched too, so the "Unified Inbox" badge is correct
+ * on first paint rather than flashing in a moment later. It is best-effort: a
+ * workspace without the inbox feature (or a transient backend error) still gets
+ * the section, just with a zero count the client poll may later correct.
  */
 export default async function Layout({
   children,
@@ -39,9 +54,16 @@ export default async function Layout({
 
   return (
     <PlatformBrandProvider platforms={platforms}>
-      <SocialManagerLayout workspaceDomain={active.domain} platforms={platforms}>
-        {children}
-      </SocialManagerLayout>
+      <LiveServerData
+        queryKey={inboxSummaryKey(active.domain)}
+        queryFn={() =>
+          getInboxSummary(active.domain).catch(() => EMPTY_SUMMARY)
+        }
+      >
+        <SocialManagerLayout workspaceDomain={active.domain} platforms={platforms}>
+          {children}
+        </SocialManagerLayout>
+      </LiveServerData>
     </PlatformBrandProvider>
   );
 }

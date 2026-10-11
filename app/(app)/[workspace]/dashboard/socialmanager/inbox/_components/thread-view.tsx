@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { senderLabel, type SocialConversationDetail } from "@/lib/api/inbox";
+import { inboxSummaryKey } from "@/lib/api/inbox-keys";
 import { useApiFetch } from "@/lib/context";
 import { AlertCircle, Loader } from "@/lib/icons";
 
@@ -31,6 +32,7 @@ export function ThreadView({
   onSent,
 }: ThreadViewProps) {
   const apiFetch = useApiFetch();
+  const queryClient = useQueryClient();
   const transcript = useRef<HTMLDivElement>(null);
 
   const { data, isPending, isError, error } = useQuery<SocialConversationDetail>({
@@ -38,6 +40,17 @@ export function ThreadView({
     queryFn: () => fetchThread(conversationId, workspace, apiFetch),
     staleTime: 30_000,
   });
+
+  // Opening a thread clears its unread badge server-side, so once its detail has
+  // loaded the nav summary is stale by exactly that thread's count. Refresh it —
+  // after the GET, not on selection, so the refetch cannot race the clear.
+  const readThread = data?.nanoid;
+  useEffect(() => {
+    if (!readThread) return;
+    void queryClient.invalidateQueries({
+      queryKey: inboxSummaryKey(workspace),
+    });
+  }, [readThread, queryClient, workspace]);
 
   // Keep the newest message in view as the transcript grows. A plain
   // `overflow-y-auto` div rather than `ScrollArea`, which offers no way to

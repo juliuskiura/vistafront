@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import type { SocialConversation } from "@/lib/api/inbox";
+import { inboxSummaryKey } from "@/lib/api/inbox-keys";
 import { useApiFetch } from "@/lib/context";
 import { MessageSquare } from "@/lib/icons";
 
@@ -60,6 +61,7 @@ export function InboxClient({ workspace }: { workspace: string }) {
     isError,
     error,
     refetch,
+    dataUpdatedAt,
   } = useQuery<SocialConversation[]>({
     // The term is part of the key so a search never paints over an unsearched
     // list, and going back to an empty box restores the full list from cache.
@@ -68,6 +70,17 @@ export function InboxClient({ workspace }: { workspace: string }) {
     refetchInterval: POLL_INTERVAL_MS,
     refetchOnWindowFocus: true,
   });
+
+  // Every time the list poll lands, refresh the nav badge from the same
+  // authoritative summary. This is why the layout turns its own timer off while
+  // the inbox is open: the messages poll is the one that keeps "Unified Inbox"
+  // in sync here, so the badge cannot lag a message the user can already see.
+  useEffect(() => {
+    if (!dataUpdatedAt) return;
+    void queryClient.invalidateQueries({
+      queryKey: inboxSummaryKey(workspace),
+    });
+  }, [dataUpdatedAt, queryClient, workspace]);
 
   const selectThread = useCallback(
     (nanoid: string | null) => {
@@ -94,6 +107,11 @@ export function InboxClient({ workspace }: { workspace: string }) {
     // variant at once, so a reply cannot leave a stale search result on screen.
     void queryClient.invalidateQueries({
       queryKey: ["socialmanager-inbox", workspace],
+    });
+    // A reply also moves the thread and clears its unread badge, so the nav
+    // count has to follow.
+    void queryClient.invalidateQueries({
+      queryKey: inboxSummaryKey(workspace),
     });
   }, [queryClient, workspace]);
 
