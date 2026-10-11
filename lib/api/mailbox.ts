@@ -121,6 +121,16 @@ export interface DomainConfig {
   workspace?: string | null;
 }
 
+export interface SNSSubscription {
+  id: string;
+  nanoid: string;
+  topic_arn: string;
+  subscribe_url: string;
+  token: string;
+  status: string;
+  created_at: string;
+}
+
 export interface Signature {
   id: string;
   nanoid: string;
@@ -272,4 +282,17 @@ export async function getDomainConfig(
   return serverFetch<DomainConfig>(`${BASE}/domain-configs/${nanoid}/`, {
     workspace,
   });
+}
+
+/**
+ * Un-confirmed AWS SNS subscription requests. `SNSSubscription` is a global
+ * (non-tenant) row, so the backend gates this on authentication, not workspace.
+ */
+export async function listSnsSubscriptions(
+  workspace: string,
+): Promise<SNSSubscription[]> {
+  return serverFetch<SNSSubscription[] | Paginated<SNSSubscription>>(
+    `${BASE}/sns-subscriptions/`,
+    { workspace },
+  ).then(unwrap);
 }
