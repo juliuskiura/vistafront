@@ -241,15 +241,15 @@ export function PostCommentsBody({ post, workspace, pageById }: PostCommentsBody
             {audience.map((c) => (
               <li key={c.nanoid} className="flex gap-2.5">
                 <CommentAvatar
-                  url={c.author_avatar_url}
-                  name={c.author_name || "Anonymous"}
-                  fallback={initials(c.author_name, "A")}
+                  url={c.commenter.picture_url}
+                  name={c.commenter.display_name || "Anonymous"}
+                  fallback={initials(c.commenter.display_name, "A")}
                   tone="bg-gradient-to-br from-slate-200 to-slate-300 text-slate-600"
                 />
                 <div className="min-w-0 flex-1 rounded-2xl rounded-tl-sm border bg-card px-3 py-2 shadow-sm">
                   <div className="flex items-center justify-between gap-2">
                     <span className="truncate text-xs font-semibold text-slate-800">
-                      {c.author_name || "Anonymous"}
+                      {c.commenter.display_name || "Anonymous"}
                     </span>
                     <span className="shrink-0 text-[10px] text-muted-foreground">
                       {formatMediumDateTime(c.published_at)}
@@ -311,9 +311,9 @@ export function PostCommentsBody({ post, workspace, pageById }: PostCommentsBody
             {own.map((c) => (
               <li key={c.nanoid} className="flex gap-2.5">
                 <CommentAvatar
-                  url={c.author_avatar_url}
-                  name={c.author_name || "You"}
-                  fallback={initials(c.author_name, "You")}
+                  url={c.commenter.picture_url}
+                  name={c.commenter.display_name || "You"}
+                  fallback={initials(c.commenter.display_name, "You")}
                   tone="bg-gradient-to-br from-primary-500 to-purple-600 text-white"
                 />
                 <div className="min-w-0 flex-1 rounded-2xl rounded-tl-sm border border-primary-100 bg-primary-50/50 px-3 py-2 shadow-sm">
