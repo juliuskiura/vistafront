@@ -41,12 +41,22 @@ const priceField = z
 
 const PlanUpsertSchema = z.object({
   nanoid: z.string().optional(),
+  // The console runs under /[workspace]; every write carries it so the
+  // backend can resolve the active workspace (X-Workspace) the same way
+  // tenant routes do. Without it the request falls back to the shared
+  // `app` workspace.
+  workspace: z.string().min(1, "Missing workspace."),
   name: z.string().trim().min(1, "Name is required.").max(80),
   label: z.string().trim().min(1, "Label is required.").max(80),
   description: z.string().trim().default(""),
   order: orderField,
   is_active: boolField,
   price: priceField,
+  visible_to_client_business: z
+    .string()
+    .optional()
+    .nullable()
+    .transform((val) => (val === "" ? null : val)),
 });
 export type PlanUpsertInput = z.infer<typeof PlanUpsertSchema>;
 
@@ -76,6 +86,7 @@ function planPayload(parsed: PlanUpsertInput) {
     order: parsed.order,
     is_active: parsed.is_active,
     price: parsed.price,
+    visible_to_client_business: parsed.visible_to_client_business ?? null,
   };
 }
 
@@ -94,7 +105,7 @@ export async function createPlanAction(
   }
 
   try {
-    await createPlan(planPayload(parsed.data));
+    await createPlan(planPayload(parsed.data), { workspace: parsed.data.workspace });
   } catch (error) {
     console.error("createPlanAction failed:", error);
     return {
@@ -127,7 +138,7 @@ export async function updatePlanAction(
   }
 
   try {
-    await updatePlan(parsed.data.nanoid, planPayload(parsed.data));
+    await updatePlan(parsed.data.nanoid, planPayload(parsed.data), { workspace: parsed.data.workspace });
   } catch (error) {
     console.error("updatePlanAction failed:", error);
     return {
@@ -143,9 +154,10 @@ export async function updatePlanAction(
 
 export async function deletePlanAction(
   nanoid: string,
+  workspace: string,
 ): Promise<PlanActionResult> {
   try {
-    await deletePlan(nanoid);
+    await deletePlan(nanoid, { workspace });
   } catch (error) {
     console.error("deletePlanAction failed:", error);
     return {
@@ -163,6 +175,7 @@ export async function deletePlanAction(
 export async function createSubscriptionAction(
   _prev: ActionState,
   formData: FormData,
+  workspace: string,
 ): Promise<ActionState> {
   const parsed = SubscriptionCreateSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
@@ -180,7 +193,7 @@ export async function createSubscriptionAction(
       plan: parsed.data.plan,
       status: parsed.data.status,
       cancel_at_period_end: parsed.data.cancel_at_period_end,
-    });
+    }, { workspace });
   } catch (error) {
     console.error("createSubscriptionAction failed:", error);
     return {
@@ -197,6 +210,7 @@ export async function createSubscriptionAction(
 export async function updateSubscriptionAction(
   _prev: ActionState,
   formData: FormData,
+  workspace: string,
 ): Promise<ActionState> {
   const parsed = SubscriptionUpdateSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
@@ -213,7 +227,7 @@ export async function updateSubscriptionAction(
       plan: parsed.data.plan,
       status: parsed.data.status,
       cancel_at_period_end: parsed.data.cancel_at_period_end,
-    });
+    }, { workspace });
   } catch (error) {
     console.error("updateSubscriptionAction failed:", error);
     return {
@@ -229,9 +243,10 @@ export async function updateSubscriptionAction(
 
 export async function deleteSubscriptionAction(
   nanoid: string,
+  workspace: string,
 ): Promise<PlanActionResult> {
   try {
-    await deleteSubscription(nanoid);
+    await deleteSubscription(nanoid, { workspace });
   } catch (error) {
     console.error("deleteSubscriptionAction failed:", error);
     return { ok: false, error: "Could not delete the subscription." };

@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/lib/context";
-import type { SubsPlan } from "@/lib/api";
+import type { ClientBusiness, SubsPlan } from "@/lib/api";
 import {
   createPlanAction,
   updatePlanAction,
@@ -25,6 +25,10 @@ import { PlanFields } from "./plan-fields";
 interface Props {
   mode: "create" | "edit";
   plan: SubsPlan | null;
+  /** Organizations offered by the visibility picker. */
+  clientBusinesses: ClientBusiness[];
+  /** Active workspace domain — carried on every plan write. */
+  workspace: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -32,6 +36,8 @@ interface Props {
 export function PlanFormDialog({
   mode,
   plan,
+  clientBusinesses,
+  workspace,
   open,
   onOpenChange,
 }: Props) {
@@ -66,6 +72,7 @@ export function PlanFormDialog({
         order: plan.order ?? 0,
         price: plan.price != null ? String(plan.price) : "",
         is_active: plan.is_active,
+        visible_to_client_business: plan.visible_to_client_business ?? null,
       }
     : {
         name: "",
@@ -74,6 +81,7 @@ export function PlanFormDialog({
         order: 0,
         price: "",
         is_active: true,
+        visible_to_client_business: null,
       };
 
   const errors = state.fieldErrors ?? {};
@@ -106,6 +114,7 @@ export function PlanFormDialog({
           <PlanFields
             editing={editing}
             defaults={defaults}
+            organizations={clientBusinesses}
             errors={errors}
             formError={formError}
             pending={pending}
@@ -113,6 +122,7 @@ export function PlanFormDialog({
             submitPendingLabel="Saving…"
             onCancel={() => onOpenChange(false)}
           >
+            <input type="hidden" name="workspace" value={workspace} />
             {editing ? (
               <input type="hidden" name="nanoid" value={plan!.nanoid} />
             ) : null}

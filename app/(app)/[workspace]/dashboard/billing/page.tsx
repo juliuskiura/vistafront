@@ -14,7 +14,7 @@ export default async function PlansPage({
   const active = await requireWorkspace(slug);
 
   const [plans, subscription] = await Promise.all([
-    listPlans().catch(() => []),
+    listPlans({ workspace: active.domain }).catch(() => []),
     getSubscriptionState({ workspace: active.nanoid }).catch(() => ({
       subscription: null,
       features: [],

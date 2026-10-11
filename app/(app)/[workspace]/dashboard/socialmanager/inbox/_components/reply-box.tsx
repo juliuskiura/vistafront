@@ -12,6 +12,7 @@ import type {
   SocialMessage,
 } from "@/lib/api/inbox";
 import { useApiFetch } from "@/lib/context";
+import { getReviewDemo } from "@/lib/review/demo-data";
 import { AlertCircle, Send } from "@/lib/icons";
 
 import { ConstraintNotices } from "./constraint-notices";
@@ -41,7 +42,12 @@ const CHECK_DEBOUNCE_MS = 400;
  * and is enforced again by the backend on send.
  */
 export function ReplyBox({ conversation, workspace, onSent }: ReplyBoxProps) {
-  const [text, setText] = useState("");
+  // The review workspace opens with a sample reply already typed, so the
+  // reply flow can be tested without composing one. Every other workspace
+  // starts empty, exactly as before.
+  const [text, setText] = useState(
+    () => getReviewDemo(workspace)?.messageReply ?? "",
+  );
   const [debounced, setDebounced] = useState("");
   const [error, setError] = useState<string | null>(null);
   // Soft breaches on a message that has already gone out. They are kept here

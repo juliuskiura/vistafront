@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/lib/context";
-import type { RegistryFeature, SubsPlan } from "@/lib/api";
+import type { ClientBusiness, RegistryFeature, SubsPlan } from "@/lib/api";
 import { deletePlanAction } from "../actions";
 import { PlanFormDialog } from "../_components/plan-form-dialog";
 import { PlanResources } from "../_components/plan-resources";
@@ -17,9 +17,15 @@ import { PlanResources } from "../_components/plan-resources";
 export function PlansClient({
   plans,
   featureOptions,
+  clientBusinesses,
+  workspace,
 }: {
   plans: SubsPlan[];
   featureOptions: RegistryFeature[];
+  /** Organizations offered by the plan form's visibility picker. */
+  clientBusinesses: ClientBusiness[];
+  /** Active workspace domain — sent with every plan mutation. */
+  workspace: string;
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -99,6 +105,8 @@ export function PlansClient({
         key={editPlan?.nanoid ?? "closed"}
         mode="edit"
         plan={editPlan}
+        clientBusinesses={clientBusinesses}
+        workspace={workspace}
         open={editPlan !== null}
         onOpenChange={(open) => {
           if (!open) setEditPlan(null);
@@ -116,7 +124,7 @@ export function PlansClient({
         variant="destructive"
         onConfirm={async () => {
           if (!deletePlan) return;
-          const result = await deletePlanAction(deletePlan.nanoid);
+          const result = await deletePlanAction(deletePlan.nanoid, workspace);
           if (!result.ok) {
             toast.push({
               variant: "error",

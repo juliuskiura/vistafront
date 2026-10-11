@@ -188,7 +188,7 @@ export default async function OrderPage({
   }
 
   const planNanoid = order.items?.[0]?.product?.nanoid ?? null;
-  const plan = planNanoid ? await getPlan(planNanoid).catch(() => null) : null;
+  const plan = planNanoid ? await getPlan(planNanoid, { workspace: active.domain }).catch(() => null) : null;
 
   if (!plan) {
     return (

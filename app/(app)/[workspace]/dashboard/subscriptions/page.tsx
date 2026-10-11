@@ -25,9 +25,9 @@ export default async function SubscriptionsOverview({
   const canManage = user.is_admin;
   const basePath = `/${active.domain}/dashboard/subscriptions`;
 
-  const plans = await listPlans().catch(() => []);
+  const plans = await listPlans({ workspace: active.domain }).catch(() => []);
   const subscriptions = canManage
-    ? await listSubscriptions().catch(() => [])
+    ? await listSubscriptions({ workspace: active.domain }).catch(() => [])
     : [];
 
   const activePlans = plans.filter((p) => p.is_active).length;

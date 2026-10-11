@@ -8,6 +8,7 @@ import {
   privateReplyPostCommentAction,
   replyPostCommentAction,
 } from "@/app/(app)/[workspace]/dashboard/socialmanager/actions";
+import { getReviewDemo } from "@/lib/review/demo-data";
 import { Lock, Send } from "@/lib/icons";
 
 /**
@@ -38,6 +39,7 @@ export function CommentComposer({
   commentNanoid,
   recipientNanoid,
   platformName,
+  initialText,
   onQueued,
   onCancel,
 }: {
@@ -49,11 +51,24 @@ export function CommentComposer({
   recipientNanoid?: string;
   /** Shown in the private composer so it is obvious where the message lands. */
   platformName?: string;
+  /**
+   * Pre-filled draft. A caller that wants its own wording passes it here;
+   * otherwise a reply on the review workspace opens with the sample reply
+   * already typed. `create` mode never auto-fills — a new top-level comment
+   * is authored by the reviewer, not by the demo.
+   */
+  initialText?: string;
   onQueued: () => void;
   onCancel?: () => void;
 }) {
   const [pending, startTransition] = useTransition();
-  const [text, setText] = useState("");
+  const [text, setText] = useState(
+    () =>
+      initialText ??
+      (mode === "create"
+        ? ""
+        : getReviewDemo(workspace)?.commentReply ?? ""),
+  );
   const [error, setError] = useState<string | null>(null);
 
   const labels = {

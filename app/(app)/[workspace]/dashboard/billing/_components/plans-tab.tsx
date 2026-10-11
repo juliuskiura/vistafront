@@ -18,6 +18,46 @@ export function PlansTab({
   clientBusinessNanoid: string;
   referralCode?: string;
 }) {
+  // A private package is one the backend scoped to a single organization.
+  // When the caller's company has one, it is the only offer the reviewer
+  // should see — the public price list (and the trial/paid pair) would be
+  // noise next to an already-active free package.
+  const privatePlans = plans.filter((plan) => plan.is_private === true);
+
+  if (privatePlans.length > 0) {
+    return (
+      <div className="mx-auto max-w-5xl py-8 px-4 sm:px-6">
+        <div className="text-center max-w-2xl mx-auto mb-10">
+          <span className="text-xs font-bold uppercase tracking-widest text-primary-600 bg-primary-50 px-3 py-1 rounded-full border border-primary-100">
+            {workspaceName} Package
+          </span>
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 font-display mt-3 tracking-tight">
+            Your package is active — everything is unlocked.
+          </h1>
+          <p className="text-base sm:text-lg text-slate-600 mt-3">
+            This package was created for your organization and includes every
+            feature at no cost. Nothing else to choose.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-8 max-w-xl mx-auto items-stretch">
+          {privatePlans.map((plan) => (
+            <PlanCard
+              key={plan.slug}
+              plan={plan}
+              isTrial={false}
+              isCurrent={subscription?.subscription?.plan_slug === plan.slug}
+              subscription={subscription}
+              workspaceDomain={workspaceDomain}
+              clientBusinessNanoid={clientBusinessNanoid}
+              referralCode={referralCode}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   // Find trial and paid plans from the plans array
   const trialPlan = plans.find((plan) => plan.slug === 'trial' || plan.label.toLowerCase().includes('trial')) || plans[0];
   const paidPlans = plans.filter((plan) => !(plan.slug === 'trial' || plan.label.toLowerCase().includes('trial')));

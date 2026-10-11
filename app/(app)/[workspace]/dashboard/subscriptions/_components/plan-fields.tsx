@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { ClientBusiness } from "@/lib/api";
 
 export interface PlanFieldDefaults {
   name: string;
@@ -11,11 +12,19 @@ export interface PlanFieldDefaults {
   order: number;
   price: string;
   is_active: boolean;
+  /**
+   * Organization this package belongs to. Empty means public — every
+   * organization sees it. Set means private — only workspaces of that
+   * organization see it or can be subscribed to it.
+   */
+  visible_to_client_business: string | null;
 }
 
 interface PlanFieldsProps {
   editing: boolean;
   defaults: PlanFieldDefaults;
+  /** Organizations offered by the visibility picker. */
+  organizations: ClientBusiness[];
   errors?: Record<string, string[]>;
   formError?: string | null;
   pending: boolean;
@@ -29,6 +38,7 @@ interface PlanFieldsProps {
 export function PlanFields({
   editing,
   defaults,
+  organizations,
   errors = {},
   formError = null,
   pending,
@@ -112,6 +122,30 @@ export function PlanFields({
             <p className="text-xs text-destructive">{errors.price[0]}</p>
           ) : null}
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="visible_to_client_business">
+          Visible to organization
+        </Label>
+        <select
+          id="visible_to_client_business"
+          name="visible_to_client_business"
+          defaultValue={defaults.visible_to_client_business ?? ""}
+          className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm shadow-xs transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+        >
+          <option value="">Every organization (public)</option>
+          {organizations.map((org) => (
+            <option key={org.nanoid} value={org.nanoid}>
+              {org.legal_name}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-muted-foreground">
+          Pick an organization to make this a private package: only that
+          organization&apos;s workspaces will see it in billing or be allowed
+          to subscribe to it.
+        </p>
       </div>
 
       <div className="space-y-3">

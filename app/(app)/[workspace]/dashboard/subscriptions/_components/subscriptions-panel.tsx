@@ -22,12 +22,15 @@ interface Props {
   subscriptions: Subscription[];
   plans: SubsPlan[];
   clientBusinesses: ClientBusiness[];
+  /** Active workspace domain — carried on every subscription write. */
+  workspace: string;
 }
 
 export function SubscriptionsPanel({
   subscriptions,
   plans,
   clientBusinesses,
+  workspace,
 }: Props) {
   const router = useRouter();
   const toast = useToast();
@@ -106,6 +109,7 @@ export function SubscriptionsPanel({
           onOpenChange={setCreateOpen}
           plans={plans}
           clientBusinesses={clientBusinesses}
+          workspace={workspace}
         />
       ) : null}
       {editTarget ? (
@@ -118,6 +122,7 @@ export function SubscriptionsPanel({
           }}
           plans={plans}
           clientBusinesses={clientBusinesses}
+          workspace={workspace}
         />
       ) : null}
 
@@ -132,7 +137,7 @@ export function SubscriptionsPanel({
         variant="destructive"
         onConfirm={async () => {
           if (!deleteTarget) return;
-          const result = await deleteSubscriptionAction(deleteTarget.nanoid);
+          const result = await deleteSubscriptionAction(deleteTarget.nanoid, workspace);
           if (!result.ok) {
             toast.push({ variant: "error", message: result.error ?? "Failed." });
           } else {

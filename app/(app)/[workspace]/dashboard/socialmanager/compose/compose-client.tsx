@@ -18,6 +18,7 @@ import {
   publishPostAction,
   verifyPageAction,
 } from "../actions";
+import { buildComposeSeed, getReviewDemo } from "@/lib/review/demo-data";
 import {
   initialCampaignState,
   type CampaignActionState,
@@ -64,16 +65,31 @@ export function ComposeClient({
   const router = useRouter();
   const submittingRef = useRef(false);
 
+  // The review workspace opens pre-filled: caption, sample picture, a
+  // pre-selected channel, and a first comment, so nothing has to be typed
+  // before the flow can be tested. Never applied when editing a post —
+  // an existing post's content always wins.
+  const composeSeed = editPost
+    ? null
+    : (() => {
+        const demo = getReviewDemo(ws);
+        return demo ? buildComposeSeed(demo, pages) : null;
+      })();
+
   const [step, setStep] = useState<1 | 2>(1);
   const [selectedPageIds, setSelectedPageIds] = useState<string[]>(() => {
     if (editPost) return editPost.recipients.map((r) => r.managed_page);
-    return [];
+    return composeSeed?.selectedPageIds ?? [];
   });
-  const [content, setContent] = useState(editPost?.content ?? "");
+  const [content, setContent] = useState(
+    editPost?.content ?? composeSeed?.content ?? "",
+  );
   // Rehydrate the media the post already carries. Without this the tray renders
   // empty on an existing post, and saving sends no media — silently detaching a
   // reel's video while the format still says "reel".
-  const [mediaUrls, setMediaUrls] = useState<string[]>(editPost?.media_urls ?? []);
+  const [mediaUrls, setMediaUrls] = useState<string[]>(
+    editPost?.media_urls ?? composeSeed?.mediaUrls ?? [],
+  );
   const [mediaAssetNanoids, setMediaAssetNanoids] = useState<string[]>(
     editPost?.media_asset_nanoids ?? [],
   );
@@ -133,7 +149,9 @@ export function ComposeClient({
     }
     return init;
   });
-  const [firstCommentByPage, setFirstCommentByPage] = useState<Record<string, string>>({});
+  const [firstCommentByPage, setFirstCommentByPage] = useState<Record<string, string>>(
+    composeSeed?.firstCommentByPage ?? {},
+  );
   const [connectErrors, setConnectErrors] = useState<Record<string, string>>({});
   const [publishError, setPublishError] = useState("");
 

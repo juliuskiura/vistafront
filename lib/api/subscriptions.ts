@@ -20,17 +20,18 @@ import type {
 /**
  * Get all subscriptions
  */
-export async function listSubscriptions(): Promise<Subscription[]> {
-  const payload = await serverFetch<Paginated<Subscription> | Subscription[]>("/apis/subscriptions/all/");
+export async function listSubscriptions({ workspace }: { workspace?: string } = {}): Promise<Subscription[]> {
+  const payload = await serverFetch<Paginated<Subscription> | Subscription[]>("/apis/subscriptions/all/", { workspace });
   return Array.isArray(payload) ? payload : payload.results ?? [];
 }
 
 /**
  * Get a single subscription by nanoid
  */
-export async function getSubscription(nanoid: string): Promise<Subscription | null> {
+export async function getSubscription(nanoid: string, opts: { workspace?: string } = {}): Promise<Subscription | null> {
   const payload = await serverFetch<Subscription>(
-    `/apis/subscriptions/all/${nanoid}/`
+    `/apis/subscriptions/all/${nanoid}/`,
+    opts,
   );
   return payload;
 }
@@ -58,10 +59,12 @@ export async function getSubscriptionState({
  */
 export async function createSubscription(
   body: SubscriptionCreateInput,
+  opts: { workspace?: string } = {},
 ): Promise<Subscription> {
   return serverMutate<Subscription>("/apis/subscriptions/all/", {
     method: "POST",
     body,
+    ...opts,
   });
 }
 
@@ -75,10 +78,12 @@ export async function createSubscription(
  */
 export async function addSubscription(
   body: SubscriptionCreateInput,
+  opts: { workspace?: string } = {},
 ): Promise<Subscription> {
   return serverMutate<Subscription>("/apis/subscriptions/all/add/", {
     method: "POST",
     body,
+    ...opts,
   });
 }
 
@@ -88,20 +93,23 @@ export async function addSubscription(
 export async function updateSubscription(
   nanoid: string,
   body: SubscriptionUpdateInput,
+  opts: { workspace?: string } = {},
 ): Promise<Subscription> {
   return serverMutate<Subscription>(`/apis/subscriptions/all/${nanoid}/`, {
     method: "PATCH",
     body,
+    ...opts,
   });
 }
 
 /**
  * Delete a subscription
  */
-export async function deleteSubscription(nanoid: string): Promise<void> {
+export async function deleteSubscription(nanoid: string, opts: { workspace?: string } = {}): Promise<void> {
   await serverMutate<void>(`/apis/subscriptions/all/${nanoid}/`, {
     method: "DELETE",
     body: {},
+    ...opts,
   });
 }
 
@@ -110,17 +118,18 @@ export async function deleteSubscription(nanoid: string): Promise<void> {
 /**
  * Get all plans
  */
-export async function listPlans(): Promise<SubsPlan[]> {
-  const payload = await serverFetch<Paginated<SubsPlan> | SubsPlan[]>("/apis/subscriptions/plans/");
+export async function listPlans({ workspace }: { workspace?: string } = {}): Promise<SubsPlan[]> {
+  const payload = await serverFetch<Paginated<SubsPlan> | SubsPlan[]>("/apis/subscriptions/plans/", { workspace });
   return Array.isArray(payload) ? payload : payload.results ?? [];
 }
 
 /**
  * Get a single plan by nanoid
  */
-export async function getPlan(nanoid: string): Promise<SubsPlan | null> {
+export async function getPlan(nanoid: string, opts: { workspace?: string } = {}): Promise<SubsPlan | null> {
   const payload = await serverFetch<SubsPlan>(
-    `/apis/subscriptions/plans/${nanoid}/`
+    `/apis/subscriptions/plans/${nanoid}/`,
+    opts,
   );
   return payload;
 }
@@ -130,10 +139,12 @@ export async function getPlan(nanoid: string): Promise<SubsPlan | null> {
  */
 export async function createPlan(
   body: Partial<SubsPlan> & { slug?: string },
+  opts: { workspace?: string } = {},
 ): Promise<SubsPlan> {
   return serverMutate<SubsPlan>("/apis/subscriptions/plans/", {
     method: "POST",
     body,
+    ...opts,
   });
 }
 
@@ -143,20 +154,23 @@ export async function createPlan(
 export async function updatePlan(
   nanoid: string,
   body: Partial<SubsPlan>,
+  opts: { workspace?: string } = {},
 ): Promise<SubsPlan> {
   return serverMutate<SubsPlan>(`/apis/subscriptions/plans/${nanoid}/`, {
     method: "PATCH",
     body,
+    ...opts,
   });
 }
 
 /**
  * Delete a plan
  */
-export async function deletePlan(nanoid: string): Promise<void> {
+export async function deletePlan(nanoid: string, opts: { workspace?: string } = {}): Promise<void> {
   await serverMutate<void>(`/apis/subscriptions/plans/${nanoid}/`, {
     method: "DELETE",
     body: {},
+    ...opts,
   });
 }
 
@@ -165,8 +179,8 @@ export async function deletePlan(nanoid: string): Promise<void> {
 /**
  * Get all features
  */
-export async function listFeatures(): Promise<PlanFeature[]> {
-  const payload = await serverFetch<Paginated<PlanFeature> | PlanFeature[]>("/apis/subscriptions/features/");
+export async function listFeatures({ workspace }: { workspace?: string } = {}): Promise<PlanFeature[]> {
+  const payload = await serverFetch<Paginated<PlanFeature> | PlanFeature[]>("/apis/subscriptions/features/", { workspace });
   return Array.isArray(payload) ? payload : payload.results ?? [];
 }
 
@@ -176,19 +190,20 @@ export async function listFeatures(): Promise<PlanFeature[]> {
  * Read-only and not stored in the database — the endpoint returns a plain
  * array (no pagination envelope). `key` is what a `PlanFeature` stores.
  */
-export async function listRegistryFeatures(): Promise<RegistryFeature[]> {
+export async function listRegistryFeatures({ workspace }: { workspace?: string } = {}): Promise<RegistryFeature[]> {
   const payload = await serverFetch<
     RegistryFeature[] | Paginated<RegistryFeature>
-  >("/apis/subscriptions/feature-registry/");
+  >("/apis/subscriptions/feature-registry/", { workspace });
   return Array.isArray(payload) ? payload : payload.results ?? [];
 }
 
 /**
  * Get a single feature by nanoid
  */
-export async function getFeature(nanoid: string): Promise<PlanFeature | null> {
+export async function getFeature(nanoid: string, opts: { workspace?: string } = {}): Promise<PlanFeature | null> {
   const payload = await serverFetch<PlanFeature>(
-    `/apis/subscriptions/features/${nanoid}/`
+    `/apis/subscriptions/features/${nanoid}/`,
+    opts,
   );
   return payload;
 }
@@ -198,10 +213,12 @@ export async function getFeature(nanoid: string): Promise<PlanFeature | null> {
  */
 export async function createPlanFeature(
   body: PlanFeatureFormInput,
+  opts: { workspace?: string } = {},
 ): Promise<PlanFeature> {
   return serverMutate<PlanFeature>("/apis/subscriptions/features/", {
     method: "POST",
     body,
+    ...opts,
   });
 }
 
@@ -213,10 +230,12 @@ export async function createPlanFeature(
  */
 export async function createPlanFeatures(
   body: PlanFeatureFormInput[],
+  opts: { workspace?: string } = {},
 ): Promise<PlanFeature[]> {
   return serverMutate<PlanFeature[]>("/apis/subscriptions/features/", {
     method: "POST",
     body,
+    ...opts,
   });
 }
 
@@ -226,19 +245,22 @@ export async function createPlanFeatures(
 export async function updatePlanFeature(
   nanoid: string,
   body: PlanFeatureUpdateInput,
+  opts: { workspace?: string } = {},
 ): Promise<PlanFeature> {
   return serverMutate<PlanFeature>(`/apis/subscriptions/features/${nanoid}/`, {
     method: "PATCH",
     body,
+    ...opts,
   });
 }
 
 /**
  * Delete a feature by nanoid
  */
-export async function deletePlanFeature(nanoid: string): Promise<void> {
+export async function deletePlanFeature(nanoid: string, opts: { workspace?: string } = {}): Promise<void> {
   await serverMutate<void>(`/apis/subscriptions/features/${nanoid}/`, {
     method: "DELETE",
     body: {},
+    ...opts,
   });
 }

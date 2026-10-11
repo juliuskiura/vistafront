@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { requireAuth, requireWorkspace } from "@/lib/auth/server";
+import { listClientBusinesses } from "@/lib/api";
 import { NewPlanForm } from "./new-plan-form";
 
 export default async function NewPlanPage({
@@ -16,6 +17,10 @@ export default async function NewPlanPage({
     redirect(`/${active.domain}/dashboard/subscriptions/plans`);
   }
 
+  // Organizations for the visibility picker — what lets an admin turn a
+  // plan into a private package scoped to one organization.
+  const clientBusinesses = await listClientBusinesses().catch(() => []);
+
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <header>
@@ -25,7 +30,7 @@ export default async function NewPlanPage({
         </p>
       </header>
 
-      <NewPlanForm />
+      <NewPlanForm clientBusinesses={clientBusinesses} workspace={active.domain} />
     </div>
   );
 }

@@ -4,7 +4,11 @@ import { Package, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { requireAuth, requireWorkspace } from "@/lib/auth/server";
-import { listPlans, listRegistryFeatures } from "@/lib/api";
+import {
+  listClientBusinesses,
+  listPlans,
+  listRegistryFeatures,
+} from "@/lib/api";
 import { PlansClient } from "./plans-client";
 
 export default async function PlansPage({
@@ -19,9 +23,16 @@ export default async function PlansPage({
   const canManage = user.is_admin;
   const basePath = `/${active.domain}/dashboard/subscriptions`;
 
-  const plans = await listPlans().catch(() => []);
+  // The console lists plans through the same workspace-scoped queryset as
+  // customers. Django already exempts the admin workspace (it sees every
+  // plan), so passing the header here is what keeps private packages of
+  // every organization visible for management.
+  const plans = await listPlans({ workspace: active.domain }).catch(() => []);
   const featureOptions = canManage
-    ? await listRegistryFeatures().catch(() => [])
+    ? await listRegistryFeatures({ workspace: active.domain }).catch(() => [])
+    : [];
+  const clientBusinesses = canManage
+    ? await listClientBusinesses().catch(() => [])
     : [];
 
   return (
@@ -45,7 +56,12 @@ export default async function PlansPage({
       </header>
 
       {canManage ? (
-        <PlansClient plans={plans} featureOptions={featureOptions} />
+        <PlansClient
+          plans={plans}
+          featureOptions={featureOptions}
+          clientBusinesses={clientBusinesses}
+          workspace={active.domain}
+        />
       ) : (
         <PlansReadonly />
       )}

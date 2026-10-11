@@ -160,7 +160,7 @@ export default async function InvoiceDetailPage({
     : null;
   const planNanoid = order?.items?.[0]?.product?.nanoid ?? null;
   const plan = planNanoid
-    ? await getPlan(planNanoid).catch(() => null)
+    ? await getPlan(planNanoid, { workspace: active.domain }).catch(() => null)
     : null;
 
   if (!order || !plan) {

@@ -22,8 +22,8 @@ export default async function SubscriptionsPage({
   }
 
   const [subscriptions, plans, clientBusinesses] = await Promise.all([
-    listSubscriptions().catch(() => []),
-    listPlans().catch(() => []),
+    listSubscriptions({ workspace: active.domain }).catch(() => []),
+    listPlans({ workspace: active.domain }).catch(() => []),
     listClientBusinesses().catch(() => []),
   ]);
 
@@ -40,6 +40,7 @@ export default async function SubscriptionsPage({
         subscriptions={subscriptions}
         plans={plans}
         clientBusinesses={clientBusinesses}
+        workspace={active.domain}
       />
     </div>
   );

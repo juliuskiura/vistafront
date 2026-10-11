@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/lib/context";
+import type { ClientBusiness } from "@/lib/api";
 import { createPlanAction } from "../../actions";
 import {
   initialActionState,
@@ -12,7 +13,15 @@ import {
 } from "../../action-state";
 import { PlanFields } from "../../_components/plan-fields";
 
-export function NewPlanForm() {
+export function NewPlanForm({
+  clientBusinesses,
+  workspace,
+}: {
+  /** Organizations offered by the visibility picker. */
+  clientBusinesses: ClientBusiness[];
+  /** Active workspace domain — carried on the plan write. */
+  workspace: string;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const toast = useToast();
@@ -60,14 +69,18 @@ export function NewPlanForm() {
             order: 0,
             price: "",
             is_active: true,
+            visible_to_client_business: null,
           }}
+          organizations={clientBusinesses}
           errors={errors}
           formError={formError}
           pending={pending}
           submitLabel="Create plan"
           submitPendingLabel="Creating…"
           onCancel={() => router.push(plansPath)}
-        />
+        >
+          <input type="hidden" name="workspace" value={workspace} />
+        </PlanFields>
       </form>
     </Card>
   );

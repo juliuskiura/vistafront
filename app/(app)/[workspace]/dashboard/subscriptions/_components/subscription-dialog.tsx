@@ -32,6 +32,8 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   plans: SubsPlan[];
   clientBusinesses: ClientBusiness[];
+  /** Active workspace domain — carried on every subscription write. */
+  workspace: string;
 }
 
 function nanoidOf(value: unknown): string {
@@ -48,13 +50,19 @@ export function SubscriptionDialog({
   onOpenChange,
   plans,
   clientBusinesses,
+  workspace,
 }: Props) {
   const router = useRouter();
   const toast = useToast();
   const editing = mode === "edit" && subscription !== undefined;
-  const action = editing ? updateSubscriptionAction : createSubscriptionAction;
+  // The subscription actions take the workspace as a bound argument rather
+  // than a form field, so `useActionState` (which only forwards state and
+  // FormData) needs the wrapper to supply it.
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
-    action,
+    (prev, formData) =>
+      editing
+        ? updateSubscriptionAction(prev, formData, workspace)
+        : createSubscriptionAction(prev, formData, workspace),
     initialActionState,
   );
 

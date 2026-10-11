@@ -480,6 +480,7 @@ export interface PlanFormInput {
   seat_limit?: number | null;
   price_per_seat?: string | null;
   includes_enterprise_features?: boolean;
+  visible_to_client_business?: string | null;
   /** Replacement feature list (sent to the Plan write serializer). */
   features?: { feature: string }[];
 }
@@ -527,6 +528,8 @@ export interface SubsPlan {
   is_active: boolean;
   slug: string;
   price: number | null;
+  visible_to_client_business?: string | null;
+  is_private?: boolean;
   order?: number;
   features?: PlanFeature[]
 }
