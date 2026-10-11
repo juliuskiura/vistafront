@@ -6,7 +6,7 @@
  * that broke.
  */
 
-import { SocialMessageSender } from "@/lib/api/inbox";
+import type { SocialMessageSender } from "@/lib/api/inbox";
 
 export type WorkspaceRole = "owner" | "admin" | "member";
 export type InvitationRole = "admin" | "member";
@@ -1515,7 +1515,20 @@ export interface PostComment {
    */
   managed_page: string;
   comment_type: PostCommentType;
-  commenter: SocialMessageSender;
+  /**
+   * The resolved sender, when the backend has one.
+   *
+   * `null` is a normal state, not an error: Instagram exposes no profile lookup
+   * at all, so every Instagram comment arrives here with no commenter and only
+   * the denormalised `author_name` / `author_avatar_url` from the raw event.
+   * Rendering this without a null guard (`commenter.picture_url`) crashes the
+   * whole thread on an Instagram post. Use `commentAuthor()` from
+   * `lib/social/comment-author` instead of reading the fields directly.
+   */
+  commenter: SocialMessageSender | null;
+  /** Denormalised author name from the raw event. The fallback for `commenter`. */
+  author_name: string;
+  author_platform_id: string;
   external_comment_id: string;
   content: string;
   status: PostCommentStatus;

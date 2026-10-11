@@ -12,6 +12,7 @@ import { CommentModeration } from "@/components/socialmanager/comment-moderation
 import { CommentActions } from "@/components/socialmanager/comment-composer";
 import { PlatformGlyph } from "@/components/platform-icon";
 import { usePlatformBrand } from "@/lib/social/platform-brand-context";
+import { commentAuthor } from "@/lib/social/comment-author";
 
 interface PostCommentsBodyProps {
   post: ScheduledPost;
@@ -238,18 +239,20 @@ export function PostCommentsBody({ post, workspace, pageById }: PostCommentsBody
           </div>
         ) : (
           <ul className="space-y-2.5">
-            {audience.map((c) => (
+            {audience.map((c) => {
+              const author = commentAuthor(c);
+              return (
               <li key={c.nanoid} className="flex gap-2.5">
                 <CommentAvatar
-                  url={c.commenter.picture_url}
-                  name={c.commenter.display_name || "Anonymous"}
-                  fallback={initials(c.commenter.display_name, "A")}
+                  url={author.avatarUrl}
+                  name={author.name}
+                  fallback={initials(author.name, "A")}
                   tone="bg-gradient-to-br from-slate-200 to-slate-300 text-slate-600"
                 />
                 <div className="min-w-0 flex-1 rounded-2xl rounded-tl-sm border bg-card px-3 py-2 shadow-sm">
                   <div className="flex items-center justify-between gap-2">
                     <span className="truncate text-xs font-semibold text-slate-800">
-                      {c.commenter.display_name || "Anonymous"}
+                      {author.name}
                     </span>
                     <span className="shrink-0 text-[10px] text-muted-foreground">
                       {formatMediumDateTime(c.published_at)}
@@ -295,7 +298,8 @@ export function PostCommentsBody({ post, workspace, pageById }: PostCommentsBody
                   )}
                 </div>
               </li>
-            ))}
+              );
+            })}
           </ul>
         )}
       </section>
@@ -308,12 +312,14 @@ export function PostCommentsBody({ post, workspace, pageById }: PostCommentsBody
             <span className="ml-auto text-[10px] font-normal text-muted-foreground">{own.length}</span>
           </h4>
           <ul className="space-y-2.5">
-            {own.map((c) => (
+            {own.map((c) => {
+              const author = commentAuthor(c, "You");
+              return (
               <li key={c.nanoid} className="flex gap-2.5">
                 <CommentAvatar
-                  url={c.commenter.picture_url}
-                  name={c.commenter.display_name || "You"}
-                  fallback={initials(c.commenter.display_name, "You")}
+                  url={author.avatarUrl}
+                  name={author.name}
+                  fallback={initials(author.name, "You")}
                   tone="bg-gradient-to-br from-primary-500 to-purple-600 text-white"
                 />
                 <div className="min-w-0 flex-1 rounded-2xl rounded-tl-sm border border-primary-100 bg-primary-50/50 px-3 py-2 shadow-sm">
@@ -338,7 +344,8 @@ export function PostCommentsBody({ post, workspace, pageById }: PostCommentsBody
                   />
                 </div>
               </li>
-            ))}
+              );
+            })}
           </ul>
         </section>
       )}

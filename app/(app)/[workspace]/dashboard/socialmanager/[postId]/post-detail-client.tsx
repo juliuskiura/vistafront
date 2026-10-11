@@ -32,6 +32,7 @@ import {
 } from "@/lib/icons";
 
 import type { ScheduledPost, PostComment, MetricSnapshot, ManagedChannel } from "@/lib/api/types";
+import { commentAuthor } from "@/lib/social/comment-author";
 import { PlatformGlyph, usePlatformStyleResolver } from "@/components/platform-icon";
 import { usePlatformBrand } from "@/lib/social/platform-brand-context";
 import { cn } from "@/lib/utils";
@@ -507,17 +508,18 @@ function CommentsSection({
                 // which Instagram has no operation for.
                 const channel = pageByNanoid.get(c.managed_page);
                 const platform = channel?.platform;
+                const author = commentAuthor(c);
                 return (
                   <div key={c.nanoid} className="flex gap-3">
                     <CommentAvatar
-                      url={c.commenter.picture_url}
-                      name={c.commenter.display_name}
+                      url={author.avatarUrl}
+                      name={author.name}
                       className="size-8 text-xs"
                     />
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-semibold text-neutral-900">
-                          {c.commenter.display_name}
+                          {author.name}
                         </p>
                         <span className="text-[10px] text-neutral-400">
                           {timeAgo(c.created_at)}
