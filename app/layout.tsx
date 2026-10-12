@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 
-import {
-  SessionRefreshProvider,
-  SidebarProvider,
-  ToastProvider,
-} from "@/lib/context";
+import { SessionRefreshProvider } from "@/lib/context/SessionRefreshContext";
+import { SidebarProvider } from "@/lib/context/SidebarContext";
+import { ToastProvider } from "@/lib/context/ToastContext";
 import { QueryProvider } from "@/lib/tanstack/query-provider";
 import "./globals.css";
 
