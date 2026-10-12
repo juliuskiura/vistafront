@@ -8,8 +8,9 @@
  * review does not need.
  *
  * The sample text is keyed by workspace domain. Only workspaces listed here
- * ever see pre-filled screens; every other workspace renders empty inputs,
- * so this can never leak into a real customer's session.
+ * ever see it, and it arrives on focus rather than pre-filled (see
+ * `use-demo-draft.ts`), so this can never leak into a real customer's
+ * session.
  *
  * The compose caption matches the published demo post seeded by
  * `seed_metareview` (regwakes/accounts/management/commands) on purpose:
@@ -33,6 +34,12 @@ export interface ReviewDemo {
    * bundled asset: the composer renders it in the preview tray and the
    * publishing pipeline accepts a URL, so the reviewer can publish the
    * seeded draft without uploading anything first.
+   *
+   * Host matters: `fastly.picsum.photos`, the CDN subdomain, answers 400 on
+   * every form of this URL -- which is what broke the preview tray. The
+   * canonical `picsum.photos` host works and redirects to the file. 4:5
+   * crops cleanly on Instagram and Facebook alike, and 1080x1350 keeps the
+   * asset light for a preview tray.
    */
   imageUrl: string;
 }
@@ -49,7 +56,7 @@ const DEMOS: ReviewDemo[] = [
       "Thank you so much! Really glad you like it.",
     messageReply:
       "Thanks for reaching out — we'll get back to you shortly.",
-    imageUrl: "https://fastly.picsum.photos/id/7/4728/3168.jpg",
+    imageUrl: "https://picsum.photos/id/7/1080/1350.jpg",
   },
 ];
 
