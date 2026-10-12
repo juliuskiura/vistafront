@@ -12,11 +12,25 @@ import { inboxSummaryKey, inboxThreadKey } from "@/lib/api/inbox-keys";
 import { useApiFetch } from "@/lib/context";
 import { MessageSquare } from "@/lib/icons";
 
+import { useInboxLive } from "./use-inbox-live";
+
 import { ThreadList } from "./_components/thread-list";
 import { ThreadView } from "./_components/thread-view";
 
 /** How often the thread list refreshes while the tab is open. */
 const POLL_INTERVAL_MS = 30_000;
+
+/**
+ * The backstop pace, for while the live socket is connected.
+ *
+ * The socket is the notification path. The poll stays behind it as the slow
+ * safety net that catches the one failure a socket cannot report about
+ * itself -- a connection that is technically open but silently delivers
+ * nothing (a dead publisher, a Redis that accepts writes but drops the
+ * pub/sub). Five minutes is fresh enough for that case and cheap enough to
+ * keep; retiring it later is flipping this to `false`.
+ */
+const BACKSTOP_POLL_MS = 300_000;
 
 /**
  * How long typing pauses before the list is searched.
@@ -51,6 +65,11 @@ export function InboxClient({ workspace }: { workspace: string }) {
 
   const selectedId = searchParams.get(THREAD_PARAM);
 
+  // The workspace's live feed: one socket announcing new messages. The hook
+  // owns the frame handling and the catch-up rule; this side only needs to know
+  // whether the socket is up, because the poll picks its pace from it.
+  const socketLive = useInboxLive(workspace, selectedId);
+
   useEffect(() => {
     const timer = setTimeout(
       () => setDebouncedSearch(search.trim()),
@@ -70,7 +89,11 @@ export function InboxClient({ workspace }: { workspace: string }) {
     // list, and going back to an empty box restores the full list from cache.
     queryKey: ["socialmanager-inbox", workspace, debouncedSearch],
     queryFn: () => fetchConversations(workspace, debouncedSearch, apiFetch),
-    refetchInterval: POLL_INTERVAL_MS,
+    // Connected: the socket announces a new message within a second of the
+    // row being stored, so the poll drops to its slow backstop pace.
+    // Disconnected: the poll is the only path there is, so it keeps the
+    // 30-second cadence. Either way the list never goes quiet.
+    refetchInterval: socketLive ? BACKSTOP_POLL_MS : POLL_INTERVAL_MS,
     refetchOnWindowFocus: true,
   });
 

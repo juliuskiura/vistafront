@@ -57,6 +57,7 @@ import {
   listPostCommentsAction,
   getPostAction,
 } from "../actions";
+import { useSocialSocket, type SocialFrame } from "@/hooks/use-social-socket";
 import { LiveRecipients, isLiveCopy, waitForLiveTask } from "./_components";
 
 /* ──────────────────────────────────────────────────────────────────────
@@ -817,6 +818,29 @@ export function PostDetailClient({
       setSyncingComments(false);
     }
   }, [post, workspaceDomain]);
+
+  // A comment that lands while this page is open arrives over the
+  // workspace's live socket. The frame only names the post, so the answer is
+  // the same list re-read the initial load and the Sync button do --
+  // deliberately not `onRefreshComments`, which asks the platform to re-pull
+  // a thread whose newest comment is already stored.
+  const onSocialFrame = useCallback(
+    (frame: SocialFrame) => {
+      if (frame.type === "comment" && frame.post_nanoid === post.nanoid) {
+        void listPostCommentsAction(post.nanoid, workspaceDomain)
+          .then((refreshed) => {
+            setComments(refreshed);
+            setCommentsFailed(false);
+          })
+          .catch(() => {
+            // Keep the last good list rather than blanking the panel.
+            setCommentsFailed(true);
+          });
+      }
+    },
+    [post.nanoid, workspaceDomain],
+  );
+  useSocialSocket(workspaceDomain, onSocialFrame);
 
   const handleAction = useCallback(
     async (action: string) => {

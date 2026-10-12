@@ -14,6 +14,7 @@ import { PlatformGlyph } from "@/components/platform-icon";
 import { usePlatformBrand } from "@/lib/social/platform-brand-context";
 import { commentAuthor } from "@/lib/social/comment-author";
 import { supportsPrivateReply } from "@/lib/social/platform-capabilities";
+import { useSocialSocket, type SocialFrame } from "@/hooks/use-social-socket";
 
 interface PostCommentsBodyProps {
   post: ScheduledPost;
@@ -197,6 +198,20 @@ export function PostCommentsBody({ post, workspace, pageById }: PostCommentsBody
       setLoadFailed(true);
     }
   }, [post.nanoid, workspace]);
+
+  // A comment that lands while this sheet is open arrives over the
+  // workspace's live socket. The frame only names the post -- it carries no
+  // comment -- so the answer is the same re-read the Sync button, the
+  // moderation callbacks, and the mount effect all use.
+  const onSocialFrame = useCallback(
+    (frame: SocialFrame) => {
+      if (frame.type === "comment" && frame.post_nanoid === post.nanoid) {
+        void refetch();
+      }
+    },
+    [post.nanoid, refetch],
+  );
+  useSocialSocket(workspace, onSocialFrame);
 
   const audience = comments.filter((c) => c.comment_type === "audience");
   const own = comments.filter((c) => c.comment_type === "internal");
