@@ -10,7 +10,7 @@ import { usePlatformBrand } from "@/lib/social/platform-brand-context";
 import { SocialIconSolid } from "@/components/social-icons";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { formatDate, STATUS_STYLES } from "./platform-gradients";
+import { formatDate, STATUS_STYLES } from "@/components/socialmanager/platform-gradients";
 
 interface ChannelPostsProps {
   workspace: string;

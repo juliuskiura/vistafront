@@ -17,6 +17,7 @@ import {
   MessageSquare,
   RefreshCcw,
   RefreshCw,
+  Rss,
   Send,
   Share2,
   Trash2,
@@ -305,15 +306,17 @@ function CommentAvatar({
 }) {
   if (url) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element -- Meta's lookaside
-      // URL is remote, signed and short-lived; next/image would re-optimise it
-      // into our own cache, which is the local-copy decision still open in
-      // reading/0-pending-decisions.md.
-      <img
-        src={url}
-        alt={name}
-        className={cn("shrink-0 rounded-full object-cover", className)}
-      />
+      <>
+        {/* Meta's lookaside URL is remote, signed and short-lived; next/image
+            would re-optimise it into our own cache, which is the local-copy
+            decision still open in reading/0-pending-decisions.md. */}
+        {/* eslint-disable-next-line @next/next/no-img-element -- see above */}
+        <img
+          src={url}
+          alt={name}
+          className={cn("shrink-0 rounded-full object-cover", className)}
+        />
+      </>
     );
   }
   return (
@@ -601,7 +604,17 @@ function CommentsSection({
   );
 }
 
-function MetricChart({ metrics }: { metrics: MetricSnapshot[] }) {
+function MetricChart({
+  metrics,
+  channelNames,
+  omittedChannels,
+}: {
+  metrics: MetricSnapshot[];
+  /** Channels the snapshots were summed from — the chart's actual subject. */
+  channelNames: string[];
+  /** Channels left out of the sum, due to the request ceiling. */
+  omittedChannels: number;
+}) {
   const impressions = useMemo(
     () =>
       metrics
@@ -611,27 +624,46 @@ function MetricChart({ metrics }: { metrics: MetricSnapshot[] }) {
   );
 
   const values = impressions.map((m) => m.value);
+  const scope = [
+    channelNames.join(", "),
+    omittedChannels > 0 ? `${omittedChannels} more` : "",
+  ]
+    .filter(Boolean)
+    .join(" | ");
 
   if (!impressions.length) {
     return (
-      <div className="rounded-xl border border-neutral-200 bg-white p-6 text-center text-sm text-neutral-500">
-        No time-series engagement data yet.{" "}
-        <button
-          type="button"
-          className="font-semibold text-primary-600 hover:text-primary-700"
-        >
-          Sync analytics →
-        </button>
-      </div>
+      <Card className="p-5">
+        <h3 className="text-sm font-semibold text-neutral-900">
+          Impressions over time
+        </h3>
+        <p className="mt-0.5 text-xs text-neutral-500">
+          Channel{channelNames.length === 1 ? "" : "s"}: {scope}
+        </p>
+        <div className="mt-3 rounded-xl border border-dashed border-neutral-200 bg-neutral-50 p-6 text-center text-sm text-neutral-500">
+          No impressions reported for these channels yet.
+        </div>
+      </Card>
     );
   }
 
   return (
     <Card className="p-5">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-neutral-900">Engagement over time</h3>
-        <span className="text-xs text-neutral-500">Impressions · last {values.length} points</span>
+      <div className="mb-1 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-neutral-900">
+          Impressions over time
+        </h3>
+        <span className="text-xs text-neutral-500">
+          {values.length} point{values.length === 1 ? "" : "s"}
+        </span>
       </div>
+      {/* What the line is: a sum of the channels this post reached. Platforms
+          report per page per day, never per post, so this is the most specific
+          number that can be drawn. */}
+      <p className="mb-3 text-xs text-neutral-500">
+        Impressions across {scope} — page-level daily reports, not per-post
+        figures.
+      </p>
       <div className="relative h-40 w-full">
         <SparkAreaChart data={values} />
       </div>
@@ -743,6 +775,15 @@ interface Props {
    */
   commentsFailed?: boolean;
   metrics: MetricSnapshot[];
+  /**
+   * Which channels the metrics above actually cover.
+   *
+   * Django's `MetricSnapshot` rows are per channel, never per post, so the
+   * numbers on this page are the sum of the channels this post reached — and a
+   * sum has to say whose numbers it is. `nanoids` empty means the post has no
+   * channel to measure, which renders no metrics section at all.
+   */
+  metricsChannels?: { nanoids: string[]; omitted: number };
   workspaceDomain: string;
   /**
    * Managed channels, keyed by nanoid. A recipient carries only the page name,
@@ -757,6 +798,7 @@ export function PostDetailClient({
   comments: initialComments,
   commentsFailed: commentsFailedOnLoad = false,
   metrics,
+  metricsChannels,
   workspaceDomain,
   pages,
 }: Props) {
@@ -768,6 +810,22 @@ export function PostDetailClient({
     () => new Map(pages.map((p) => [p.nanoid, p] as const)),
     [pages],
   );
+
+  /* ── What the engagement numbers mean ──
+   * Snapshots are per channel, so the figures below are the sum of the
+   * channels this post reached — named here, because a number without whose
+   * numbers it is cannot be read. A post that reached no channel has nothing
+   * measured, and gets no metrics section rather than zeros. */
+  const metricsScope = useMemo(() => {
+    const names = (metricsChannels?.nanoids ?? []).map(
+      (nanoid) => pageByNanoid.get(nanoid)?.page_name ?? "a channel",
+    );
+    return {
+      names,
+      omitted: metricsChannels?.omitted ?? 0,
+      has: Boolean(metricsChannels?.nanoids.length),
+    };
+  }, [metricsChannels, pageByNanoid]);
 
   const [post, setPost] = useState<ScheduledPost>(initialPost);
   const [comments, setComments] = useState<PostComment[]>(initialComments);
@@ -987,7 +1045,7 @@ export function PostDetailClient({
     <div className="mx-auto max-w-5xl space-y-6">
       {/* ── Breadcrumb + actions ── */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex flex-wrap items-center gap-2 text-sm">
           <Link
             href={`${basePath}`}
             className="inline-flex items-center gap-1 text-neutral-500 hover:text-neutral-900"
@@ -997,6 +1055,16 @@ export function PostDetailClient({
           </Link>
           <ChevronRight className="size-3.5 text-neutral-400" />
           <span className="font-medium text-neutral-900">Post detail</span>
+          {/* The way back to the timeline this post came from, with the post
+              highlighted there. Without it the feed is only reachable by retyping
+              the URL. */}
+          <Link
+            href={`${basePath}/feed?post=${post.nanoid}`}
+            className="ml-2 inline-flex items-center gap-1 rounded-full border border-neutral-200 px-2.5 py-1 text-xs font-medium text-neutral-600 hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700"
+          >
+            <Rss className="size-3.5" />
+            View Unified Feed
+          </Link>
         </div>
         <PostActionsMenu
           post={post}
@@ -1155,20 +1223,20 @@ export function PostDetailClient({
                   <Send className="size-3.5" /> Publish now
                 </Button>
               )}
-              {/* Deleting a draft is free. Deleting a post that reached a page
-                  is not: it has to call the platform once per page, which is
-                  why this button only exists when there is something to remove
-                  there. */}
-              {(post.status === "draft" || liveCopies.length > 0) && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5 border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700"
-                  onClick={() => setDeleteDialogOpen(true)}
-                >
-                  <Trash2 className="size-3.5" /> Delete
-                </Button>
-              )}
+              {/* Deleting a post that reached a page is not free: it has to
+                  call the platform once per page, and the copy below says so.
+                  A post with nothing live is still worth removing — the
+                  backend answers 204 for it — so the button exists for every
+                  status rather than hiding the only cleanup path for a post
+                  that failed everywhere. */}
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5 border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700"
+                onClick={() => setDeleteDialogOpen(true)}
+              >
+                <Trash2 className="size-3.5" /> Delete
+              </Button>
             </div>
           </div>
         </div>
@@ -1182,11 +1250,33 @@ export function PostDetailClient({
         onChanged={refreshPost}
       />
 
-      {/* ── Engagement KPIs ── */}
-      <EngagementKPIs post={post} comments={comments} metrics={metrics} />
+      {/* ── Engagement ──
+          Nothing measured means no section at all: a panel of zeros says the
+          post did badly, which is not the same statement as "no channel has
+          reported anything yet". */}
+      {metricsScope.has ? (
+        <>
+          <EngagementKPIs post={post} comments={comments} metrics={metrics} />
 
-      {/* ── Engagement chart ── */}
-      <MetricChart metrics={metrics} />
+          {/* ── Engagement chart ── */}
+          <MetricChart
+            metrics={metrics}
+            channelNames={metricsScope.names}
+            omittedChannels={metricsScope.omitted}
+          />
+        </>
+      ) : (
+        <div className="rounded-xl border border-dashed border-neutral-200 bg-neutral-50 px-6 py-8 text-center">
+          <p className="text-sm font-medium text-neutral-700">
+            No channel metrics yet
+          </p>
+          <p className="mx-auto mt-1 max-w-md text-sm text-neutral-500">
+            Impressions, reach and clicks are reported by the platform per
+            channel, so they appear once a channel has sent its first snapshot.
+            Reactions and comments on this post are counted above.
+          </p>
+        </div>
+      )}
 
       {/* ── Comments ── */}
       <CommentsSection
@@ -1202,11 +1292,11 @@ export function PostDetailClient({
       <ConfirmDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
-        title={liveCopies.length ? "Delete this post everywhere?" : "Delete draft post?"}
+        title={liveCopies.length ? "Delete this post everywhere?" : "Delete this post?"}
         description={
           liveCopies.length
             ? `This removes the post from ${liveCopies.length} published page${liveCopies.length === 1 ? "" : "s"}, then deletes it. This action cannot be undone.`
-            : "This will permanently delete this draft. This action cannot be undone."
+            : "This permanently deletes the post from VistaSolve. Anything already live on a channel is not removed by this. This action cannot be undone."
         }
         confirmLabel="Delete"
         variant="destructive"

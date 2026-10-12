@@ -1,7 +1,8 @@
 import { requireWorkspace } from "@/lib/auth/server";
 import { requireFeature } from "@/lib/features/guard";
-import { getPost, listPages, listPostComments, listMetrics } from "@/lib/api";
+import { getPost, listPages, listPostComments } from "@/lib/api";
 import { PostDetailClient } from "./post-detail-client";
+import { loadPostMetrics, type PostMetricsResult } from "./post-metrics";
 
 export default async function PostDetailPage({
   params,
@@ -24,14 +25,19 @@ export default async function PostDetailPage({
     .then((comments) => ({ comments, failed: false }))
     .catch(() => ({ comments: [] as Awaited<ReturnType<typeof listPostComments>>, failed: true }));
 
-  const [post, commentsResult, metrics, pages] = await Promise.all([
+  // The metrics have to follow the post: `MetricSnapshot` is keyed to a page, not
+  // to a post, so the channels to ask about are only known once the post is in.
+  const [post, commentsResult, pages] = await Promise.all([
     getPost(postId, ws).catch(() => null),
     commentsRequest,
-    listMetrics({ since: undefined, until: undefined, workspace: ws, managed_page: undefined, metric: undefined }).catch(() => []),
     // A post recipient carries only the page name, so the channel list is what
     // supplies the platform behind each recipient's icon.
     listPages({ workspace: ws }).catch(() => []),
   ]);
+
+  const metrics: PostMetricsResult = post
+    ? await loadPostMetrics(post, ws)
+    : { snapshots: [], channelNanoids: [], omittedChannels: 0 };
 
   const comments = commentsResult.comments;
 
@@ -49,7 +55,11 @@ export default async function PostDetailPage({
       post={post}
       comments={comments}
       commentsFailed={commentsResult.failed}
-      metrics={metrics}
+      metrics={metrics.snapshots}
+      metricsChannels={{
+        nanoids: metrics.channelNanoids,
+        omitted: metrics.omittedChannels,
+      }}
       pages={pages}
       workspaceDomain={ws}
     />

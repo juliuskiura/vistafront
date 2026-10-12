@@ -16,8 +16,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { formatDate, getPlatformGradient, STATUS_META } from "./platform-gradients";
-import { PostCommentsBody } from "./post-comments-body";
+import { formatDate, getPlatformGradient, STATUS_META } from "@/components/socialmanager/platform-gradients";
+import { PostCommentsBody } from "@/components/socialmanager/post-comments-body";
 
 interface PostCommentsSheetProps {
   post: ScheduledPost | null;

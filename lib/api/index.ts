@@ -198,6 +198,7 @@ export {
   listWebhooks,
   listPostComments,
   listPosts,
+  listPostsPage,
   listQueues,
   listQueueItems,
   oauthInit,

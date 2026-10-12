@@ -4,7 +4,7 @@ import { ExternalLink, Globe, Info } from "lucide-react";
 
 import type { ManagedChannel } from "@/lib/api/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatDate } from "./platform-gradients";
+import { formatDate } from "@/components/socialmanager/platform-gradients";
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (

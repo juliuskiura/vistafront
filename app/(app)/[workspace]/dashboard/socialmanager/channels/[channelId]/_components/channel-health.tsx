@@ -3,7 +3,7 @@ import { AlertCircle, Lock, RefreshCw, ShieldCheck } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import { formatDate, tokenProgress, type TokenHealth } from "./platform-gradients";
+import { formatDate, tokenProgress, type TokenHealth } from "@/components/socialmanager/platform-gradients";
 
 interface ChannelHealthProps {
   token: TokenHealth;

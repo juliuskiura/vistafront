@@ -5,9 +5,9 @@ import { usePathname } from "next/navigation";
 import { useMemo } from "react";
 import {
   CalendarDays,
-  LayoutDashboard,
   MessageSquare,
   PenLine,
+  Rss,
   Share2,
   Zap,
 } from "@/lib/icons";
@@ -34,8 +34,10 @@ import { useInboxUnread } from "./use-inbox-unread";
  * The `<slot>` renders the active child page.
  * ────────────────────────────────────────────────────────────────────── */
 
+/* No "Overview" item: the brand link is the section home, and adding a second
+ * link to the same URL made the header read as two homes. */
 const NAV_ITEMS: InnerNavItem[] = [
-  { label: "Overview", href: "", end: true, icon: LayoutDashboard },
+  { label: "Unified Feed", href: "/feed", icon: Rss },
   { label: "Unified Inbox", href: "/inbox", icon: MessageSquare },
   { label: "Channels", href: "/channels", icon: Share2 },
   { label: "Calendar", href: "/calendar", icon: CalendarDays },

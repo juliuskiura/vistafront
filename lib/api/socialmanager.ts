@@ -558,6 +558,34 @@ export function getPost(nanoid: string, workspace: string): Promise<ScheduledPos
   );
 }
 
+/**
+ * One page of posts, without draining the whole list.
+ *
+ * `listPosts` calls `unwrapAll`, which follows `next` for up to 100 pages — up
+ * to ~2500 posts with every recipient and every comment prefetched, on a single
+ * server render. A feed shows a page at a time, so this returns the pagination
+ * envelope and lets the caller ask for the next one.
+ *
+ * Django's global pagination is `LivechatPagination` (page size 25,
+ * `page_size` capped at 100), so `pageSize` wider than that is quietly clamped
+ * server-side rather than rejected.
+ */
+export function listPostsPage(
+  opts: {
+    managed_page?: string;
+    status?: string;
+    page?: number;
+    pageSize?: number;
+    workspace: string;
+  },
+): Promise<Paginated<ScheduledPost>> {
+  const { workspace, ...rest } = opts;
+  return serverFetch<Paginated<ScheduledPost>>(
+    `/apis/socialmanager/posts/${toQueryString(rest)}`,
+    wsOpts(workspace),
+  );
+}
+
 export function createPost(
   body: ScheduledPostForm,
   workspace: string,

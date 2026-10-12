@@ -10,7 +10,7 @@ import { PlatformGlyph, usePlatformStyleResolver } from "@/components/platform-i
 import { usePlatformBrand } from "@/lib/social/platform-brand-context";
 import { hasSocialIcon, SocialIcon } from "@/components/social-icons";
 import { cn } from "@/lib/utils";
-import { getPlatformGradient, type TokenHealth } from "./platform-gradients";
+import { getPlatformGradient, type TokenHealth } from "@/components/socialmanager/platform-gradients";
 
 interface ChannelHeroProps {
   workspace: string;

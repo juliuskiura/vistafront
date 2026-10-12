@@ -1,10 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { RefreshCw, Sparkles, Users } from "lucide-react";
+import { RefreshCw, Sparkles, Users } from "@/lib/icons";
 
 import type { ManagedChannel, PostComment, ScheduledPost } from "@/lib/api/types";
-import { getPostsSyncStatusAction, listPostCommentsAction, syncCommentsAction } from "../../../actions";
+import {
+  getPostsSyncStatusAction,
+  listPostCommentsAction,
+  syncCommentsAction,
+} from "@/app/(app)/[workspace]/dashboard/socialmanager/actions";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatMediumDateTime } from "@/lib/dates";
@@ -22,6 +26,20 @@ interface PostCommentsBodyProps {
   /** Channel lookup, so each comment's moderation resolves its own platform. */
   pageById: Record<string, ManagedChannel>;
 }
+
+/**
+ * One post's comment thread — audience comments first, then the workspace's own
+ * first comments.
+ *
+ * Shared by the channel sheet (`channels/[channelId]/_components/post-comments-sheet.tsx`)
+ * and the Unified Feed's inline card thread. Both hand it the same three
+ * arguments, so there is exactly one implementation of moderation: a thread
+ * that appears in two places must not be two components that can drift apart.
+ *
+ * It owns its own fetching (through the section's Server Actions) and its own
+ * socket subscription, so a card can mount it without wiring anything: opening
+ * a thread is one request, closing it discards nothing but a cached read.
+ */
 
 /**
  * Which channel a comment belongs to.
@@ -78,15 +96,17 @@ function CommentAvatar({
 }) {
   if (url) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element -- Meta's lookaside
-      // URL is remote and signed; next/image would cache it under our own
-      // storage, which is the local-copy decision still open in
-      // reading/0-pending-decisions.md.
-      <img
-        src={url}
-        alt={name}
-        className="mt-0.5 size-7 shrink-0 rounded-full object-cover"
-      />
+      <div>
+        {/* Meta's lookaside URL is remote and signed; next/image would cache it
+            under our own storage, which is the local-copy decision still open in
+            reading/0-pending-decisions.md. */}
+        {/* eslint-disable-next-line @next/next/no-img-element -- see above */}
+        <img
+          src={url}
+          alt={name}
+          className="mt-0.5 size-7 shrink-0 rounded-full object-cover"
+        />
+      </div>
     );
   }
   return (
