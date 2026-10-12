@@ -35,6 +35,7 @@ interface PlatformComposeCardProps {
   showLinkPost: boolean;
   firstComment: string;
   onFirstCommentChange: (value: string) => void;
+  onFirstCommentFocus?: () => void;
   mediaAssets?: Asset[];
   platformSlug?: string;
   contentFormat?: string;
@@ -65,6 +66,7 @@ export default function PlatformComposeCard({
   showLinkPost,
   firstComment,
   onFirstCommentChange,
+  onFirstCommentFocus,
   mediaAssets,
   platformSlug = slug,
   contentFormat,
@@ -155,6 +157,7 @@ export default function PlatformComposeCard({
         firstComment={firstComment}
         onFirstCommentChange={onFirstCommentChange}
         onFirstCommentAi={() => setAiCommentOpen(true)}
+        onFirstCommentFocus={onFirstCommentFocus}
       />
 
       <AiOptimizerSheet

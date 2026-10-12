@@ -42,6 +42,8 @@ interface ComposeStep2Props {
   /** Open the asset picker for one channel, so media types can be scoped to
    *  the format that channel is currently set to. */
   onOpenPicker: (pageNanoid: string) => void;
+  /** Focus on one channel's first-comment box, by channel nanoid. */
+  onFirstCommentFocus?: (pageNanoid: string) => void;
 }
 
 export function ComposeStep2({
@@ -72,6 +74,7 @@ export function ComposeStep2({
   getActiveContent,
   handleAttachRendition,
   onOpenPicker,
+  onFirstCommentFocus,
 }: ComposeStep2Props) {
   // `slug` is the connect door; the card heading wears the brand behind it.
   const styleOf = usePlatformStyleResolver();
@@ -240,6 +243,7 @@ export function ComposeStep2({
               onFirstCommentChange={(val) => {
                 setFirstCommentByPage((prev) => ({ ...prev, [page.nanoid]: val }));
               }}
+              onFirstCommentFocus={() => onFirstCommentFocus?.(page.nanoid)}
               mediaAssets={baseAssets}
               platformSlug={slug}
               onAttachRendition={handleAttachRendition}

@@ -55,6 +55,9 @@ interface ComposeStep1Props {
    *  picker can scope the media types to what that channel's format accepts,
    *  rather than to a hardcoded list of platform slugs. */
   onOpenPicker: (pageNanoid: string) => void;
+  /** Focus on the caption text. The compose client uses it to fill the
+   *  review workspace's sample on first focus instead of pre-filling. */
+  onContentFocus?: () => void;
 }
 
 export function ComposeStep1({
@@ -90,6 +93,7 @@ export function ComposeStep1({
   handleNext,
   canProceed,
   onOpenPicker,
+  onContentFocus,
 }: ComposeStep1Props) {
   const ws = workspaceDomain.toLowerCase();
 
@@ -326,6 +330,7 @@ export function ComposeStep1({
         <SocialMediaTextEditor
           value={content}
           onChange={setContent}
+          onFocus={onContentFocus}
           placeholder="Write master caption here... (This will be adapted per network below)"
           showCharCount={false}
           mediaUrls={mediaUrls}

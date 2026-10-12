@@ -19,6 +19,7 @@ import {
   verifyPageAction,
 } from "../actions";
 import { buildComposeSeed, getReviewDemo } from "@/lib/review/demo-data";
+import { useDemoDraft } from "@/lib/review/use-demo-draft";
 import {
   initialCampaignState,
   type CampaignActionState,
@@ -65,10 +66,10 @@ export function ComposeClient({
   const router = useRouter();
   const submittingRef = useRef(false);
 
-  // The review workspace opens pre-filled: caption, sample picture, a
-  // pre-selected channel, and a first comment, so nothing has to be typed
-  // before the flow can be tested. Never applied when editing a post —
-  // an existing post's content always wins.
+  // The review workspace opens ready: sample picture and a pre-selected
+  // channel, with the caption and first comment staged to arrive on first
+  // focus (see `useDemoDraft`) rather than pre-filled. Never applied when
+  // editing a post — an existing post's content always wins.
   const composeSeed = editPost
     ? null
     : (() => {
@@ -81,9 +82,12 @@ export function ComposeClient({
     if (editPost) return editPost.recipients.map((r) => r.managed_page);
     return composeSeed?.selectedPageIds ?? [];
   });
-  const [content, setContent] = useState(
-    editPost?.content ?? composeSeed?.content ?? "",
-  );
+  // The caption opens empty on the review workspace and fills with the
+  // sample the first time the textarea is focused — pre-filled text reads
+  // as content the reviewer already wrote. An edited post still opens with
+  // its own content typed.
+  const { value: content, setValue: setContent, fillOnFocus: fillCaptionOnFocus } =
+    useDemoDraft(editPost?.content ?? "");
   // Rehydrate the media the post already carries. Without this the tray renders
   // empty on an existing post, and saving sends no media — silently detaching a
   // reel's video while the format still says "reel".
@@ -149,9 +153,9 @@ export function ComposeClient({
     }
     return init;
   });
-  const [firstCommentByPage, setFirstCommentByPage] = useState<Record<string, string>>(
-    composeSeed?.firstCommentByPage ?? {},
-  );
+  // First comments arrive on focus, like the caption; they start empty on
+  // every workspace.
+  const [firstCommentByPage, setFirstCommentByPage] = useState<Record<string, string>>({});
   const [connectErrors, setConnectErrors] = useState<Record<string, string>>({});
   const [publishError, setPublishError] = useState("");
 
@@ -309,6 +313,22 @@ export function ComposeClient({
     ],
   );
 
+  // The review workspace's two focus fills. Both follow the same single
+  // rule as `useDemoDraft`: the sample lands on any focus into a box that
+  // is still empty, and never overwrites what the reviewer has typed. No
+  // per-box memory, so clearing a box and clicking back in refills it and
+  // one box's state has no effect on another's.
+  const onContentFocus = () => fillCaptionOnFocus(composeSeed?.content);
+  const onFirstCommentFocus = (pageNanoid: string) => {
+    const sample = composeSeed?.firstCommentByPage[pageNanoid];
+    if (!sample) return;
+    setFirstCommentByPage((prev) =>
+      prev[pageNanoid]?.trim()
+        ? prev
+        : { ...prev, [pageNanoid]: sample },
+    );
+  };
+
   const handleSubmit = useCallback(
     async (saveAsDraft = false) => {
       if (submittingRef.current) return;
@@ -464,6 +484,7 @@ export function ComposeClient({
                 setSelectedPageIds={setSelectedPageIds}
                 content={content}
                 setContent={setContent}
+                onContentFocus={onContentFocus}
                 mediaUrls={mediaUrls}
                 setMediaUrls={setMediaUrls}
                 mediaAssetNanoids={mediaAssetNanoids}
@@ -514,6 +535,7 @@ export function ComposeClient({
                 setHashtagsByPage={setHashtagsByPage}
                 firstCommentByPage={firstCommentByPage}
                 setFirstCommentByPage={setFirstCommentByPage}
+                onFirstCommentFocus={onFirstCommentFocus}
                 getPagePlatformSlug={getPagePlatformSlug}
                 platformBySlug={platformBySlug}
                 getActiveContent={getActiveContent}

@@ -14,6 +14,7 @@ import type {
 import { inboxThreadKey } from "@/lib/api/inbox-keys";
 import { useApiFetch } from "@/lib/context";
 import { getReviewDemo } from "@/lib/review/demo-data";
+import { useDemoDraft } from "@/lib/review/use-demo-draft";
 import { AlertCircle, Send } from "@/lib/icons";
 
 import { ConstraintNotices } from "./constraint-notices";
@@ -43,12 +44,12 @@ const CHECK_DEBOUNCE_MS = 400;
  * and is enforced again by the backend on send.
  */
 export function ReplyBox({ conversation, workspace, onSent }: ReplyBoxProps) {
-  // The review workspace opens with a sample reply already typed, so the
-  // reply flow can be tested without composing one. Every other workspace
-  // starts empty, exactly as before.
-  const [text, setText] = useState(
-    () => getReviewDemo(workspace)?.messageReply ?? "",
-  );
+  // The review workspace's sample reply arrives on first focus rather than
+  // pre-filled: an empty-looking box that was quietly carrying text is a
+  // confusing thing to hand a reviewer, and once they reach for the field
+  // the sample reads as theirs to send. Every other workspace is empty and
+  // has no focus behavior.
+  const { value: text, setValue: setText, fillOnFocus } = useDemoDraft("");
   const [debounced, setDebounced] = useState("");
   const [error, setError] = useState<string | null>(null);
   // Soft breaches on a message that has already gone out. They are kept here
@@ -160,6 +161,7 @@ export function ReplyBox({ conversation, workspace, onSent }: ReplyBoxProps) {
       <Textarea
         value={text}
         onChange={(event) => setText(event.target.value)}
+        onFocus={() => fillOnFocus(getReviewDemo(workspace)?.messageReply)}
         onKeyDown={handleKeyDown}
         placeholder="Write a reply…"
         aria-label="Write a reply"

@@ -49,6 +49,11 @@ export interface SocialMediaTextEditorProps {
   firstComment?: string;
   onFirstCommentChange?: (value: string) => void;
   onFirstCommentAi?: () => void;
+  /** Focus on the main text. Callers that fill a draft on first focus
+   *  (the review workspace's samples) use it to time that fill. */
+  onFocus?: () => void;
+  /** Focus on the first-comment input, for the same reason. */
+  onFirstCommentFocus?: () => void;
 }
 
 export default function SocialMediaTextEditor({
@@ -77,6 +82,8 @@ export default function SocialMediaTextEditor({
   firstComment,
   onFirstCommentChange,
   onFirstCommentAi,
+  onFocus,
+  onFirstCommentFocus,
   mediaAssets = [],
 }: SocialMediaTextEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -159,6 +166,7 @@ export default function SocialMediaTextEditor({
           autoFocus={autoFocus}
           placeholder={placeholder}
           onChange={(e) => onChange(e.target.value)}
+          onFocus={onFocus}
           onSelect={captureSelection}
           onClick={captureSelection}
           onKeyUp={captureSelection}
@@ -339,6 +347,7 @@ export default function SocialMediaTextEditor({
                 type="text"
                 value={firstComment}
                 disabled={disabled}
+                onFocus={onFirstCommentFocus}
                 onChange={(e) => onFirstCommentChange?.(e.target.value)}
                 placeholder="Your comment"
                 className="w-full rounded-full border border-slate-200 bg-white py-1.5 pl-4 pr-10 text-xs text-slate-900 placeholder:text-[#9CA3AF] focus:outline-none focus:border-primary-500 disabled:cursor-not-allowed"
