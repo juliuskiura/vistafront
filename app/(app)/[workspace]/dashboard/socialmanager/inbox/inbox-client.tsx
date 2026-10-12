@@ -68,7 +68,7 @@ export function InboxClient({ workspace }: { workspace: string }) {
   // The workspace's live feed: one socket announcing new messages. The hook
   // owns the frame handling and the catch-up rule; this side only needs to know
   // whether the socket is up, because the poll picks its pace from it.
-  const socketLive = useInboxLive(workspace, selectedId);
+  const { connected: socketLive, engaged } = useInboxLive(workspace, selectedId);
 
   useEffect(() => {
     const timer = setTimeout(
@@ -118,6 +118,12 @@ export function InboxClient({ workspace }: { workspace: string }) {
   // The transcript is read straight from the cache rather than through state:
   // the query belongs to ThreadView, and this is the one consumer that has to
   // see through to it.
+  //
+  // Gated on `engaged` for the same reason the hook gates its frames: this
+  // invalidation is what triggers the GET, and the GET marks the thread
+  // read. A poll that lands while the tab is in the background must leave
+  // the badge alone -- the transcript catch-up is the user coming back's
+  // job, not the timer's.
   useEffect(() => {
     if (!selectedId) return;
     const open = conversations.find((row) => row.nanoid === selectedId);
@@ -128,12 +134,15 @@ export function InboxClient({ workspace }: { workspace: string }) {
     );
     if (!transcript) return;
 
-    if (isNewerMessageAt(open.last_message_at, transcript.last_message_at)) {
+    if (
+      engaged &&
+      isNewerMessageAt(open.last_message_at, transcript.last_message_at)
+    ) {
       void queryClient.invalidateQueries({
         queryKey: inboxThreadKey(workspace, selectedId),
       });
     }
-  }, [conversations, selectedId, queryClient, workspace]);
+  }, [conversations, selectedId, queryClient, workspace, engaged]);
 
   const selectThread = useCallback(
     (nanoid: string | null) => {
