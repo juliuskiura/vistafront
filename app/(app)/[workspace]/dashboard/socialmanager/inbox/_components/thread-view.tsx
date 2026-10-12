@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { senderLabel, type SocialConversationDetail } from "@/lib/api/inbox";
-import { inboxSummaryKey } from "@/lib/api/inbox-keys";
+import { inboxSummaryKey, inboxThreadKey } from "@/lib/api/inbox-keys";
 import { useApiFetch } from "@/lib/context";
 import { AlertCircle, Loader } from "@/lib/icons";
 
@@ -22,9 +22,13 @@ export interface ThreadViewProps {
  * The right pane: one thread's transcript and its composer.
  *
  * Deliberately has no `refetchInterval`. Reading a thread clears its unread
- * badge server-side, so a background poll would quietly mark every thread read
- * while the user was looking at a different one. This query refetches only
- * when the user opens a thread or after they send a message.
+ * badge server-side (`mark_conversation_read` on retrieve), so a poll here
+ * would spend requests clearing badges for threads the user may not even be
+ * looking at. The transcript is refreshed in two targeted ways instead:
+ * opening (or re-clicking) a thread invalidates this key, and the inbox
+ * client's list poll invalidates it whenever the row's `last_message_at`
+ * moves past the transcript's — so a message that arrives while the thread
+ * is open appears without this query polling at all.
  */
 export function ThreadView({
   conversationId,
@@ -36,7 +40,7 @@ export function ThreadView({
   const transcript = useRef<HTMLDivElement>(null);
 
   const { data, isPending, isError, error } = useQuery<SocialConversationDetail>({
-    queryKey: ["socialmanager-thread", workspace, conversationId],
+    queryKey: inboxThreadKey(workspace, conversationId),
     queryFn: () => fetchThread(conversationId, workspace, apiFetch),
     staleTime: 30_000,
   });

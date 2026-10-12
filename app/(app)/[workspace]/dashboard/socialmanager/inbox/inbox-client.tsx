@@ -4,8 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import type { SocialConversation } from "@/lib/api/inbox";
-import { inboxSummaryKey } from "@/lib/api/inbox-keys";
+import type {
+  SocialConversation,
+  SocialConversationDetail,
+} from "@/lib/api/inbox";
+import { inboxSummaryKey, inboxThreadKey } from "@/lib/api/inbox-keys";
 import { useApiFetch } from "@/lib/context";
 import { MessageSquare } from "@/lib/icons";
 
@@ -82,8 +85,47 @@ export function InboxClient({ workspace }: { workspace: string }) {
     });
   }, [dataUpdatedAt, queryClient, workspace]);
 
+  // The list poll is also the open thread's doorbell. Each row carries its
+  // last_message_at, so a poll that lands while a thread is open can tell the
+  // transcript there is something newer than what it holds and refresh it —
+  // nothing else would, because the transcript query fetches only on open and
+  // on send. An inbound message would otherwise appear in the list and on the
+  // badge but sit invisible in the thread the user is reading until a reload.
+  //
+  // The transcript is read straight from the cache rather than through state:
+  // the query belongs to ThreadView, and this is the one consumer that has to
+  // see through to it.
+  useEffect(() => {
+    if (!selectedId) return;
+    const open = conversations.find((row) => row.nanoid === selectedId);
+    if (!open) return;
+
+    const transcript = queryClient.getQueryData<SocialConversationDetail>(
+      inboxThreadKey(workspace, selectedId),
+    );
+    if (!transcript) return;
+
+    if (isNewerMessageAt(open.last_message_at, transcript.last_message_at)) {
+      void queryClient.invalidateQueries({
+        queryKey: inboxThreadKey(workspace, selectedId),
+      });
+    }
+  }, [conversations, selectedId, queryClient, workspace]);
+
   const selectThread = useCallback(
     (nanoid: string | null) => {
+      if (nanoid) {
+        // Opening a thread always refetches its transcript. Invalidation is
+        // what actually forces that: `staleTime` alone would serve the cached
+        // copy on a quick switch back within its 30s freshness window, and
+        // re-clicking the thread already open changes nothing in the URL —
+        // so without this the user has no way to refresh a thread by hand.
+        // Invalidating a key with no cached entry yet is a no-op; the mount
+        // fetches it anyway.
+        void queryClient.invalidateQueries({
+          queryKey: inboxThreadKey(workspace, nanoid),
+        });
+      }
       const params = new URLSearchParams(searchParams.toString());
       if (nanoid) {
         params.set(THREAD_PARAM, nanoid);
@@ -96,7 +138,7 @@ export function InboxClient({ workspace }: { workspace: string }) {
       // clicked through on the way to the last one.
       router.replace(query ? `?${query}` : "?", { scroll: false });
     },
-    [router, searchParams],
+    [router, searchParams, queryClient, workspace],
   );
 
   const onSent = useCallback(() => {
@@ -166,6 +208,22 @@ async function fetchConversations(
 
 function describeError(error: unknown): string {
   return error instanceof Error ? error.message : "The inbox could not be loaded.";
+}
+
+/**
+ * Whether the list row's last message is newer than the transcript's.
+ *
+ * Both timestamps come from the same server, so they compare directly. A
+ * transcript without one means its query has not loaded (or the thread has
+ * no message yet) — a row that has one is newer than that.
+ */
+function isNewerMessageAt(
+  next: string | null | undefined,
+  current: string | null | undefined,
+): boolean {
+  if (!next) return false;
+  if (!current) return true;
+  return new Date(next).getTime() > new Date(current).getTime();
 }
 
 function ThreadPlaceholder({ hasConversations }: { hasConversations: boolean }) {

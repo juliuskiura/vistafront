@@ -13,3 +13,15 @@
 export function inboxSummaryKey(workspace: string) {
   return ["socialmanager-inbox-summary", workspace] as const;
 }
+
+/**
+ * The TanStack Query key for one open thread's transcript.
+ *
+ * Shared by the reader (`ThreadView`), the writer (`ReplyBox`), and the list
+ * poll in `inbox-client.tsx` that invalidates it when the thread's row reports
+ * a newer message — so a message that arrives mid-read shows up without the
+ * transcript ever polling for itself.
+ */
+export function inboxThreadKey(workspace: string, nanoid: string) {
+  return ["socialmanager-thread", workspace, nanoid] as const;
+}

@@ -11,6 +11,7 @@ import type {
   SocialConversationDetail,
   SocialMessage,
 } from "@/lib/api/inbox";
+import { inboxThreadKey } from "@/lib/api/inbox-keys";
 import { useApiFetch } from "@/lib/context";
 import { getReviewDemo } from "@/lib/review/demo-data";
 import { AlertCircle, Send } from "@/lib/icons";
@@ -92,7 +93,7 @@ export function ReplyBox({ conversation, workspace, onSent }: ReplyBoxProps) {
       setError(null);
       setSentWarnings(soft ?? []);
       queryClient.setQueryData<SocialConversationDetail>(
-        ["socialmanager-thread", workspace, conversation.nanoid],
+        inboxThreadKey(workspace, conversation.nanoid),
         (current) =>
           current && message?.nanoid
             ? {
