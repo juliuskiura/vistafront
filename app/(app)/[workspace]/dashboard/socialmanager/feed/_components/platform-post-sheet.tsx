@@ -69,7 +69,7 @@ export function PlatformPostSheet({
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <span className="size-8 rounded-full bg-neutral-100 flex items-center justify-center">

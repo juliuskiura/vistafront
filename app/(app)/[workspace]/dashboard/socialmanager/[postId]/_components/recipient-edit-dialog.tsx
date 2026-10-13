@@ -53,7 +53,7 @@ export function RecipientEditDialog({
         if (!next && !submitting) onClose();
       }}
     >
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-w-xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit page copy</DialogTitle>
           <DialogDescription>
