@@ -13,6 +13,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { AlertTriangle, Loader2 } from "@/lib/icons";
+import { SocialIconSolid } from "@/components/social-icons";
+import { usePlatformBrand } from "@/lib/social/platform-brand-context";
+import { ChannelAvatar } from "@/components/socialmanager/channel-avatar";
 import type { ManagedChannel, PostRecipient } from "@/lib/api/types";
 
 interface PlatformPostSheetProps {
@@ -43,6 +46,7 @@ export function PlatformPostSheet({
   
   const page = pageById[post.managed_page];
   const platformName = page?.platform_name || post.managed_page_name;
+  const { brandOf } = usePlatformBrand();
   
   const handleSubmit = async () => {
     if (!commentText.trim()) {
@@ -72,14 +76,23 @@ export function PlatformPostSheet({
       <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <span className="size-8 rounded-full bg-neutral-100 flex items-center justify-center">
-              {page?.platform ? (
-                <img 
-                  src={`/icons/${page.platform}.svg`} 
-                  alt={platformName}
-                  className="size-6"
-                />
-              ) : null}
+            <span className="relative shrink-0">
+              <ChannelAvatar
+                nanoid={page?.nanoid ?? post.managed_page}
+                pictureUrl={page?.profile_picture_url ?? ""}
+                workspace={workspace}
+                className="size-8 rounded-full object-cover ring-1 ring-black/5"
+                fallback={
+                  <span className="flex size-8 items-center justify-center rounded-full bg-neutral-100 text-xs font-bold text-neutral-500 ring-1 ring-black/5">
+                    {post.managed_page_name.slice(0, 1).toUpperCase()}
+                  </span>
+                }
+              />
+              <span className="absolute -bottom-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full bg-white ring-1 ring-black/5">
+                {page?.platform ? (
+                  <SocialIconSolid name={brandOf(page.platform)} className="size-5" />
+                ) : null}
+              </span>
             </span>
             <div>
               <div className="font-semibold">{platformName}</div>
@@ -97,11 +110,7 @@ export function PlatformPostSheet({
             <div className="flex items-center gap-2 mb-3">
               <div className="size-6 rounded-full bg-neutral-200 flex items-center justify-center">
                 {page?.platform ? (
-                  <img 
-                    src={`/icons/${page.platform}.svg`} 
-                    alt={platformName}
-                    className="size-4"
-                  />
+                  <SocialIconSolid name={brandOf(page.platform)} className="size-4" />
                 ) : null}
               </div>
               <div className="font-medium text-sm">{page?.account_name || post.managed_page_name}</div>

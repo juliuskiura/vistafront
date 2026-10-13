@@ -178,6 +178,8 @@ export function FeedRecipientRows({
         <RecipientEditDialog
           open={Boolean(editing)}
           recipient={editing}
+          page={editing ? pagesById[editing.managed_page] : undefined}
+          workspace={workspace}
           submitting={submitting}
           error={error}
           onClose={() => {

@@ -216,6 +216,8 @@ export function LiveRecipients({
       <RecipientEditDialog
         open={Boolean(editing)}
         recipient={editing}
+        page={editing ? pageByNanoid.get(editing.managed_page) : undefined}
+        workspace={workspace}
         submitting={submitting}
         error={error}
         onClose={() => {
