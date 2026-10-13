@@ -4,12 +4,10 @@ import Link from "next/link";
 
 import type { ManagedChannel, ScheduledPost } from "@/lib/api/types";
 import { Heart, MessageCircle } from "@/lib/icons";
-import { STATUS_STYLES } from "@/components/socialmanager/platform-gradients";
-import { PlatformGlyph } from "@/components/platform-icon";
 import { usePlatformBrand } from "@/lib/social/platform-brand-context";
-import { formatMediumDateTime } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
+import { FeedHeader } from "./feed-header";
 import { CaptionWithHashtags } from "./feed-caption";
 import { FeedMedia } from "./feed-media";
 import { FeedRecipientRows } from "./feed-recipient-rows";
@@ -73,74 +71,7 @@ export function FeedCard({
         <span className="sr-only">Open post in detail</span>
       </Link>
 
-      <div className="relative flex items-start gap-3">
-        {/* The parent post wears the Vistasolve mark, not a channel avatar: the
-            card is the master post, and the per-channel copies live below in the
-            recipients accordion. */}
-        <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-black/5">
-          <img src="/icon.svg" alt="Vistasolve" className="size-7 object-contain" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <p className="truncate text-sm font-semibold text-neutral-900">
-              Vistasolve
-            </p>
-            {post.recipients.length > 1 && (
-              <span className="shrink-0 rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-semibold text-neutral-600">
-                {post.recipients.length} channels shared
-              </span>
-            )}
-          </div>
-          {/* The sub-line describes the parent ScheduledPost itself — the
-              master record — never its first recipient. A cross-channel post
-              has no single platform, so the date is what identifies it; the
-              channels it reached are the logo strip on the right. */}
-          <p className="flex flex-wrap items-center gap-1 text-xs text-neutral-500">
-            {post.published_at ? (
-              <>
-                <span>Published</span>
-                <span aria-hidden>·</span>
-                <time dateTime={post.published_at}>
-                  {formatMediumDateTime(post.published_at)}
-                </time>
-              </>
-            ) : post.scheduled_at ? (
-              <>
-                <span>Scheduled</span>
-                <span aria-hidden>·</span>
-                <time dateTime={post.scheduled_at}>
-                  {formatMediumDateTime(post.scheduled_at)}
-                </time>
-              </>
-            ) : (
-              <span>Not scheduled</span>
-            )}
-          </p>
-        </div>
-        <div className="flex shrink-0 flex-col items-end gap-1.5">
-          <span
-            className={cn(
-              "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium capitalize",
-              STATUS_STYLES[post.status] ?? STATUS_STYLES.draft,
-            )}
-          >
-            {post.status}
-          </span>
-          {brands.length > 0 && (
-            <div className="flex items-center gap-1">
-              {brands.map((brand) => (
-                <span
-                  key={brand}
-                  title={`Shared on ${brand}`}
-                  className="flex size-6 items-center justify-center rounded-full bg-neutral-100 ring-1 ring-black/5"
-                >
-                  <PlatformGlyph platform={brand} size="lg" solid />
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+      <FeedHeader post={post} brands={brands} status={post.status} />
 
       <div className="relative mt-3">
         <CaptionWithHashtags

@@ -1,1053 +1,115 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+
+import type { ManagedChannel, MetricSnapshot, ScheduledPost } from "@/lib/api/types";
 import {
   ArrowLeft,
-  CalendarClock,
-  Clock,
-  Edit3,
-  ExternalLink,
-  Heart,
-  Info,
-  MessageCircle,
-  MoreVertical,
-  Pause,
-  MessageSquare,
-  RefreshCcw,
-  RefreshCw,
-  Rss,
-  Send,
-  Share2,
-  Trash2,
-  Copy,
-  FileText,
-  Users,
-  Image as ImageIcon,
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
-  Loader2,
   ChevronRight,
+  Rss,
+  AlertTriangle,
+  RefreshCw,
 } from "@/lib/icons";
-
-import type { ScheduledPost, PostComment, MetricSnapshot, ManagedChannel } from "@/lib/api/types";
-import { commentAuthor } from "@/lib/social/comment-author";
-import { PlatformGlyph, usePlatformStyleResolver } from "@/components/platform-icon";
 import { usePlatformBrand } from "@/lib/social/platform-brand-context";
-import { supportsPrivateReply } from "@/lib/social/platform-capabilities";
-import { cn } from "@/lib/utils";
-import { CommentModeration } from "@/components/socialmanager/comment-moderation";
-import {
-  CommentActions,
-  CommentComposer,
-} from "@/components/socialmanager/comment-composer";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { DeliveryOutcomes } from "@/components/socialmanager/delivery-outcomes";
 import { retryAvailability } from "@/lib/social/delivery-error";
-import {
-  publishPostAction,
-  retryPostAction,
-  cancelPostAction,
-  deletePostAction,
-  duplicatePostAction,
-  syncCommentsAction,
-  listPostCommentsAction,
-  getPostAction,
-} from "../actions";
-import { useSocialSocket, type SocialFrame } from "@/hooks/use-social-socket";
-import { LiveRecipients, isLiveCopy, waitForLiveTask } from "./_components";
+import { usePostActions } from "./use-post-actions";
 
-/* ──────────────────────────────────────────────────────────────────────
- * Helpers
- * ────────────────────────────────────────────────────────────────────── */
+import { FeedHeader } from "../feed/_components/feed-header";
+import { CaptionWithHashtags } from "../feed/_components/feed-caption";
+import { FeedMedia } from "../feed/_components/feed-media";
+import { FeedRecipientRows } from "../feed/_components/feed-recipient-rows";
+import { FeedComments } from "../feed/_components/feed-comments";
 
-function formatDateTime(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return d.toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-function formatDateOnly(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return d.toLocaleString(undefined, {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
-  return formatDateOnly(iso);
-}
-
-const STATUS_STYLES: Record<
-  string,
-  { label: string; className: string; icon: typeof CheckCircle2 }
-> = {
-  scheduled: {
-    label: "Scheduled",
-    className: "text-violet-700 bg-violet-50 border-violet-200",
-    icon: Clock,
-  },
-  published: {
-    label: "Published",
-    className: "text-emerald-700 bg-emerald-50 border-emerald-200",
-    icon: CheckCircle2,
-  },
-  draft: {
-    label: "Draft",
-    className: "text-amber-700 bg-amber-50 border-amber-200",
-    icon: FileText,
-  },
-  publishing: {
-    label: "Publishing",
-    className: "text-sky-700 bg-sky-50 border-sky-200",
-    icon: Loader2,
-  },
-  failed: {
-    label: "Failed",
-    className: "text-red-700 bg-red-50 border-red-200",
-    icon: XCircle,
-  },
-  canceled: {
-    label: "Canceled",
-    className: "text-slate-600 bg-slate-50 border-slate-200",
-    icon: XCircle,
-  },
-};
-
-/* ──────────────────────────────────────────────────────────────────────
- * Mini inline SVG chart — no extra dependency
- * ────────────────────────────────────────────────────────────────────── */
-
-function SparkAreaChart({ data }: { data: number[] }) {
-  if (!data.length) return null;
-  const max = Math.max(...data, 1);
-  const width = 600;
-  const height = 160;
-  const padding = 24;
-  const chartW = width - padding * 2;
-  const chartH = height - padding * 2;
-  const step = chartW / (data.length - 1 || 1);
-
-  const points = data
-    .map((v, i) => {
-      const x = padding + i * step;
-      const y = padding + chartH - (v / max) * chartH;
-      return `${x},${y}`;
-    })
-    .join(" ");
-
-  const areaPath = `M${padding},${padding + chartH} L${points.split(" ").join(" L")} L${padding + chartW},${padding + chartH} Z`;
-
-  return (
-    <svg
-      viewBox={`0 0 ${width} ${height}`}
-      className="size-full w-full"
-      preserveAspectRatio="none"
-    >
-      <defs>
-        <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="currentColor" stopOpacity={0.25} />
-          <stop offset="100%" stopColor="currentColor" stopOpacity={0} />
-        </linearGradient>
-      </defs>
-      <path d={areaPath} fill="url(#areaGrad)" className="text-primary-500" />
-      <polyline
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
-        points={points}
-        className="text-primary-600"
-      />
-      {data.map((v, i) => {
-        const x = padding + i * step;
-        const y = padding + chartH - (v / max) * chartH;
-        return (
-          <circle
-            key={i}
-            cx={x}
-            cy={y}
-            r={3}
-            className="fill-white stroke-primary-600 stroke-2"
-          />
-        );
-      })}
-    </svg>
-  );
-}
-
-/* ──────────────────────────────────────────────────────────────────────
- * Sub-components
- * ────────────────────────────────────────────────────────────────────── */
-
-function PostMediaPreview({ post }: { post: ScheduledPost }) {
-  const imageUrls = post.media_image_urls;
-  const images = imageUrls?.length ? imageUrls : post.media_urls;
-  if (images.length === 0) {
-    return (
-      <div className="flex aspect-[16/9] w-full items-center justify-center rounded-2xl border border-dashed border-neutral-200 bg-neutral-50">
-        <div className="text-center">
-          <FileText className="mx-auto size-10 text-neutral-300" />
-          <p className="mt-2 text-sm text-neutral-500">Text-only post</p>
-        </div>
-      </div>
-    );
-  }
-  if (images.length === 1) {
-    return (
-      <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
-        <img
-          src={images[0]}
-          alt=""
-          className="size-full max-h-[420px] object-cover"
-        />
-      </div>
-    );
-  }
-  return (
-    <div className="grid grid-cols-2 gap-2">
-      {images.slice(0, 4).map((src, idx) => (
-        <div
-          key={idx}
-          className="overflow-hidden rounded-xl border border-neutral-200 bg-white"
-        >
-          <img src={src} alt="" className="size-full max-h-[200px] object-cover" />
-        </div>
-      ))}
-      {images.length > 4 && (
-        <div className="flex items-center justify-center rounded-xl border border-dashed border-neutral-200 bg-neutral-50 text-sm font-medium text-neutral-600">
-          +{images.length - 4} more
-        </div>
-      )}
-    </div>
-  );
-}
-
-function EngagementKPIs({ post, comments, metrics }: { post: ScheduledPost; comments: PostComment[]; metrics: MetricSnapshot[] }) {
-  const reactions = post.reactions_count ?? 0;
-  const commentCount = post.comment_count ?? comments.length;
-  const shares = metrics.filter((m) => m.metric.toLowerCase().includes("share")).reduce((s, m) => s + m.value, 0);
-  const saves = metrics.filter((m) => m.metric.toLowerCase().includes("save")).reduce((s, m) => s + m.value, 0);
-  const clicks = metrics.filter((m) => m.metric.toLowerCase().includes("click")).reduce((s, m) => s + m.value, 0);
-  const impressions = metrics.find((m) => m.metric.toLowerCase().includes("impression"))?.value ?? 0;
-  const reach = metrics.find((m) => m.metric.toLowerCase().includes("reach"))?.value ?? 0;
-  const engagementRate = impressions > 0 ? ((reactions + commentCount + shares) / impressions) * 100 : 0;
-
-  const kpis = [
-    { label: "Impressions", value: impressions.toLocaleString() },
-    { label: "Reach", value: reach.toLocaleString() },
-    { label: "Reactions", value: reactions.toLocaleString(), icon: Heart },
-    { label: "Comments", value: commentCount.toLocaleString(), icon: MessageCircle },
-    { label: "Shares", value: shares.toLocaleString() },
-    { label: "Saves", value: saves.toLocaleString() },
-    { label: "Clicks", value: clicks.toLocaleString() },
-    { label: "Engagement", value: `${engagementRate.toFixed(2)}%` },
-  ];
-
-  return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      {kpis.map((kpi) => (
-        <div
-          key={kpi.label}
-          className="rounded-xl border border-neutral-200 bg-white p-3"
-        >
-          <p className="text-xs text-neutral-500">{kpi.label}</p>
-          <div className="mt-1 flex items-center gap-1.5">
-            {kpi.icon && <kpi.icon className="size-3.5 text-neutral-400" />}
-            <p className="text-lg font-semibold text-neutral-900">{kpi.value}</p>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/**
- * A commenter's avatar, or a letter fallback.
- *
- * The picture is fetched by expanding `from{picture}` on the comment node the
- * provider is already reading, so it costs no extra API call. It exists for
- * Facebook only — Instagram exposes no profile-picture field at all, so an
- * Instagram comment always lands on the fallback.
- *
- * The letter fallback is the primary design, not an error state: a person who
- * has set no profile picture looks identical on every platform, and a broken
- * image is worse than an initial. `alt` is the author's name so a screen reader
- * announces who the comment is from rather than "image".
- */
-function CommentAvatar({
-  url,
-  name,
-  className,
-}: {
-  url?: string;
-  name: string;
-  className?: string;
-}) {
-  if (url) {
-    return (
-      <>
-        {/* Meta's lookaside URL is remote, signed and short-lived; next/image
-            would re-optimise it into our own cache, which is the local-copy
-            decision still open in reading/0-pending-decisions.md. */}
-        {/* eslint-disable-next-line @next/next/no-img-element -- see above */}
-        <img
-          src={url}
-          alt={name}
-          className={cn("shrink-0 rounded-full object-cover", className)}
-        />
-      </>
-    );
-  }
-  return (
-    <div
-      aria-hidden
-      className={cn(
-        "flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-500 to-violet-600 font-bold text-white",
-        className,
-      )}
-    >
-      {name?.charAt(0).toUpperCase() ?? "?"}
-    </div>
-  );
-}
-
-/**
- * "Comment again" on a published post, with a channel picker.
- *
- * The picker is not decoration. A post published to a Facebook Page and an
- * Instagram account has one recipient each, and the backend requires a
- * recipient — so defaulting to the first would comment on whichever network
- * happened to be listed first. With one channel there is nothing to choose and
- * the control is hidden rather than shown disabled.
- */
-function NewCommentBox({
-  recipients,
-  pageByNanoid,
-  workspaceDomain,
-  onQueued,
-}: {
-  recipients: ScheduledPost["recipients"];
-  pageByNanoid: Map<string, ManagedChannel>;
-  workspaceDomain: string;
-  onQueued: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const { brandOf } = usePlatformBrand();
-
-  const published = recipients.filter(
-    (r) => r.status === "published" && Boolean(r.external_post_id),
-  );
-
-  if (published.length === 0) {
-    /* Nothing to comment on: no channel published this post, so there is no
-       object on the platform to attach a comment to. */
-    return (
-      <p className="text-xs text-neutral-500">
-        Nothing to comment on — this post has no published channel yet.
-      </p>
-    );
-  }
-
-  if (!open) {
-    return (
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setOpen(true)}
-        className="h-8 gap-1.5 px-3 text-xs"
-      >
-        <MessageSquare className="size-3.5" />
-        Add a comment
-      </Button>
-    );
-  }
-
-  return (
-    <div className="space-y-2">
-      {published.length > 1 && (
-        <div className="flex flex-wrap gap-1.5">
-          {published.map((r) => {
-            const channel = pageByNanoid.get(r.managed_page);
-            return (
-              <span
-                key={r.nanoid}
-                className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-[11px] text-neutral-600"
-              >
-                <PlatformGlyph platform={brandOf(channel?.platform)} size="sm" />
-                {channel?.platform_name || r.managed_page_name}
-              </span>
-            );
-          })}
-        </div>
-      )}
-      <CommentComposer
-        mode="create"
-        workspace={workspaceDomain}
-        recipientNanoid={published[0].nanoid}
-        onQueued={() => {
-          setOpen(false);
-          onQueued();
-        }}
-        onCancel={() => setOpen(false)}
-      />
-      {published.length > 1 && (
-        <p className="text-[11px] text-neutral-500">
-          Commenting on{" "}
-          {pageByNanoid.get(published[0].managed_page)?.platform_name ??
-            published[0].managed_page_name}
-          . A post on several channels takes one comment at a time.
-        </p>
-      )}
-    </div>
-  );
-}
-
-function CommentsSection({
-  comments,
-  onRefresh,
-  syncing,
-  pageByNanoid,
-  workspaceDomain,
-  failed = false,
-  recipients,
-}: {
-  comments: PostComment[];
-  onRefresh: () => void;
-  syncing: boolean;
-  /** Channel lookup, so each comment's moderation resolves its own platform. */
-  pageByNanoid: Map<string, ManagedChannel>;
-  workspaceDomain: string;
-  /** The comment query itself failed — not the same as there being none. */
-  failed?: boolean;
-  /**
-   * The post's published channels, for the new-comment composer.
-   *
-   * A channel picker rather than a default because a post published to a
-   * Facebook Page and an Instagram account must be commented on deliberately —
-   * picking the first recipient would silently post to the wrong network.
-   */
-  recipients: ScheduledPost["recipients"];
-}) {
-  // Resolves a door slug (`instagramfb`) to its brand (`instagram`) so both
-  // Instagram doors wear the Instagram glyph rather than a generic fallback.
-  const { brandOf } = usePlatformBrand();
-  
-  return (
-    <div className="rounded-xl border border-neutral-200 bg-white">
-      <div className="flex items-center justify-between border-b border-neutral-100 px-5 py-3">
-        <h3 className="text-sm font-semibold text-neutral-900">Comments</h3>
-        <button
-          type="button"
-          onClick={onRefresh}
-          disabled={syncing}
-          className="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
-        >
-          <RefreshCcw className={`size-3.5 ${syncing ? "animate-spin" : ""}`} />
-          Refresh
-        </button>
-      </div>
-
-      {failed ? (
-        /* Deliberately not the empty state. A failed query rendered as "no
-           comments yet" is indistinguishable from a post nobody has commented
-           on, and it points at Sync — which re-pulls from Meta and cannot fix a
-           broken read. */
-        <div className="p-6 text-center text-sm text-neutral-500">
-          <p className="font-medium text-neutral-700">Could not load comments.</p>
-          <p className="mt-1 text-xs">
-            This is a problem reading VistaSolve, not with the post. Syncing will
-            not help — try Refresh, and contact support if it keeps failing.
-          </p>
-        </div>
-      ) : (
-        <>
-          {/* Composer first, so "comment on this post" is the obvious action
-              rather than something scrolled past. */}
-          <div className="border-b border-neutral-100 p-5">
-            <NewCommentBox
-              recipients={recipients}
-              pageByNanoid={pageByNanoid}
-              workspaceDomain={workspaceDomain}
-              onQueued={onRefresh}
-            />
-          </div>
-
-          {comments.length === 0 ? (
-            <div className="p-6 text-center text-sm text-neutral-500">
-              No comments yet.{" "}
-              <button
-                type="button"
-                onClick={onRefresh}
-                className="font-semibold text-primary-600 hover:text-primary-700"
-              >
-                Sync comments →
-              </button>
-            </div>
-          ) : (
-            <div className="max-h-[320px] space-y-4 overflow-y-auto p-5">
-              {comments.map((c) => {
-                // Resolved per comment, not per post: a post fanned out to a
-                // Facebook Page and an Instagram account has one recipient each,
-                // so reading recipients[0] would offer Edit on an IG comment,
-                // which Instagram has no operation for.
-                const channel = pageByNanoid.get(c.managed_page);
-                const platform = channel?.platform;
-                const author = commentAuthor(c);
-                return (
-                  <div key={c.nanoid} className="flex gap-3">
-                    <CommentAvatar
-                      url={author.avatarUrl}
-                      name={author.name}
-                      className="size-8 text-xs"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-semibold text-neutral-900">
-                          {author.name}
-                        </p>
-                        <span className="text-[10px] text-neutral-400">
-                          {timeAgo(c.created_at)}
-                        </span>
-                      </div>
-                      {/* Which channel this comment lives on. A post published to
-                          more than one network shows one thread of comments, and
-                          without this there is no way to tell a Facebook comment
-                          from an Instagram one — which matters most when the two
-                          need different actions, since Instagram has no comment
-                          edit at all. */}
-                      {channel && (
-                        <p className="mt-0.5 flex items-center gap-1 text-[10px] text-neutral-400">
-                          <PlatformGlyph
-                            platform={brandOf(platform)}
-                            size="sm"
-                          />
-                          <span className="truncate">
-                            {channel.platform_name || channel.page_name}
-                          </span>
-                        </p>
-                      )}
-                      <p
-                        className={
-                          c.is_hidden
-                            ? "mt-0.5 text-sm text-neutral-400 line-through"
-                            : "mt-0.5 text-sm text-neutral-700"
-                        }
-                      >
-                        {c.content}
-                      </p>
-                      {c.is_edited && (
-                        <p className="mt-0.5 text-[10px] text-neutral-400">
-                          Edited by a moderator
-                        </p>
-                      )}
-                      {c.is_private_reply && (
-                        /* A private reply is a direct message, not something the
-                           public can see. Labelling it as a normal reply would be
-                           the one thing it must never be mistaken for. */
-                        <p className="mt-0.5 text-[10px] font-medium text-neutral-500">
-                          Private reply — sent to the commenter only
-                        </p>
-                      )}
-                      <CommentModeration
-                        commentNanoid={c.nanoid}
-                        workspace={workspaceDomain}
-                        platform={platform}
-                        isHidden={Boolean(c.is_hidden)}
-                        canModerate={
-                          Boolean(c.external_comment_id) && !c.is_private_reply
-                        }
-                        isOwnComment={c.comment_type === "internal"}
-                        onChanged={onRefresh}
-                      />
-                      {c.comment_type === "audience" && !c.is_private_reply && (
-                        <CommentActions
-                          workspace={workspaceDomain}
-                          commentNanoid={c.nanoid}
-                          canReply={Boolean(c.external_comment_id)}
-                          canPrivateReply={
-                            Boolean(c.external_comment_id) &&
-                            supportsPrivateReply(brandOf(platform))
-                          }
-                          onQueued={onRefresh}
-                        />
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-function MetricChart({
-  metrics,
-  channelNames,
-  omittedChannels,
-}: {
-  metrics: MetricSnapshot[];
-  /** Channels the snapshots were summed from — the chart's actual subject. */
-  channelNames: string[];
-  /** Channels left out of the sum, due to the request ceiling. */
-  omittedChannels: number;
-}) {
-  const impressions = useMemo(
-    () =>
-      metrics
-        .filter((m) => m.metric.toLowerCase().includes("impression"))
-        .sort((a, b) => new Date(a.end_time).getTime() - new Date(b.end_time).getTime()),
-    [metrics],
-  );
-
-  const values = impressions.map((m) => m.value);
-  const scope = [
-    channelNames.join(", "),
-    omittedChannels > 0 ? `${omittedChannels} more` : "",
-  ]
-    .filter(Boolean)
-    .join(" | ");
-
-  if (!impressions.length) {
-    return (
-      <Card className="p-5">
-        <h3 className="text-sm font-semibold text-neutral-900">
-          Impressions over time
-        </h3>
-        <p className="mt-0.5 text-xs text-neutral-500">
-          Channel{channelNames.length === 1 ? "" : "s"}: {scope}
-        </p>
-        <div className="mt-3 rounded-xl border border-dashed border-neutral-200 bg-neutral-50 p-6 text-center text-sm text-neutral-500">
-          No impressions reported for these channels yet.
-        </div>
-      </Card>
-    );
-  }
-
-  return (
-    <Card className="p-5">
-      <div className="mb-1 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-neutral-900">
-          Impressions over time
-        </h3>
-        <span className="text-xs text-neutral-500">
-          {values.length} point{values.length === 1 ? "" : "s"}
-        </span>
-      </div>
-      {/* What the line is: a sum of the channels this post reached. Platforms
-          report per page per day, never per post, so this is the most specific
-          number that can be drawn. */}
-      <p className="mb-3 text-xs text-neutral-500">
-        Impressions across {scope} — page-level daily reports, not per-post
-        figures.
-      </p>
-      <div className="relative h-40 w-full">
-        <SparkAreaChart data={values} />
-      </div>
-    </Card>
-  );
-}
-
-function PostActionsMenu({
-  post,
-  onAction,
-  hasFailedRecipients,
-}: {
-  post: ScheduledPost;
-  onAction: (action: string) => void;
-  /** Whether a retry is worth offering. Driven by the recipients rather than
-   *  the post status, because a retry with nothing to retry is a 400 — and a
-   *  post can be `failed` with every channel already delivered. */
-  hasFailedRecipients: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-
-  const actions = [
-    { label: "Edit", icon: Edit3, action: "edit" },
-    { label: "Duplicate", icon: Copy, action: "duplicate" },
-    { label: "View on platform", icon: ExternalLink, action: "view" },
-    { label: "Share", icon: Share2, action: "share" },
-    post.status === "scheduled" ? { label: "Pause", icon: Pause, action: "cancel" } : null,
-    // Retry is offered only when there is genuinely something to re-attempt.
-    // A post can reach one channel and fail another, so the failed post already
-    // has a "Publish now" above — but publishing it again would re-post to the
-    // channel that worked. Retry re-attempts only the failures, so it is the
-    // action that actually helps, and it disappears once there are none left.
-    hasFailedRecipients
-      ? { label: "Retry failed channels", icon: RefreshCw, action: "retry" }
-      : null,
-    post.status === "failed" || post.status === "draft"
-      ? { label: "Publish now", icon: Send, action: "publish" }
-      : null,
-    { label: "Delete", icon: Trash2, action: "delete", danger: true },
-  ].filter(Boolean) as { label: string; icon: typeof Edit3; action: string; danger?: boolean }[];
-
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="inline-flex size-8 items-center justify-center rounded-lg border border-neutral-200 text-neutral-500 hover:bg-neutral-50"
-      >
-        <MoreVertical className="size-4" />
-      </button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-10 z-50 w-52 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-lg">
-            {actions.map((item) => (
-              <button
-                key={item.action}
-                type="button"
-                onClick={() => {
-                  setOpen(false);
-                  onAction(item.action);
-                }}
-                className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-neutral-50 ${
-                  item.danger ? "text-red-600 hover:text-red-700" : "text-neutral-700"
-                }`}
-              >
-                <item.icon className="size-4" />
-                {item.label}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-/* ──────────────────────────────────────────────────────────────────────
- * Main component
- * ────────────────────────────────────────────────────────────────────── */
-
-/** One line saying what a retry actually did, read off the post *after* it.
- *
- * A retry either lands on every failed channel or on none of them, and "the
- * button did nothing" was the only feedback available when the outcome was not
- * read back. Channels that already published are excluded from the count —
- * they were skipped, not retried. */
-function retryOutcome(post: ScheduledPost): string {
-  const failed = post.recipients.filter((r) => r.status === "failed");
-  const published = post.recipients.filter((r) => r.status === "published");
-  if (!failed.length) {
-    return published.length > 1
-      ? `Retry finished — all ${published.length} channels are published.`
-      : "Retry finished — the channel is published.";
-  }
-  return `Retry finished — ${failed.length} of ${post.recipients.length} channels still failed. See the details below.`;
-}
+import { NewCommentBox } from "./_components/new-comment-box";
+import { MetaPanel } from "./_components/meta-panel";
+import { PostActionsMenu } from "./_components/post-actions-menu";
+import { EngagementKPIs } from "./_components/engagement-kpis";
+import { MetricChart } from "./_components/metric-chart";
+import { LiveRecipients, isLiveCopy } from "./_components";
 
 interface Props {
   post: ScheduledPost;
-  comments: PostComment[];
-  /**
-   * True when the comment fetch failed rather than returned nothing.
-   *
-   * Without this the panel cannot tell an empty thread from a broken query, and
-   * both render as "No comments yet — Sync comments →", which sends the user to
-   * a button that cannot help. Defaults to false so a caller that does not care
-   * keeps the simple behaviour.
-   */
-  commentsFailed?: boolean;
   metrics: MetricSnapshot[];
-  /**
-   * Which channels the metrics above actually cover.
-   *
-   * Django's `MetricSnapshot` rows are per channel, never per post, so the
-   * numbers on this page are the sum of the channels this post reached — and a
-   * sum has to say whose numbers it is. `nanoids` empty means the post has no
-   * channel to measure, which renders no metrics section at all.
-   */
   metricsChannels?: { nanoids: string[]; omitted: number };
   workspaceDomain: string;
-  /**
-   * Managed channels, keyed by nanoid. A recipient carries only the page name,
-   * so this is the only way to reach the page's platform — and therefore the
-   * icon — for a post that targets channels on several networks.
-   */
   pages: ManagedChannel[];
 }
 
+/** Post detail page: a single parent post laid out as a feed card, with the
+ *  always-open comment thread beside the meta rail and full-width metrics below. */
 export function PostDetailClient({
   post: initialPost,
-  comments: initialComments,
-  commentsFailed: commentsFailedOnLoad = false,
   metrics,
   metricsChannels,
   workspaceDomain,
   pages,
 }: Props) {
-  const router = useRouter();
-  const basePath = `/${workspaceDomain}/dashboard/socialmanager`;
   const { brandOf } = usePlatformBrand();
-  const styleOf = usePlatformStyleResolver();
+
+  /* One lookup per name: Record for the feed components, Map for LiveRecipients. */
+  const pagesById = useMemo(() => {
+    const byId: Record<string, ManagedChannel> = {};
+    for (const page of pages) byId[page.nanoid] = page;
+    return byId;
+  }, [pages]);
+
   const pageByNanoid = useMemo(
     () => new Map(pages.map((p) => [p.nanoid, p] as const)),
     [pages],
   );
 
-  /* ── What the engagement numbers mean ──
-   * Snapshots are per channel, so the figures below are the sum of the
-   * channels this post reached — named here, because a number without whose
-   * numbers it is cannot be read. A post that reached no channel has nothing
-   * measured, and gets no metrics section rather than zeros. */
+  /* One logo per *brand* reached — three Instagram channels are one Instagram
+     icon, not three — so the strip reads as "which networks" the post went to. */
+  const brands = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          initialPost.recipients
+            .map((r) => brandOf(pagesById[r.managed_page]?.platform))
+            .filter((b): b is string => Boolean(b)),
+        ),
+      ),
+    [initialPost.recipients, pagesById, brandOf],
+  );
+
+  /* What the engagement numbers mean: snapshots are per channel. */
   const metricsScope = useMemo(() => {
     const names = (metricsChannels?.nanoids ?? []).map(
-      (nanoid) => pageByNanoid.get(nanoid)?.page_name ?? "a channel",
+      (nanoid) => pagesById[nanoid]?.page_name ?? "a channel",
     );
     return {
       names,
       omitted: metricsChannels?.omitted ?? 0,
       has: Boolean(metricsChannels?.nanoids.length),
     };
-  }, [metricsChannels, pageByNanoid]);
+  }, [metricsChannels, pagesById]);
 
   const [post, setPost] = useState<ScheduledPost>(initialPost);
-  const [comments, setComments] = useState<PostComment[]>(initialComments);
-  // Seeded from the server render, then owned by the refresh handler: a failed
-  // read must be able to *become* true after hydration too.
-  const [commentsFailed, setCommentsFailed] = useState(commentsFailedOnLoad);
-  const [syncingComments, setSyncingComments] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  /** Which delivery action is in flight. A retry that takes several seconds
-   *  (Meta's container poll can run for minutes on a video) left the button
-   *  live, and a second click ran a second publish against the same channels. */
-  const [pendingAction, setPendingAction] = useState<string | null>(null);
-
-  /** Re-read the post after a background task settles.
-   *
-   * A failed read leaves the rendered copy alone rather than clearing the
-   * card: a stale row is a smaller lie than an empty page. */
-  const refreshPost = useCallback(async () => {
-    const fresh = await getPostAction(post.nanoid, workspaceDomain);
-    if (fresh) setPost(fresh);
-  }, [post.nanoid, workspaceDomain]);
-
-  const onRefreshComments = useCallback(async () => {
-    setSyncingComments(true);
-    try {
-      // No `managed_page`. The backend walks every published recipient of the
-      // post and reads each channel with its own token, which is what we want.
-      // Passing `recipients[0].managed_page` alongside `scheduled_post` looked
-      // like it scoped the sync to one channel but is inert — the task resolves
-      // the post first and drops the page — so it only misled the next reader.
-      const res = await syncCommentsAction(
-        { scheduled_post: post.nanoid },
-        workspaceDomain,
-      );
-      if ("task_id" in res && res.task_id) {
-        await new Promise((r) => setTimeout(r, 1200));
-      }
-      const refreshed = await listPostCommentsAction(post.nanoid, workspaceDomain);
-      setComments(refreshed);
-      setCommentsFailed(false);
-    } catch {
-      // Leave the previously rendered list in place — an empty panel would claim
-      // the post has no comments, which is a different and wrong statement.
-      setCommentsFailed(true);
-    } finally {
-      setSyncingComments(false);
-    }
-  }, [post, workspaceDomain]);
-
-  // A comment that lands while this page is open arrives over the
-  // workspace's live socket. The frame only names the post, so the answer is
-  // the same list re-read the initial load and the Sync button do --
-  // deliberately not `onRefreshComments`, which asks the platform to re-pull
-  // a thread whose newest comment is already stored.
-  const onSocialFrame = useCallback(
-    (frame: SocialFrame) => {
-      if (frame.type === "comment" && frame.post_nanoid === post.nanoid) {
-        void listPostCommentsAction(post.nanoid, workspaceDomain)
-          .then((refreshed) => {
-            setComments(refreshed);
-            setCommentsFailed(false);
-          })
-          .catch(() => {
-            // Keep the last good list rather than blanking the panel.
-            setCommentsFailed(true);
-          });
-      }
-    },
-    [post.nanoid, workspaceDomain],
-  );
-  useSocialSocket(workspaceDomain, onSocialFrame);
-
-  const handleAction = useCallback(
-    async (action: string) => {
-      setError(null);
-      setNotice(null);
-      // A second delivery must never race the first: the overflow menu reaches
-      // the same handler as the button row, so the disabled attribute is not
-      // the only guard.
-      if (pendingAction !== null && (action === "retry" || action === "publish")) {
-        return;
-      }
-      if (action === "retry" || action === "publish") {
-        // A delivery action with nothing to send cannot succeed: the provider
-        // bails with "Post must have content or media" after the round trip.
-        // Say so here rather than surfacing a refusal that looks like a
-        // platform failure.
-        const hasMedia = (post.media_image_urls?.length || post.media_urls?.length || 0) > 0;
-        if (!post.content?.trim() && !hasMedia) {
-          setError("This post has no caption and no media to publish. Add one first.");
-          return;
-        }
-      }
-      setPendingAction(action);
-      try {
-        switch (action) {
-          case "edit": {
-            router.push(`${basePath}/compose?edit=${post.nanoid}`);
-            break;
-          }
-          case "duplicate": {
-            const res = await duplicatePostAction(post.nanoid, workspaceDomain);
-            if ("post" in res) {
-              // `postId` is a path segment, not a query param. Pushing it
-              // literally sent the user to a URL containing "[postId]".
-              router.push(`${basePath}/${res.post.nanoid}`);
-            }
-            break;
-          }
-          case "view": {
-            const url = post.recipients[0]?.link_url;
-            if (url) window.open(url, "_blank");
-            break;
-          }
-          case "share": {
-            await navigator.clipboard.writeText(`${window.location.origin}/${workspaceDomain}/dashboard/socialmanager/${post.nanoid}`);
-            break;
-          }
-          case "cancel": {
-            const res = await cancelPostAction(post.nanoid, workspaceDomain);
-            if ("post" in res) {
-              setPost(res.post);
-            }
-            break;
-          }
-          case "retry": {
-            const res = await retryPostAction(post.nanoid, workspaceDomain);
-            if (res.status === "success" && "post" in res) {
-              setPost(res.post);
-              setNotice(retryOutcome(res.post));
-            } else if (res.status === "error") {
-              setError(res.message || "Retry failed.");
-            }
-            break;
-          }
-          case "publish": {
-            const res = await publishPostAction(post.nanoid, workspaceDomain);
-            if (res.status === "error") {
-              setError(res.message || "Failed to publish post.");
-            } else if ("post" in res) {
-              setPost(res.post);
-            }
-            break;
-          }
-          case "delete": {
-            const res = await deletePostAction(post.nanoid, workspaceDomain);
-            if (res.status === "error") {
-              // Close first: the banner sits behind the overlay, so leaving the
-              // dialog open would hide the only place the failure appears.
-              setDeleteDialogOpen(false);
-              setError(res.message || "Failed to delete post.");
-              break;
-            }
-            if (!res.task_id) {
-              // 204 — nothing was live on the platform, so the row is already
-              // gone and there is nothing left to wait for.
-              setDeleteDialogOpen(false);
-              router.push(`${basePath}`);
-              break;
-            }
-            // 202 — the post is still on every page until the platform calls
-            // land. Navigating now would show it in the list while it is being
-            // removed, and on a refusal the row survives anyway.
-            const outcome = await waitForLiveTask(res.task_id, workspaceDomain);
-            setDeleteDialogOpen(false);
-            if (!outcome.ok) {
-              setError(outcome.failure);
-              await refreshPost();
-              break;
-            }
-            // `outcome.warnings` (a platform with no delete API) cannot be
-            // shown after this navigation, and only a provider that can
-            // publish can produce a live copy — today that is Meta alone, which
-            // implements `delete_post`. Surfacing it would mean staying on a
-            // page whose rows are already gone.
-            router.push(`${basePath}`);
-            break;
-          }
-        }
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Action failed");
-      } finally {
-        setPendingAction(null);
-      }
-    },
-    [post, workspaceDomain, router, basePath, pendingAction, refreshPost],
-  );
-
-  /** Route a menu entry: destructive ones open the dialog instead of firing.
-   *
-   * The overflow menu called `handleAction("delete")` directly, so deleting
-   * from the menu skipped the confirmation the button row requires. */
-  const requestAction = useCallback(
-    (action: string) => {
-      if (action === "delete") {
-        setDeleteDialogOpen(true);
-        return;
-      }
-      void handleAction(action);
-    },
-    [handleAction],
-  );
+  const {
+    error,
+    notice,
+    pendingAction,
+    deleteDialogOpen,
+    setDeleteDialogOpen,
+    requestAction,
+    executeAction,
+    refreshPost,
+  } = usePostActions(workspaceDomain, post, setPost);
 
   const retryCheck = retryAvailability(post);
   const retryBlockedReason = retryCheck.available ? null : retryCheck.reason;
-  /** Copies that are on a Page right now — the only rows whose fate the
-   *  delete confirmation can honestly describe, and the only ones a platform
-   *  has to be called about. */
   const liveCopies = post.recipients.filter(isLiveCopy);
-
-  const statusCfg = STATUS_STYLES[post.status] ?? STATUS_STYLES.draft;
-  const StatusIcon = statusCfg.icon;
+  const basePath = `/${workspaceDomain}/dashboard/socialmanager`;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
-      {/* ── Breadcrumb + actions ── */}
+    <div className="mx-auto max-w-5xl">
+      {/* ── Breadcrumb + overflow actions ── */}
       <div className="flex items-center justify-between">
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <Link
-            href={`${basePath}`}
+            href={basePath}
             className="inline-flex items-center gap-1 text-neutral-500 hover:text-neutral-900"
           >
             <ArrowLeft className="size-4" />
@@ -1055,9 +117,6 @@ export function PostDetailClient({
           </Link>
           <ChevronRight className="size-3.5 text-neutral-400" />
           <span className="font-medium text-neutral-900">Post detail</span>
-          {/* The way back to the timeline this post came from, with the post
-              highlighted there. Without it the feed is only reachable by retyping
-              the URL. */}
           <Link
             href={`${basePath}/feed?post=${post.nanoid}`}
             className="ml-2 inline-flex items-center gap-1 rounded-full border border-neutral-200 px-2.5 py-1 text-xs font-medium text-neutral-600 hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700"
@@ -1073,200 +132,91 @@ export function PostDetailClient({
         />
       </div>
 
+      {/* ── Status banners ── */}
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">
+        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">
           <AlertTriangle className="mr-1 inline size-4" />
           {error}
         </div>
       )}
-
       {notice && (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-700">
+        <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-700">
           <RefreshCw className="mr-1 inline size-4" />
           {notice}
         </div>
       )}
 
-      {/* ── Hero card: media + caption + meta ── */}
-      <Card className="overflow-hidden">
-        <div className="grid gap-6 p-5 sm:grid-cols-[minmax(0,1fr)_320px]">
-          {/* Left: media + caption */}
-          <div className="space-y-4">
-            <PostMediaPreview post={post} />
+      {/* ── Feed-style two-column grid ── */}
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+        {/* ── Left column: single feed card + always-open thread ── */}
+        <div className="min-w-0 space-y-4">
+          {/* The feed card — identical header / caption / media / recipients. */}
+          <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-xs sm:p-5">
+            <FeedHeader post={post} brands={brands} status={post.status} />
 
-            <div className="space-y-2">
-              <p className="whitespace-pre-wrap text-sm leading-relaxed text-neutral-900">
-                {post.content || <span className="italic text-neutral-400">No content</span>}
-              </p>
-              {post.recipients.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {post.recipients.map((r) => {
-                    // The page carries the connect door; the chip is branded with
-                    // the brand behind it. `managed_page_name` is a display label,
-                    // never a platform slug — looking an icon up by it always missed.
-                    const page = pageByNanoid.get(r.managed_page);
-                    const style = styleOf(page?.platform);
-                    return (
-                      <span
-                        key={r.nanoid}
-                        className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[10px] font-semibold ${style.bg} ${style.border} ${style.color}`}
-                      >
-                        {page?.platform ? (
-                          <PlatformGlyph platform={brandOf(page.platform)} size="sm" />
-                        ) : null}
-                        {page?.platform_name || r.managed_page_name}
-                      </span>
-                    );
-                  })}
-                </div>
-              )}
+            <div className="mt-3">
+              <CaptionWithHashtags
+                text={post.content?.trim() || "No content"}
+                className="text-sm leading-relaxed whitespace-pre-wrap break-words text-neutral-800"
+              />
+              <FeedMedia post={post} />
             </div>
+
+            {post.recipients.length > 0 && (
+              <FeedRecipientRows
+                recipients={post.recipients}
+                pagesById={pagesById}
+                workspace={workspaceDomain}
+              />
+            )}
           </div>
 
-          {/* Right: meta panel */}
-          <div className="space-y-4">
-            <div className="rounded-xl border border-neutral-200 bg-neutral-50/60 p-4">
-              <div className="flex items-center justify-between">
-                <span
-                  className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${statusCfg.className}`}
-                >
-                  <StatusIcon className={`size-3.5 ${post.status === "publishing" ? "animate-spin" : ""}`} />
-                  {statusCfg.label}
-                </span>
-                {post.synced_from_channel && (
-                  <span className="rounded-full border border-neutral-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-neutral-500">
-                    Synced
-                  </span>
-                )}
-              </div>
-
-              <div className="mt-3 space-y-2">
-                <MetaRow icon={CalendarClock} label="Scheduled" value={formatDateTime(post.scheduled_at)} />
-                {post.published_at && <MetaRow icon={Send} label="Published" value={formatDateTime(post.published_at)} />}
-                <MetaRow icon={Clock} label="Created" value={formatDateTime(post.created_at)} />
-                <MetaRow icon={Clock} label="Updated" value={formatDateTime(post.updated_at)} />
-                <MetaRow icon={ImageIcon} label="Media" value={`${(post.media_image_urls?.length || post.media_urls?.length || 0)} items`} />
-                <MetaRow icon={Users} label="Recipients" value={`${post.recipients.length} pages`} />
-              </div>
-            </div>
-
-            {/* Per-channel outcomes replace the single aggregate message.
-                A multi-channel post's `error_message` is just "One or more
-                recipients failed" — the reason a channel failed, and whether
-                another attempt helps, only exist on the recipient rows. */}
-            <div className="rounded-xl border border-neutral-200 bg-neutral-50/60 p-3">
-              <DeliveryOutcomes recipients={post.recipients} />
-              {!post.recipients.length && post.error_message && (
-                <p className="text-xs text-red-700">{post.error_message}</p>
-              )}
-              {retryBlockedReason && (
-                <p className="mt-2 flex items-start gap-1.5 text-[11px] leading-relaxed text-amber-700">
-                  <Info className="mt-0.5 size-3 shrink-0" />
-                  {retryBlockedReason}
-                </p>
-              )}
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1.5"
-                onClick={() => handleAction("edit")}
-              >
-                <Edit3 className="size-3.5" /> Edit
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1.5"
-                onClick={() => handleAction("duplicate")}
-              >
-                <Copy className="size-3.5" /> Duplicate
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1.5"
-                onClick={() => handleAction("share")}
-              >
-                <Share2 className="size-3.5" /> Share
-              </Button>
-              {post.status === "scheduled" && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5"
-                  onClick={() => handleAction("cancel")}
-                >
-                  <Pause className="size-3.5" /> Pause
-                </Button>
-              )}
-              {retryCheck.available && (
-                <Button
-                  size="sm"
-                  disabled={pendingAction !== null}
-                  className="gap-1.5 bg-gradient-to-r from-primary-600 to-violet-600 text-white hover:from-primary-500 hover:to-violet-500"
-                  onClick={() => handleAction("retry")}
-                >
-                  <RefreshCw className={`size-3.5 ${pendingAction === "retry" ? "animate-spin" : ""}`} />
-                  {pendingAction === "retry" ? "Retrying…" : "Retry failed channels"}
-                </Button>
-              )}
-              {(post.status === "failed" || post.status === "draft") && (
-                <Button
-                  size="sm"
-                  disabled={pendingAction !== null}
-                  className="gap-1.5 bg-gradient-to-r from-primary-600 to-violet-600 text-white hover:from-primary-500 hover:to-violet-500"
-                  onClick={() => handleAction("publish")}
-                >
-                  <Send className="size-3.5" /> Publish now
-                </Button>
-              )}
-              {/* Deleting a post that reached a page is not free: it has to
-                  call the platform once per page, and the copy below says so.
-                  A post with nothing live is still worth removing — the
-                  backend answers 204 for it — so the button exists for every
-                  status rather than hiding the only cleanup path for a post
-                  that failed everywhere. */}
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1.5 border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700"
-                onClick={() => setDeleteDialogOpen(true)}
-              >
-                <Trash2 className="size-3.5" /> Delete
-              </Button>
-            </div>
-          </div>
+          {/* ── Comment thread: always open, no toggle ── */}
+          <NewCommentBox
+            recipients={post.recipients}
+            pagesById={pagesById}
+            workspaceDomain={workspaceDomain}
+            onQueued={refreshPost}
+          />
+          <FeedComments
+            post={post}
+            workspace={workspaceDomain}
+            pagesById={pagesById}
+          />
         </div>
-      </Card>
 
-      {/* ── Published copies: per-page edit / delete on the live post ── */}
-      <LiveRecipients
-        recipients={post.recipients}
-        workspace={workspaceDomain}
-        pageByNanoid={pageByNanoid}
-        onChanged={refreshPost}
-      />
+        {/* ── Right rail: meta / outcomes / actions / live copies ── */}
+        <aside className="space-y-4 lg:sticky lg:top-6">
+          <MetaPanel
+            post={post}
+            recipients={post.recipients}
+            pendingAction={pendingAction}
+            retryBlockedReason={retryBlockedReason}
+            hasFailedRecipients={retryCheck.available}
+            onAction={requestAction}
+          />
 
-      {/* ── Engagement ──
-          Nothing measured means no section at all: a panel of zeros says the
-          post did badly, which is not the same statement as "no channel has
-          reported anything yet". */}
+          <LiveRecipients
+            recipients={post.recipients}
+            workspace={workspaceDomain}
+            pageByNanoid={pageByNanoid}
+            onChanged={refreshPost}
+          />
+        </aside>
+      </div>
+
+      {/* ── Metrics: full-width below the grid ── */}
       {metricsScope.has ? (
-        <>
-          <EngagementKPIs post={post} comments={comments} metrics={metrics} />
-
-          {/* ── Engagement chart ── */}
+        <div className="mt-6 space-y-6">
+          <EngagementKPIs post={post} metrics={metrics} />
           <MetricChart
             metrics={metrics}
             channelNames={metricsScope.names}
             omittedChannels={metricsScope.omitted}
           />
-        </>
+        </div>
       ) : (
-        <div className="rounded-xl border border-dashed border-neutral-200 bg-neutral-50 px-6 py-8 text-center">
+        <div className="mt-6 rounded-xl border border-dashed border-neutral-200 bg-neutral-50 px-6 py-8 text-center">
           <p className="text-sm font-medium text-neutral-700">
             No channel metrics yet
           </p>
@@ -1278,17 +228,7 @@ export function PostDetailClient({
         </div>
       )}
 
-      {/* ── Comments ── */}
-      <CommentsSection
-        comments={comments}
-        onRefresh={onRefreshComments}
-        syncing={syncingComments}
-        pageByNanoid={pageByNanoid}
-        workspaceDomain={workspaceDomain}
-        failed={commentsFailed}
-        recipients={post.recipients}
-      />
-
+      {/* ── Delete confirmation ── */}
       <ConfirmDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
@@ -1301,20 +241,8 @@ export function PostDetailClient({
         confirmLabel="Delete"
         variant="destructive"
         confirming={pendingAction === "delete"}
-        onConfirm={() => handleAction("delete")}
+        onConfirm={() => void executeAction("delete")}
       />
-    </div>
-  );
-}
-
-function MetaRow({ icon: Icon, label, value }: { icon: typeof CalendarClock; label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between gap-2">
-      <span className="flex items-center gap-1.5 text-xs text-neutral-500">
-        <Icon className="size-3.5 text-neutral-400" />
-        {label}
-      </span>
-      <span className="text-xs font-medium text-neutral-900">{value}</span>
     </div>
   );
 }

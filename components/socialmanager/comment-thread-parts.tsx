@@ -96,6 +96,7 @@ export function CommentControls({
   onChanged: () => void;
 }) {
   const channel = pageById[comment.managed_page];
+  const isOwn = comment.comment_type !== "audience";
   return (
     <>
       <CommentModeration
@@ -104,7 +105,7 @@ export function CommentControls({
         platform={channel?.platform}
         isHidden={Boolean(comment.is_hidden)}
         canModerate={Boolean(comment.external_comment_id) && !comment.is_private_reply}
-        isOwnComment
+        isOwnComment={isOwn}
         onChanged={onChanged}
       />
       {comment.comment_type === "audience" && !comment.is_private_reply && (

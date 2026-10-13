@@ -1,9 +1,15 @@
 import { requireWorkspace } from "@/lib/auth/server";
 import { requireFeature } from "@/lib/features/guard";
-import { getPost, listPages, listPostComments } from "@/lib/api";
+import { getPost, listPages } from "@/lib/api";
 import { PostDetailClient } from "./post-detail-client";
-import { loadPostMetrics, type PostMetricsResult } from "./post-metrics";
+import { loadPostMetrics } from "./post-metrics";
 
+/** Post detail page (Server Component).
+ *
+ * Renders one parent post — the master ScheduledPost — laid out as a single
+ * feed card with the always-open comment thread beside the meta panel. All
+ * post-scoped data is fetched here so the first paint ships with real content.
+ */
 export default async function PostDetailPage({
   params,
 }: {
@@ -14,32 +20,14 @@ export default async function PostDetailPage({
   await requireFeature(active, "socialmanager.posts");
   const ws = active.domain;
 
-  // Comments are fetched apart from the rest because "we could not load them" and
-  // "this post has none" must not look the same. Coalescing a failure into an
-  // empty list renders "No comments yet — Sync comments →", which points the user
-  // at a button that cannot fix a broken query.
-  const commentsRequest = listPostComments({
-    postNanoid: postId,
-    workspace: ws,
-  })
-    .then((comments) => ({ comments, failed: false }))
-    .catch(() => ({ comments: [] as Awaited<ReturnType<typeof listPostComments>>, failed: true }));
-
-  // The metrics have to follow the post: `MetricSnapshot` is keyed to a page, not
+  // The metrics have to follow the post: MetricSnapshot is keyed to a page, not
   // to a post, so the channels to ask about are only known once the post is in.
-  const [post, commentsResult, pages] = await Promise.all([
+  const [post, pages] = await Promise.all([
     getPost(postId, ws).catch(() => null),
-    commentsRequest,
-    // A post recipient carries only the page name, so the channel list is what
-    // supplies the platform behind each recipient's icon.
     listPages({ workspace: ws }).catch(() => []),
   ]);
 
-  const metrics: PostMetricsResult = post
-    ? await loadPostMetrics(post, ws)
-    : { snapshots: [], channelNanoids: [], omittedChannels: 0 };
-
-  const comments = commentsResult.comments;
+  const metrics = post ? await loadPostMetrics(post, ws) : { snapshots: [], channelNanoids: [], omittedChannels: 0 };
 
   if (!post) {
     return (
@@ -53,13 +41,8 @@ export default async function PostDetailPage({
   return (
     <PostDetailClient
       post={post}
-      comments={comments}
-      commentsFailed={commentsResult.failed}
       metrics={metrics.snapshots}
-      metricsChannels={{
-        nanoids: metrics.channelNanoids,
-        omitted: metrics.omittedChannels,
-      }}
+      metricsChannels={{ nanoids: metrics.channelNanoids, omitted: metrics.omittedChannels }}
       pages={pages}
       workspaceDomain={ws}
     />
