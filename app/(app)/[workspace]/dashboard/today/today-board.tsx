@@ -162,15 +162,19 @@ function ProjectRow({
  * Client island for the Today page. Uses `useQuery` against the same
  * queryKey the Server Component prefetched under `<HydrationBoundary>`.
  *
- * Refreshes every 60 seconds while the page is open — the original
- * Server-Component version had to be re-navigated to see new items.
+ * Refreshes every 60 seconds while the page is open and visible — the
+ * original Server-Component version had to be re-navigated to see new items.
  */
 export function TodayBoard({ workspace }: { workspace: string }) {
   const apiFetch = useApiFetch();
   const { data = EMPTY } = useQuery<TodaySummary>({
     queryKey: ["today", workspace],
     queryFn: () => fetchToday(workspace, apiFetch),
-    refetchInterval: 60_000,
+    // Paused while the tab is hidden -- a background tab's refresh costs
+    // request budget nobody is looking at. refetchOnWindowFocus (query
+    // provider default) refreshes it on return.
+    refetchInterval: () =>
+      typeof document !== "undefined" && document.hidden ? false : 60_000,
   });
 
   const overdue = data.overdue_tasks;

@@ -70,6 +70,9 @@ export async function activateAndLoginAction(
     });
   }
 
-  const user = await getAuthUser();
+  // A throttled/outage users/me (ServerUnavailableError) must not break the
+  // activation flow the user just completed -- fall back to onboarding and
+  // let the landing page load the user from the fresh session.
+  const user = await getAuthUser().catch(() => null);
   redirect(user?.redirect_url || "/onboarding");
 }

@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import { listWorkspaces } from "@/lib/api";
 import { getAuthUser } from "@/lib/auth/server";
 import { OnboardingHomeClient } from "@/components/onboarding/onboarding-home-client";
@@ -13,7 +11,9 @@ import { OnboardingHomeClient } from "@/components/onboarding/onboarding-home-cl
  */
 export default async function OnboardingHomePage() {
   const [user, workspaces] = await Promise.all([
-    getAuthUser(),
+    // A throttled/outage users/me must not crash the page: fall back to the
+    // generic greeting and let the user retry.
+    getAuthUser().catch(() => null),
     listWorkspaces().catch(() => []),
   ]);
 

@@ -7,6 +7,11 @@ import {
   clearAuthCookies as clearAuthCookiesFromStore,
   getAccessToken,
 } from "@/lib/auth/cookies";
+import { fetchDjango } from "@/lib/api/django-fetch";
+import {
+  asTransientFailure,
+  ServerUnavailableError,
+} from "@/lib/api/server-fetch-types";
 
 export interface User {
   id: number;
@@ -29,17 +34,14 @@ export interface User {
  */
 export type WorkspaceItem = Workspace;
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:8000";
-
 /**
  * Fetch the current user's workspaces once per server request.
  *
  * `requireWorkspace` is called from the `[workspace]/layout.tsx` guard and
- * from every nested layout/page, each of which previously triggered its own
- * `GET /apis/workspaces/workspaces/`. Django rate-limits authenticated users
- * (30/min), so duplicating that call per layout caused 429s during full-tree
- * revalidations (e.g. after role deletion). Wrapping in React `cache()`
- * collapses all calls in a request into a single backend fetch.
+ * from every nested layout/page. Wrapping in React `cache()` collapses all
+ * calls in a request into a single backend fetch, so a full-tree
+ * revalidation costs one `GET /apis/workspaces/workspaces/` instead of one
+ * per layout.
  */
 const getWorkspacesForUser = cache(
   async (): Promise<Workspace[]> => listWorkspaces(),
@@ -49,12 +51,24 @@ const getWorkspacesForUser = cache(
  * Get the current authenticated user from the server.
  * Reads the HttpOnly 'access' cookie and validates it against Django.
  *
- * Returns null when there is no cookie, when the token has expired, or when
- * Django rejects it. It deliberately does **not** try to refresh: see the long
- * note on `serverFetch` in `lib/api/server-fetch.ts` for why a refresh inside
- * a page render cannot work (Next seals `cookies()` outside the action phase)
- * and why attempting one from several places at once races Django's
- * refresh-token rotation. The proxy's `GET /api/auth/check` hop owns refresh.
+ * Returns null ONLY for a definitive "no session" answer: no `access`
+ * cookie, or Django rejecting the token (401/403). It deliberately does
+ * **not** try to refresh: see the long note on `serverFetch` in
+ * `lib/api/server-fetch.ts` for why a refresh inside a page render cannot
+ * work (Next seals `cookies()` outside the action phase) and why attempting
+ * one from several places at once races Django's refresh-token rotation.
+ * The proxy's `GET /api/auth/check` hop owns refresh.
+ *
+ * ## Why 429 and 5xx are special
+ *
+ * Django's rate limiter answers `429 Too Many Requests` when the per-user
+ * bucket (shared across every endpoint) drains under the app's normal
+ * fan-out. That sentence means "slow down", NOT "you are not logged in" --
+ * the token may be perfectly valid. Reading a 429 as "no user" here is
+ * what used to `redirect("/login")` an active user out of their session.
+ * Transient answers are therefore retried (`Retry-After` honored), and if
+ * they persist this throws {@link ServerUnavailableError} so a retry
+ * boundary can render instead of the cookies being doubted.
  */
 export const getAuthUser = cache(async (): Promise<User | null> => {
   const accessToken = await getAccessToken();
@@ -63,29 +77,30 @@ export const getAuthUser = cache(async (): Promise<User | null> => {
     return null;
   }
 
-  try {
-    const response = await fetch(`${BACKEND_URL}/apis/auth/users/me/`, {
-      headers: {
-        Cookie: `access=${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      cache: "no-store",
-    });
+  const response = await fetchDjango("/apis/auth/users/me/", {
+    cookie: `access=${accessToken}`,
+  });
 
-    if (!response.ok) {
-      return null;
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error("Failed to fetch auth user:", error);
+  // Definitive "no session": Django rejected the token itself.
+  if (response.status === 401 || response.status === 403) {
     return null;
   }
+
+  if (response.ok) {
+    return (await response.json()) as User;
+  }
+
+  // A 429/5xx that survived every retry. Not a logout signal.
+  throw new ServerUnavailableError(response.status, "/apis/auth/users/me/");
 });
 
 /**
  * Require authentication. Redirects to /login if not authenticated.
  * Use in Server Components that need auth protection.
+ *
+ * Only a definitive "no session" (`getAuthUser()` → null) redirects. A
+ * transient Django outage/rate-limit throws {@link ServerUnavailableError}
+ * instead -- bouncing to /login there would clear a valid session.
  */
 export async function requireAuth(): Promise<User> {
   const user = await getAuthUser();
@@ -121,8 +136,14 @@ export async function requireWorkspace(
 
   let workspaces: Workspace[];
   try {
-    workspaces = preloadedWorkspaces ?? await getWorkspacesForUser();
+    workspaces = preloadedWorkspaces ?? (await getWorkspacesForUser());
   } catch (error) {
+    // A throttled/broken Django is NOT "this user has no workspaces".
+    // Redirecting to /onboarding on a 429 sent active, fully-provisioned
+    // users to the "create a business" page for no reason. Surface it to
+    // the retry boundary instead.
+    const failure = asTransientFailure(error);
+    if (failure !== error) throw failure;
     console.error("Failed to load workspaces for requireWorkspace:", error);
     redirect("/onboarding");
   }

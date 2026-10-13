@@ -31,7 +31,15 @@ export function useInboxUnread(
   const { data } = useQuery<SocialInboxSummary>({
     queryKey: inboxSummaryKey(workspace),
     queryFn: () => fetchSummary(workspace, apiFetch),
-    refetchInterval: poll ? POLL_INTERVAL_MS : false,
+    // Paused while the tab is hidden: a background tab's polling is pure
+    // request-budget cost with nobody reading the badge. refetchOnWindowFocus
+    // refreshes it the moment the user actually comes back.
+    refetchInterval: poll
+      ? () =>
+          typeof document !== "undefined" && document.hidden
+            ? false
+            : POLL_INTERVAL_MS
+      : false,
     refetchOnWindowFocus: true,
   });
 

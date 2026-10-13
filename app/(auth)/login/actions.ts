@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { getAuthUser } from "@/lib/auth/server";
 import { listWorkspaces } from "@/lib/api";
+import { ServerUnavailableError } from "@/lib/api/server-fetch-types";
 import type { AuthActionState } from "@/lib/auth/action-state";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:8000";
@@ -66,8 +67,20 @@ export async function loginAction(
 
   await forwardAuthCookies(response);
 
-  const user = await getAuthUser();
-  if (!user) {
+  // Django just issued fresh cookies, so a throttled users/me here (429/5xx
+  // surviving retries) must not fail a login that actually succeeded. Treat
+  // it as "user unknown, but signed in" and continue to the default
+  // destination -- the landing page re-loads the user from the fresh
+  // session anyway.
+  let user: Awaited<ReturnType<typeof getAuthUser>> = null;
+  let throttledAfterLogin = false;
+  try {
+    user = await getAuthUser();
+  } catch (error) {
+    if (!(error instanceof ServerUnavailableError)) throw error;
+    throttledAfterLogin = true;
+  }
+  if (!user && !throttledAfterLogin) {
     return {
       status: "error",
       message: "Signed in, but we could not load your account. Please try again.",
@@ -100,7 +113,9 @@ export async function loginAction(
     }
   }
 
-  redirect(user.redirect_url || "/onboarding");
+  // `user` is null only when the post-login users/me was throttled -- the
+  // session itself is fine, so the default destination is correct.
+  redirect(user?.redirect_url || "/onboarding");
 }
 
 /**

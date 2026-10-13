@@ -2,6 +2,7 @@
 
 import { cookies } from "next/headers";
 import { ServerFetchError, type RequestOptions, type MutateOptions } from "./server-fetch-types";
+import { fetchRetrying } from "./django-fetch";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:8000";
 
@@ -37,6 +38,19 @@ const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:8000";
  * (`proxy.ts` → `GET /api/auth/check`, a Route Handler where cookies *are*
  * mutable). By the time any page or handler renders, the browser already
  * holds a fresh `access` cookie.
+ *
+ * ## Why every call retries 429s
+ *
+ * Django's per-user throttle bucket is shared across all endpoints, and a
+ * single page render fires ~6 authenticated calls at it. A drained bucket
+ * answers `429` with a `Retry-After` of a second or two -- a blip, not a
+ * verdict. Callers used to turn that blip into `ServerFetchError(429)` and
+ * then into a redirect (to `/login`, to `/onboarding`, to an empty list),
+ * so one busy second could bounce an active user out of the app. The retry
+ * lives here, at the base, because every `lib/api/*` wrapper inherits it:
+ * one well-aimed retry absorbs the blip for all of them. 502/503/504 are
+ * retried too (never reached Django); a 500 is not (the handler may have
+ * applied a mutation).
  */
 export async function serverFetch<T>(
   path: string,
@@ -65,7 +79,7 @@ export async function serverFetch<T>(
     headers["X-Workspace"] = options.workspace;
   }
 
-  const response = await fetch(`${BACKEND_URL}${path}`, {
+  const response = await fetchRetrying(`${BACKEND_URL}${path}`, {
     method: options.method || "GET",
     headers,
     body: options.body ? JSON.stringify(options.body) : undefined,
@@ -125,7 +139,7 @@ export async function serverMutate<T>(
     headers["X-Workspace"] = options.workspace;
   }
 
-  const response = await fetch(`${BACKEND_URL}${path}`, {
+  const response = await fetchRetrying(`${BACKEND_URL}${path}`, {
     method,
     headers,
     body: JSON.stringify(options.body),

@@ -229,6 +229,8 @@ export async function redeemInviteAction(
  * resume.
  */
 export async function skipOnboardingAction(): Promise<void> {
-  const user = await getAuthUser();
+  // A throttled/outage users/me must not break the action: the default
+  // destination is the honest answer when the user cannot be loaded.
+  const user = await getAuthUser().catch(() => null);
   redirect(user?.redirect_url || "/onboarding");
 }

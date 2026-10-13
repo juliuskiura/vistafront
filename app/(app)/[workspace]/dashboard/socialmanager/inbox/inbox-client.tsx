@@ -93,7 +93,16 @@ export function InboxClient({ workspace }: { workspace: string }) {
     // row being stored, so the poll drops to its slow backstop pace.
     // Disconnected: the poll is the only path there is, so it keeps the
     // 30-second cadence. Either way the list never goes quiet.
-    refetchInterval: socketLive ? BACKSTOP_POLL_MS : POLL_INTERVAL_MS,
+    // A hidden tab pauses the interval -- polling a document nobody is
+    // looking at is pure rate-limit budget with zero user value (and every
+    // request lands in Django's shared per-user bucket). Returning to the
+    // tab resumes immediately via refetchOnWindowFocus.
+    refetchInterval: () =>
+      typeof document !== "undefined" && document.hidden
+        ? false
+        : socketLive
+          ? BACKSTOP_POLL_MS
+          : POLL_INTERVAL_MS,
     refetchOnWindowFocus: true,
   });
 

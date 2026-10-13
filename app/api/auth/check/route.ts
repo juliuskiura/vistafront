@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { listWorkspaces } from "@/lib/api";
 import { redirectTo } from "@/lib/redirect.server";
+import { fetchDjango } from "@/lib/api/django-fetch";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:8000";
 
@@ -32,6 +33,129 @@ async function isValidWorkspaceDestination(destination: string): Promise<boolean
 }
 
 /**
+ * What Django's answer actually said about a token.
+ *
+ * - `"valid"` -- Django recognized the token (200).
+ * - `"invalid"` -- Django definitively rejected it (401/403).
+ * - `"unknown"` -- Django was busy (429) or broken (5xx). This says NOTHING
+ *   about the session, and must never be read as a logout signal.
+ */
+type VerifyResult = "valid" | "invalid" | "unknown";
+
+/**
+ * Verify an access token against Django, retrying transient answers.
+ *
+ * `fetchDjango` already rides out 429/5xx (honoring `Retry-After`), so an
+ * `"unknown"` here means the blip outlasted the retries -- Django is still
+ * saying "slow down", which is not evidence of a dead session.
+ */
+async function verify(token: string): Promise<VerifyResult> {
+  try {
+    const me = await fetchDjango("/apis/auth/users/me/", {
+      cookie: `access=${token}`,
+    });
+    if (me.ok) return "valid";
+    if (me.status === 429 || me.status >= 500) return "unknown";
+    return "invalid";
+  } catch {
+    return "unknown";
+  }
+}
+
+type RefreshOutcome =
+  | { ok: true; access?: string; rotated: Array<{ name: string; value: string }> }
+  | { ok: false; status: number };
+
+/**
+ * In-process refresh de-duplication.
+ *
+ * A single page load rewrites to this handler several times (document + RSC
+ * + a second tab), each carrying the SAME `refresh` cookie. Django rotates
+ * and blacklists refresh tokens, so without this every duplicate POST would
+ * replay a token the first POST just blacklisted and come back
+ * `401 token_blacklisted` -- which reads as "session dead". The Django side
+ * single-flights the same race across its 4 uvicorn workers via Redis
+ * (see `core/single_flight.py`); this map covers this Next process.
+ *
+ * Settled results are held briefly (not deleted immediately) so a late
+ * arrival still holding the pre-rotation cookie gets the same rotated
+ * tokens instead of a 401.
+ */
+const inFlightRefreshes = new Map<string, Promise<RefreshOutcome>>();
+const REFRESH_RESULT_TTL_MS = 10_000;
+
+function refreshOnce(refresh: string): Promise<RefreshOutcome> {
+  const existing = inFlightRefreshes.get(refresh);
+  if (existing) return existing;
+
+  const promise = (async (): Promise<RefreshOutcome> => {
+    try {
+      const rf = await fetch(`${BACKEND_URL}/apis/auth/jwt/refresh/`, {
+        method: "POST",
+        headers: {
+          Cookie: `refresh=${refresh}`,
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+      });
+
+      if (!rf.ok) {
+        return { ok: false, status: rf.status };
+      }
+
+      // Token from the JSON body (normal SimpleJWT refresh), or from the
+      // rotated Set-Cookie headers when Django answers 204 (bodyless).
+      const data = (await rf.json().catch(() => null)) as {
+        access?: string;
+      } | null;
+      let newAccess = data?.access;
+      const rotated: Array<{ name: string; value: string }> = [];
+      if (!newAccess) {
+        for (const raw of rf.headers.getSetCookie()) {
+          const [pair] = raw.split("; ");
+          const eq = pair.indexOf("=");
+          if (eq <= 0) continue;
+          const name = pair.slice(0, eq);
+          if (name !== "access" && name !== "refresh") continue;
+          const value = pair.slice(eq + 1);
+          if (name === "access") newAccess = value;
+          rotated.push({ name, value });
+        }
+      }
+
+      return { ok: true, access: newAccess, rotated };
+    } catch {
+      return { ok: false, status: 0 };
+    }
+  })();
+
+  inFlightRefreshes.set(refresh, promise);
+  void promise.then(() => {
+    const timer = setTimeout(
+      () => inFlightRefreshes.delete(refresh),
+      REFRESH_RESULT_TTL_MS,
+    );
+    // Do not keep the event loop alive just for cleanup.
+    (timer as unknown as { unref?: () => void }).unref?.();
+  });
+
+  return promise;
+}
+
+/**
+ * Definitive "session is dead": Django rejected both the access and the
+ * refresh token. THIS is the only path that clears cookies -- a 429/5xx
+ * never reaches it.
+ */
+function deadSessionResponse(): ReturnType<typeof redirectTo> {
+  const res = redirectTo("/login");
+  res.cookies.delete("access");
+  res.cookies.delete("refresh");
+  res.cookies.delete("auth_next_url");
+  return res;
+}
+
+/**
  * GET /api/auth/check
  *
  * Loop-breaker + session validator. The proxy cannot call Django (edge
@@ -60,97 +184,107 @@ async function isValidWorkspaceDestination(destination: string): Promise<boolean
  * Every `Location` below is a relative path (see `redirectTo`), so the browser
  * resolves it against app.vistasolve.net and can never be bounced to
  * localhost:3000 by a loopback `req.url`.
+ *
+ * ## What counts as a dead session
+ *
+ * ONLY a definitive Django rejection of both tokens (401/403 on the access
+ * token AND on the refresh). A 429 ("slow down") or 5xx ("Django is broken")
+ * is not evidence of anything: an active user whose request bucket drained
+ * must be sent on to the destination page, where the guarded render retries
+ * and decides. Clearing cookies on a throttle blip is exactly the bug this
+ * handler exists to fix.
  */
 export async function GET(req: NextRequest) {
   const access = req.cookies.get("access")?.value;
   const refresh = req.cookies.get("refresh")?.value;
   const destination = destinationFor(req);
 
-  // Verify an access token against Django. Returns the token string to use,
-  // or null if the provided token is not usable.
-  async function verify(token: string): Promise<boolean> {
-    try {
-      const me = await fetch(`${BACKEND_URL}/apis/auth/users/me/`, {
-        headers: { Cookie: `access=${token}` },
-        cache: "no-store",
-      });
-      return me.ok;
-    } catch {
-      return false;
-    }
-  }
+  // Send the user on to the destination, installing any freshly rotated
+  // cookies on the way out.
+  const onward = (rotated: Array<{ name: string; value: string }> = []) =>
+    buildOnward(destination, rotated);
 
   // 1. Access token present → verify it against Django.
-  if (access && (await verify(access))) {
-    const validDestination = await isValidWorkspaceDestination(destination);
-    const redirectUrl = validDestination ? destination : "/dashboard";
-    const res = redirectTo(redirectUrl);
-    res.cookies.delete("auth_next_url");
-    return res;
+  if (access) {
+    const verdict = await verify(access);
+
+    if (verdict === "valid") {
+      return onward();
+    }
+
+    // "unknown" means throttled/broken, not rejected. The proxy already
+    // validated the token's exp client-side, so treat it as usable and let
+    // the destination page (which retries transient answers) make the final
+    // call. Destroying the session here would be the bug.
+    if (verdict === "unknown") {
+      return onward();
+    }
+
+    // "invalid": fall through to the refresh attempt below.
   }
 
   // 2. Access missing or invalid → try to refresh with the refresh cookie.
   if (refresh) {
-    try {
-      const rf = await fetch(`${BACKEND_URL}/apis/auth/jwt/refresh/`, {
-        method: "POST",
-        headers: {
-          Cookie: `refresh=${refresh}`,
-          "Content-Type": "application/json",
-        },
-        cache: "no-store",
-      });
+    const outcome = await refreshOnce(refresh);
 
-      if (rf.ok) {
-        const data = (await rf.json().catch(() => null)) as {
-          access?: string;
-        } | null;
+    if (outcome.ok) {
+      if (outcome.access) {
+        // Re-validate the FRESH token before trusting the session. This
+        // breaks the loop for blacklisted/banned accounts whose refresh
+        // token is still technically valid: they get logged out instead of
+        // ping-ponging between /dashboard and /login forever.
+        const verdict = await verify(outcome.access);
 
-        // Token from the JSON body (normal SimpleJWT refresh), or from the
-        // rotated Set-Cookie headers when Django answers 204 (bodyless).
-        let newAccess = data?.access;
-        const rotated: Array<{ name: string; value: string }> = [];
-        if (!newAccess) {
-          for (const raw of rf.headers.getSetCookie()) {
-            const [pair] = raw.split("; ");
-            const eq = pair.indexOf("=");
-            if (eq <= 0) continue;
-            const name = pair.slice(0, eq);
-            if (name !== "access" && name !== "refresh") continue;
-            const value = pair.slice(eq + 1);
-            if (name === "access") newAccess = value;
-            rotated.push({ name, value });
-          }
+        // "unknown" (throttled re-verify) is not "invalid": the 204 refresh
+        // already proved the session is alive, so install the fresh cookies
+        // and continue.
+        if (verdict !== "invalid") {
+          return onward(outcome.rotated);
         }
 
-        if (newAccess) {
-          // Re-validate the FRESH token before trusting the session. This
-          // breaks the loop for blacklisted/banned accounts whose refresh
-          // token is still technically valid: they get logged out instead of
-          // ping-ponging between /dashboard and /login forever.
-          if (await verify(newAccess)) {
-            const validDestination = await isValidWorkspaceDestination(destination);
-            const redirectUrl = validDestination ? destination : "/dashboard";
-            const res = redirectTo(redirectUrl);
-            res.cookies.delete("auth_next_url");
-            res.cookies.set("access", newAccess, authCookieOptions());
-            for (const { name, value } of rotated) {
-              res.cookies.set(name, value, authCookieOptions());
-            }
-            return res;
-          }
-        }
+        return deadSessionResponse();
       }
-    } catch {
-      // Refresh also failed — treated as a dead session below.
+
+      // Refreshed successfully but no parsable access cookie (logout
+      // blacklist edge): don't destroy anything -- the destination page
+      // re-checks with the old cookie and decides.
+      return onward();
     }
+
+    // Refresh failed. A definitive rejection (401/403/400) means the token
+    // is dead/blacklisted: clear the cookies so the loop terminates.
+    if (outcome.status !== 429 && outcome.status < 500 && outcome.status !== 0) {
+      return deadSessionResponse();
+    }
+
+    // Transient failure (throttled or Django down): the session may still
+    // be perfectly valid. Never clear cookies. If we still hold an access
+    // cookie, send the user on (the page re-verifies); otherwise the login
+    // page is the honest destination.
+    if (access) {
+      return onward();
+    }
+    return redirectTo("/login");
   }
 
-  // 3. Session is dead — clear the stale cookies so the proxy stops
-  //    treating the user as authenticated, then go to /login.
-  const res = redirectTo("/login");
-  res.cookies.delete("access");
-  res.cookies.delete("refresh");
+  // 3. No usable tokens at all → dead session.
+  return deadSessionResponse();
+}
+
+/**
+ * 307 to the destination (falling back to /dashboard when the workspace
+ * slug is unknown) with the rotated auth cookies installed.
+ */
+async function buildOnward(
+  destination: string,
+  rotated: Array<{ name: string; value: string }>,
+) {
+  const validDestination = await isValidWorkspaceDestination(destination);
+  const redirectUrl = validDestination ? destination : "/dashboard";
+  const res = redirectTo(redirectUrl);
   res.cookies.delete("auth_next_url");
+  for (const { name, value } of rotated) {
+    res.cookies.set(name, value, authCookieOptions());
+  }
   return res;
 }
