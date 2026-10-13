@@ -1,5 +1,4 @@
 import type { NextRequest } from "next/server";
-import { listWorkspaces } from "@/lib/api";
 import { redirectTo } from "@/lib/redirect.server";
 import { fetchDjango } from "@/lib/api/django-fetch";
 
@@ -15,20 +14,21 @@ function authCookieOptions() {
 }
 
 function destinationFor(req: NextRequest): string {
-  const nextUrl = req.cookies.get("auth_next_url")?.value;
-  return nextUrl && nextUrl.startsWith("/") && !nextUrl.startsWith("//")
-    ? nextUrl
-    : "/dashboard";
-}
+  const destination = req.cookies.get("auth_next_url")?.value;
+  if (
+    !destination ||
+    !destination.startsWith("/") ||
+    destination.startsWith("//")
+  ) {
+    return "/dashboard";
+  }
 
-async function isValidWorkspaceDestination(destination: string): Promise<boolean> {
-  const pathSegment = destination.split("/").filter(Boolean)[0]?.toLowerCase();
-  if (!pathSegment) return true; // Non-workspace paths are always valid
   try {
-    const workspaces = await listWorkspaces();
-    return workspaces.some((ws) => ws.domain.toLowerCase() === pathSegment);
+    const parsed = new URL(destination, "https://vistafront.invalid");
+    if (parsed.origin !== "https://vistafront.invalid") return "/dashboard";
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
   } catch {
-    return false;
+    return "/dashboard";
   }
 }
 
@@ -272,16 +272,14 @@ export async function GET(req: NextRequest) {
 }
 
 /**
- * 307 to the destination (falling back to /dashboard when the workspace
- * slug is unknown) with the rotated auth cookies installed.
+ * 307 to the already-sanitized same-origin destination and install any rotated
+ * auth cookies. The destination's own server guard validates workspace access.
  */
-async function buildOnward(
+function buildOnward(
   destination: string,
   rotated: Array<{ name: string; value: string }>,
 ) {
-  const validDestination = await isValidWorkspaceDestination(destination);
-  const redirectUrl = validDestination ? destination : "/dashboard";
-  const res = redirectTo(redirectUrl);
+  const res = redirectTo(destination);
   res.cookies.delete("auth_next_url");
   for (const { name, value } of rotated) {
     res.cookies.set(name, value, authCookieOptions());

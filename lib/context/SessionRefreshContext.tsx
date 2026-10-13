@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
@@ -36,6 +37,8 @@ import {
 
 type SessionRefresh = SessionRecovery;
 
+const REFRESH_COOLDOWN_MS = 10_000;
+
 const SessionRefreshContext = createContext<SessionRefresh>(() => {});
 
 export function SessionRefreshProvider({
@@ -44,15 +47,23 @@ export function SessionRefreshProvider({
   children: ReactNode;
 }) {
   const router = useRouter();
+  const lastRefreshAt = useRef<number | null>(null);
 
   /**
-   * `router.refresh()` re-requests the current page from the server. That
-   * request passes through `proxy.ts`, which is what makes it a *refresh
-   * request*: the proxy sees the expired `access` cookie, rewrites to
-   * `/api/auth/check`, and that Route Handler performs the one and only JWT
-   * refresh before the page re-renders.
+   * Several queries can receive the same expired-session response at once.
+   * Only one page refresh is needed to run the proxy refresh hop; parallel
+   * refreshes can race Django's one-time refresh-token rotation.
    */
   const refresh = useCallback(() => {
+    const now = Date.now();
+    if (
+      lastRefreshAt.current !== null &&
+      now - lastRefreshAt.current < REFRESH_COOLDOWN_MS
+    ) {
+      return;
+    }
+
+    lastRefreshAt.current = now;
     router.refresh();
   }, [router]);
 

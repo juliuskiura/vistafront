@@ -1,10 +1,117 @@
 "use server";
 
+import { createHash } from "node:crypto";
 import { cookies } from "next/headers";
-import { ServerFetchError, type RequestOptions, type MutateOptions } from "./server-fetch-types";
+import {
+  ServerFetchError,
+  ServerUnavailableError,
+  type RequestOptions,
+  type MutateOptions,
+} from "./server-fetch-types";
 import { fetchRetrying } from "./django-fetch";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:8000";
+const WORKSPACE_LIST_PATH = "/apis/workspaces/workspaces/";
+const WORKSPACE_LIST_CACHE_TTL_MS = 15_000;
+const WORKSPACE_LIST_STALE_TTL_MS = 60_000;
+const WORKSPACE_LIST_RETRY_COOLDOWN_MS = 5_000;
+const WORKSPACE_LIST_CACHE_MAX_ENTRIES = 1_000;
+
+type WorkspaceListCacheEntry = {
+  expiresAt: number;
+  staleUntil: number;
+  value: unknown;
+};
+
+const workspaceListCache = new Map<string, WorkspaceListCacheEntry>();
+const workspaceListRequests = new Map<string, Promise<unknown>>();
+let workspaceListCacheVersion = 0;
+
+function invalidateWorkspaceListCache(): void {
+  workspaceListCacheVersion += 1;
+  workspaceListCache.clear();
+  workspaceListRequests.clear();
+}
+
+function changesWorkspaceMembership(path: string): boolean {
+  return (
+    path === WORKSPACE_LIST_PATH ||
+    /^\/apis\/workspaces\/workspaces\/[^/]+\/(?:leave\/)?$/.test(path) ||
+    path === "/apis/workspaces/invitations/redeem/"
+  );
+}
+
+function isTransientWorkspaceFailure(error: unknown): boolean {
+  return (
+    error instanceof ServerUnavailableError ||
+    (error instanceof ServerFetchError &&
+      (error.status === 429 || error.status >= 500))
+  );
+}
+
+async function getWorkspaceList<T>(
+  accessToken: string,
+  load: () => Promise<T>,
+): Promise<T> {
+  const key = createHash("sha256").update(accessToken).digest("hex");
+  const cached = workspaceListCache.get(key);
+  const now = Date.now();
+  if (cached?.staleUntil !== undefined && cached.staleUntil <= now) {
+    workspaceListCache.delete(key);
+  } else if (cached && cached.expiresAt > now) {
+    return cached.value as T;
+  }
+  const stale = cached && cached.staleUntil > now ? cached : undefined;
+
+  const existing = workspaceListRequests.get(key);
+  if (existing) return existing as Promise<T>;
+
+  const version = workspaceListCacheVersion;
+  const request = load()
+    .then((value) => {
+      if (version === workspaceListCacheVersion) {
+        const now = Date.now();
+        workspaceListCache.delete(key);
+        for (const [cachedKey, entry] of workspaceListCache) {
+          if (entry.staleUntil <= now) workspaceListCache.delete(cachedKey);
+        }
+        while (workspaceListCache.size >= WORKSPACE_LIST_CACHE_MAX_ENTRIES) {
+          const oldestKey = workspaceListCache.keys().next().value;
+          if (oldestKey === undefined) break;
+          workspaceListCache.delete(oldestKey);
+        }
+        workspaceListCache.set(key, {
+          expiresAt: now + WORKSPACE_LIST_CACHE_TTL_MS,
+          staleUntil: now + WORKSPACE_LIST_STALE_TTL_MS,
+          value,
+        });
+      }
+      return value;
+    })
+    .catch((error: unknown) => {
+      if (
+        version === workspaceListCacheVersion &&
+        stale &&
+        stale.staleUntil > Date.now() &&
+        isTransientWorkspaceFailure(error)
+      ) {
+        stale.expiresAt = Math.min(
+          stale.staleUntil,
+          Date.now() + WORKSPACE_LIST_RETRY_COOLDOWN_MS,
+        );
+        return stale.value as T;
+      }
+      throw error;
+    })
+    .finally(() => {
+      if (workspaceListRequests.get(key) === request) {
+        workspaceListRequests.delete(key);
+      }
+    });
+
+  workspaceListRequests.set(key, request);
+  return request;
+}
 
 /**
  * Server-side fetch utility that forwards auth cookies to Django backend.
@@ -79,23 +186,32 @@ export async function serverFetch<T>(
     headers["X-Workspace"] = options.workspace;
   }
 
-  const response = await fetchRetrying(`${BACKEND_URL}${path}`, {
-    method: options.method || "GET",
-    headers,
-    body: options.body ? JSON.stringify(options.body) : undefined,
-    cache: options.cache ?? "no-store",
-    next: options.next,
-  });
+  const load = async (): Promise<T> => {
+    const response = await fetchRetrying(`${BACKEND_URL}${path}`, {
+      method: options.method || "GET",
+      headers,
+      body: options.body ? JSON.stringify(options.body) : undefined,
+      cache: options.cache ?? "no-store",
+      next: options.next,
+    });
 
-  if (!response.ok) {
-    throw new ServerFetchError(response.status, await response.text(), path);
+    if (!response.ok) {
+      throw new ServerFetchError(response.status, await response.text(), path);
+    }
+
+    if (response.status === 204) {
+      return {} as T;
+    }
+
+    return (await response.json()) as T;
+  };
+
+  if (path === WORKSPACE_LIST_PATH && (options.method ?? "GET") === "GET") {
+    const accessValue = accessToken?.value;
+    if (accessValue) return getWorkspaceList(accessValue, load);
   }
 
-  if (response.status === 204) {
-    return {} as T;
-  }
-
-  return (await response.json()) as T;
+  return load();
 }
 
 /**
@@ -148,6 +264,10 @@ export async function serverMutate<T>(
 
   if (!response.ok) {
     throw new ServerFetchError(response.status, await response.text(), path);
+  }
+
+  if (changesWorkspaceMembership(path)) {
+    invalidateWorkspaceListCache();
   }
 
   if (response.status === 204) {
