@@ -154,6 +154,7 @@ export function FeedFilterBar({
                   <PlatformGlyph
                     platform={brandOf(chip.platform)}
                     size="sm"
+                    solid
                     className={cn("shrink-0", style.color)}
                   />
                 }

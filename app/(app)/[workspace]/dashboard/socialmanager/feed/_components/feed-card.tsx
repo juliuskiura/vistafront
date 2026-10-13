@@ -6,7 +6,6 @@ import type { ManagedChannel, ScheduledPost } from "@/lib/api/types";
 import { Heart, MessageCircle } from "@/lib/icons";
 import { STATUS_STYLES } from "@/components/socialmanager/platform-gradients";
 import { PlatformGlyph } from "@/components/platform-icon";
-import { ChannelAvatar } from "@/components/socialmanager/channel-avatar";
 import { usePlatformBrand } from "@/lib/social/platform-brand-context";
 import { formatMediumDateTime } from "@/lib/dates";
 import { cn } from "@/lib/utils";
@@ -50,6 +49,16 @@ export function FeedCard({
   const primaryBrand = brandOf(primaryPage?.platform);
   const detailHref = `/${workspaceSlug}/dashboard/socialmanager/${post.nanoid}`;
 
+  // One logo per *brand* reached — three Instagram channels are one Instagram
+  // icon, not three — so the strip reads as "which networks" the post went to.
+  const brands = Array.from(
+    new Set(
+      post.recipients
+        .map((r) => brandOf(pagesById[r.managed_page]?.platform))
+        .filter((b): b is string => Boolean(b)),
+    ),
+  );
+
   return (
     <li
       id={`post-${post.nanoid}`}
@@ -64,32 +73,32 @@ export function FeedCard({
         href={detailHref}
         className="absolute inset-0 rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
       >
-        <span className="sr-only">
-          Open {primary?.managed_page_name ?? "post"} in detail
-        </span>
+        <span className="sr-only">Open post in detail</span>
       </Link>
 
       <div className="relative flex items-start gap-3">
-        <ChannelAvatar
-          nanoid={primaryPage?.nanoid ?? primary?.nanoid ?? post.nanoid}
-          pictureUrl={primaryPage?.profile_picture_url ?? ""}
-          workspace={workspace}
-          alt={primary?.managed_page_name ?? ""}
-          className="size-11 rounded-full object-cover ring-1 ring-black/5"
-          fallback={
-            <span className="flex size-11 items-center justify-center rounded-full bg-neutral-100 text-sm font-bold text-neutral-500 ring-1 ring-black/5">
-              {(primary?.managed_page_name ?? "?").slice(0, 1).toUpperCase()}
-            </span>
-          }
-        />
+        {/* The parent post wears the Vistasolve mark, not a channel avatar: the
+            card is the master post, and the per-channel copies live below in the
+            recipients accordion. */}
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-black/5">
+          <img src="/icon.svg" alt="Vistasolve" className="size-7 object-contain" />
+        </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-neutral-900">
-            {primary?.managed_page_name || "No channel"}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="truncate text-sm font-semibold text-neutral-900">
+              Vistasolve
+            </p>
+            {post.recipients.length > 1 && (
+              <span className="shrink-0 rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-semibold text-neutral-600">
+                {post.recipients.length} channels shared
+              </span>
+            )}
+          </div>
           <p className="flex flex-wrap items-center gap-1 text-xs text-neutral-500">
             <PlatformGlyph
               platform={primaryBrand}
               size="sm"
+              solid
               className="inline-block"
             />
             <span>{primaryPage?.platform_name || primaryBrand || "—"}</span>
@@ -103,14 +112,29 @@ export function FeedCard({
             )}
           </p>
         </div>
-        <span
-          className={cn(
-            "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium capitalize",
-            STATUS_STYLES[post.status] ?? STATUS_STYLES.draft,
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <span
+            className={cn(
+              "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium capitalize",
+              STATUS_STYLES[post.status] ?? STATUS_STYLES.draft,
+            )}
+          >
+            {post.status}
+          </span>
+          {brands.length > 0 && (
+            <div className="flex items-center gap-1">
+              {brands.map((brand) => (
+                <span
+                  key={brand}
+                  title={`Shared on ${brand}`}
+                  className="flex size-6 items-center justify-center rounded-full bg-neutral-100 ring-1 ring-black/5"
+                >
+                  <PlatformGlyph platform={brand} size="lg" solid />
+                </span>
+              ))}
+            </div>
           )}
-        >
-          {post.status}
-        </span>
+        </div>
       </div>
 
       <div className="relative mt-3">
@@ -120,6 +144,14 @@ export function FeedCard({
         />
         <FeedMedia post={post} />
       </div>
+
+      {post.recipients.length > 0 && (
+        <FeedRecipientRows
+          recipients={post.recipients}
+          pagesById={pagesById}
+          workspace={workspace}
+        />
+      )}
 
       {/* ── Engagement footer ── */}
       <div className="relative mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-neutral-100 pt-3">
@@ -138,20 +170,7 @@ export function FeedCard({
           {post.comment_count.toLocaleString()} comments
           <span className="text-neutral-400">{threadOpen ? "Hide" : "Show"}</span>
         </button>
-        {post.recipients.length > 1 && (
-          <span className="text-xs text-neutral-400">
-            across {post.recipients.length} channels
-          </span>
-        )}
       </div>
-
-      {post.recipients.length > 0 && (
-        <FeedRecipientRows
-          recipients={post.recipients}
-          pagesById={pagesById}
-          workspace={workspace}
-        />
-      )}
 
       {threadOpen && (
         <div

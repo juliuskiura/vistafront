@@ -1,4 +1,4 @@
-import { SocialIcon, hasSocialIcon } from "@/components/social-icons";
+import { SocialIcon, SocialIconSolid, hasSocialIcon, hasSocialIconSolid } from "@/components/social-icons";
 import { usePlatformBrand } from "@/lib/social/platform-brand-context";
 
 /**
@@ -81,17 +81,25 @@ export function PlatformGlyph({
   size,
   className,
   fallbackIcon,
+  solid,
 }: {
   platform?: string;
   size: "sm" | "md" | "lg";
   className?: string;
   fallbackIcon?: string;
+  /** Render the filled brand mark instead of the outline one. Falls back to
+   *  the outline glyph for brands (e.g. `start_page`) that have no solid variant. */
+  solid?: boolean;
 }) {
   const { brandOf } = usePlatformBrand();
   const brand = brandOf(platform);
   const style = getPlatformStyle(brand);
   const dims =
     size === "lg" ? "h-5 w-5" : size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4";
+
+  if (solid && hasSocialIconSolid(brand)) {
+    return <SocialIconSolid name={brand} className={`${dims} ${style.color} ${className ?? ""}`} />;
+  }
 
   if (hasSocialIcon(brand)) {
     return <SocialIcon name={brand} className={`${dims} ${style.color} ${className ?? ""}`} />;

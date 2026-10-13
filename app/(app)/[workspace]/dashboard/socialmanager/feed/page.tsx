@@ -2,8 +2,6 @@ import { Suspense } from "react";
 
 import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query";
 
-import { Banner } from "@/components/banner";
-import { PenLine } from "@/lib/icons";
 import { listPages, listPostsPage } from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
 import { requireFeature } from "@/lib/features/guard";
@@ -81,17 +79,15 @@ export default async function UnifiedFeedPage({
 
   return (
     <div className="flex min-h-full flex-col">
-      <Banner
-        title="Unified Feed"
-        description="Every post you have published, across every connected channel, with the audience conversation attached."
-        actions={[
-          {
-            label: "New Post",
-            icon: PenLine,
-            href: `/${ws}/dashboard/socialmanager/compose`,
-          },
-        ]}
-      />
+      <header>
+        <h1 className="text-xl font-bold tracking-tight text-neutral-900 sm:text-2xl">
+          Unified Feed
+        </h1>
+        <p className="mt-0.5 text-xs text-neutral-500 sm:text-sm">
+          Every post you have published, across every connected channel, with the
+          audience conversation attached.
+        </p>
+      </header>
 
       <div className="mt-6 flex-1">
         {/* The island reads `useSearchParams` to keep filters linkable, which
