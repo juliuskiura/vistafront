@@ -44,9 +44,6 @@ export function FeedCard({
 }) {
   const { brandOf } = usePlatformBrand();
 
-  const primary = post.recipients[0];
-  const primaryPage = primary ? pagesById[primary.managed_page] : undefined;
-  const primaryBrand = brandOf(primaryPage?.platform);
   const detailHref = `/${workspaceSlug}/dashboard/socialmanager/${post.nanoid}`;
 
   // One logo per *brand* reached — three Instagram channels are one Instagram
@@ -94,21 +91,29 @@ export function FeedCard({
               </span>
             )}
           </div>
+          {/* The sub-line describes the parent ScheduledPost itself — the
+              master record — never its first recipient. A cross-channel post
+              has no single platform, so the date is what identifies it; the
+              channels it reached are the logo strip on the right. */}
           <p className="flex flex-wrap items-center gap-1 text-xs text-neutral-500">
-            <PlatformGlyph
-              platform={primaryBrand}
-              size="sm"
-              solid
-              className="inline-block"
-            />
-            <span>{primaryPage?.platform_name || primaryBrand || "—"}</span>
-            {post.published_at && (
+            {post.published_at ? (
               <>
+                <span>Published</span>
                 <span aria-hidden>·</span>
                 <time dateTime={post.published_at}>
                   {formatMediumDateTime(post.published_at)}
                 </time>
               </>
+            ) : post.scheduled_at ? (
+              <>
+                <span>Scheduled</span>
+                <span aria-hidden>·</span>
+                <time dateTime={post.scheduled_at}>
+                  {formatMediumDateTime(post.scheduled_at)}
+                </time>
+              </>
+            ) : (
+              <span>Not scheduled</span>
             )}
           </p>
         </div>

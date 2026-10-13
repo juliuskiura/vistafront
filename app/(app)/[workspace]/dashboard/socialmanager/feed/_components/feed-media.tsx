@@ -29,11 +29,14 @@ export function FeedMedia({
   if (images.length === 1) {
     return (
       <div className={className}>
+        {/* `object-contain` under a height cap keeps the whole picture visible:
+            the image scales to the card width at its own aspect ratio, and only
+            a very tall one is bounded — never cropped — by `max-h`. */}
         <img
           src={images[0]}
           alt=""
           loading="lazy"
-          className="max-h-80 w-full rounded-xl object-cover ring-1 ring-black/5"
+          className="mt-3 max-h-[32rem] w-full rounded-xl object-contain ring-1 ring-black/5"
         />
       </div>
     );
@@ -55,7 +58,7 @@ export function FeedMedia({
           src={src}
           alt=""
           loading="lazy"
-          className="aspect-square w-full rounded-lg object-cover ring-1 ring-black/5"
+          className="aspect-square w-full rounded-lg bg-neutral-100 object-contain ring-1 ring-black/5"
         />
       ))}
       {overflow > 0 && (
