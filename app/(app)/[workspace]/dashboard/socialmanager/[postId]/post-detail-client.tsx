@@ -196,6 +196,7 @@ export function PostDetailClient({
                 recipients={post.recipients}
                 pagesById={pagesById}
                 workspace={workspaceDomain}
+                onChanged={refreshPost}
               />
             )}
           </div>

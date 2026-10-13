@@ -69,6 +69,7 @@ export function FeedRecipientRows({
   const interactive = Boolean(onChanged);
   const [editing, setEditing] = useState<PostRecipient | null>(null);
   const [confirming, setConfirming] = useState<PostRecipient | null>(null);
+  const [viewing, setViewing] = useState<PostRecipient | null>(null);
   const [pendingNanoid, setPendingNanoid] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -118,8 +119,15 @@ export function FeedRecipientRows({
     setConfirming(recipient);
   };
 
+  const handleView = (recipient: PostRecipient) => {
+    setError(null);
+    setNotice(null);
+    setViewing(recipient);
+  };
+
   const onEdit = interactive ? handleEdit : undefined;
   const onDelete = interactive ? handleDelete : undefined;
+  const onView = interactive ? handleView : undefined;
 
   return (
     <div className="mt-4">
@@ -152,15 +160,16 @@ export function FeedRecipientRows({
 
         <ul className="space-y-2.5">
           {recipients.map((recipient) => (
-            <RecipientRow
-              key={recipient.nanoid}
-              recipient={recipient}
-              page={pagesById[recipient.managed_page]}
-              workspace={workspace}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              pendingNanoid={pendingNanoid}
-            />
+             <RecipientRow
+                key={recipient.nanoid}
+                recipient={recipient}
+                page={pagesById[recipient.managed_page]}
+                workspace={workspace}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onView={onView}
+                pendingNanoid={pendingNanoid}
+              />
           ))}
         </ul>
       </div>
@@ -243,6 +252,19 @@ export function FeedRecipientRows({
             }
           }}
           platformPostUrl={confirming?.link_url}
+        />
+      )}
+
+      {viewing && (
+        <PlatformPostSheet
+          post={viewing}
+          pageById={{ [viewing.managed_page]: pagesById[viewing.managed_page] }}
+          workspace={workspace}
+          open={Boolean(viewing)}
+          onOpenChange={(open) => {
+            if (!open) setViewing(null);
+          }}
+          platformPostUrl={viewing?.link_url}
         />
       )}
     </div>

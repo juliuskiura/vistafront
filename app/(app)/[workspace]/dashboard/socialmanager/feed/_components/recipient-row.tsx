@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   CornerDownRight,
   Edit3,
+  Eye,
   ExternalLink,
   Loader2,
   Maximize2,
@@ -43,6 +44,7 @@ export function RecipientRow({
   workspace,
   onEdit,
   onDelete,
+  onView,
   pendingNanoid,
 }: {
   recipient: PostRecipient;
@@ -52,6 +54,7 @@ export function RecipientRow({
    *  (e.g. the unified feed card), rows are read-only. */
   onEdit: ((recipient: PostRecipient) => void) | undefined;
   onDelete: ((recipient: PostRecipient) => void) | undefined;
+  onView: ((recipient: PostRecipient) => void) | undefined;
   pendingNanoid: string | null;
 }) {
   const { brandOf } = usePlatformBrand();
@@ -143,6 +146,18 @@ export function RecipientRow({
             <Maximize2 className="size-3" />
             View on {brand?.toUpperCase() || "platform"}
           </button>
+        )}
+        {onView && isLiveCopy(recipient) && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1"
+            disabled={pendingNanoid !== null}
+            onClick={() => onView(recipient)}
+            title="View platform post"
+          >
+            <Eye className="size-3" />
+          </Button>
         )}
         {thumbnail && (
           <div className="size-12 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-200">
