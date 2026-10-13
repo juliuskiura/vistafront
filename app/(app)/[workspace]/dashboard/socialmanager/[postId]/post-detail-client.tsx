@@ -7,10 +7,14 @@ import type { ManagedChannel, MetricSnapshot, ScheduledPost } from "@/lib/api/ty
 import {
   ArrowLeft,
   ChevronRight,
+  Edit3,
   Rss,
   AlertTriangle,
   RefreshCw,
+  Trash2,
+  ExternalLink,
 } from "@/lib/icons";
+import { Button } from "@/components/ui/button";
 import { usePlatformBrand } from "@/lib/social/platform-brand-context";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { retryAvailability } from "@/lib/social/delivery-error";
@@ -125,6 +129,31 @@ export function PostDetailClient({
             View Unified Feed
           </Link>
         </div>
+        <Button
+          size="sm"
+          variant="outline"
+          className="gap-1.5"
+          onClick={() => requestAction("edit")}
+        >
+          <Edit3 className="size-3.5" /> Edit
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="gap-1.5 border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700"
+          onClick={() => requestAction("delete")}
+        >
+          <Trash2 className="size-3.5" /> Delete
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="gap-1.5"
+          onClick={() => requestAction("view")}
+        >
+          <ExternalLink className="size-3.5" />
+          View on platform
+        </Button>
         <PostActionsMenu
           post={post}
           onAction={requestAction}
