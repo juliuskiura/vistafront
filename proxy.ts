@@ -15,6 +15,9 @@ const PUBLIC_PATHS = [
   "/api/auth/check",
 ];
 
+// Keep in sync with AUTH_PATH_PREFIXES in app/api/auth/check/route.ts —
+// divergence sends that page's recovery down the protected-page branch and
+// reintroduces the /login redirect loop this list guards against.
 const AUTH_PATHS = ["/login", "/signup", "/password", "/activate"];
 
 function isPublicPath(pathname: string): boolean {
@@ -108,12 +111,23 @@ function setAuthNextUrl(
  * path would put `/api/auth/check` in the URL bar on every stale-session page
  * load, which is both ugly and a needless disclosure of an internal endpoint.
  *
+ * `intended` is the path of the request being recovered. The handler prefers
+ * it under framework versions that expose the rewritten URL; this build hands
+ * the handler the ORIGINAL request URL instead, where the same path is
+ * already `request.nextUrl.pathname` — the parameter is the portable path,
+ * and `destinationFor` in the route handler documents both shapes.
+ *
  * The target is still built from `request.url` — that is safe here, unlike in
  * a `Location` header, because a rewrite is a routing decision made inside
  * this same process and never leaves the server.
  */
-function rewriteToAuthCheck(request: NextRequest): NextResponse {
-  return NextResponse.rewrite(new URL(AUTH_CHECK_PATH, request.url));
+function rewriteToAuthCheck(
+  request: NextRequest,
+  intended?: string,
+): NextResponse {
+  const url = new URL(AUTH_CHECK_PATH, request.url);
+  if (intended) url.searchParams.set("intended", intended);
+  return NextResponse.rewrite(url);
 }
 
 export function proxy(request: NextRequest) {
@@ -198,13 +212,25 @@ export function proxy(request: NextRequest) {
 
     // Stale session (no access, or access expired) but a refresh token
     // exists → validate/refresh through the internal /api/auth/check rewrite.
-    // If the session is real the handler redirects on to auth_next_url (or
-    // /dashboard); if it is dead it clears the cookies and lands on /login.
-    // Either way the browser only ever sees the final destination.
+    // If the session is real the handler redirects on to the path THIS
+    // request is for; if it is dead it clears the cookies and lands on
+    // /login.
+    //
+    // The recovery destination used to be `auth_next_url`. That cookie is
+    // stamped on every protected response — and this Next build strips the
+    // RSC/prefetch headers from the proxy's request instance, so a `<Link>`
+    // prefetch is indistinguishable from a real navigation here. A prefetched
+    // Calendar or Notebook link therefore rewrote the cookie, and the next
+    // background session recovery (`router.refresh()` from an `apiFetch`
+    // 401) 307'd the user to that prefetched page — a jump to a route they
+    // never opened. The request's own path is the only destination that
+    // describes where the user actually is.
+    //
+    // The cookie is deliberately NOT set on this branch: the handler's onward
+    // response deletes it, so stamping it on the rewrite was dead weight at
+    // best and a stale value that outlived the rewrite at worst.
     if (hasRefreshToken) {
-      const res = rewriteToAuthCheck(request);
-      setAuthNextUrl(res, destination);
-      return res;
+      return rewriteToAuthCheck(request, destination);
     }
 
     // Dead session: clear the stale cookies and let the request continue.

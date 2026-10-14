@@ -13,23 +13,75 @@ function authCookieOptions() {
   };
 }
 
-function destinationFor(req: NextRequest): string {
-  const destination = req.cookies.get("auth_next_url")?.value;
-  if (
-    !destination ||
-    !destination.startsWith("/") ||
-    destination.startsWith("//")
-  ) {
-    return "/dashboard";
+/**
+ * Paths whose proxy flow must keep cookie semantics. Sending a visitor to
+ * `/login` (or a sibling auth page) straight back to that same page — the
+ * obvious "return them where they came from" — loops forever, because the
+ * proxy rewrites them here again on every pass.
+ */
+// Keep in sync with AUTH_PATHS in proxy.ts — divergence sends that page's
+// recovery down the protected-page branch and reintroduces the loop above.
+const AUTH_PATH_PREFIXES = ["/login", "/signup", "/password", "/activate"];
+
+/**
+ * A candidate recovery destination, reduced to a same-origin path.
+ *
+ * Anything that is not one — an absolute URL, a protocol-relative `//host`,
+ * a value that fails to parse — is rejected, so neither the forwarded
+ * `intended` nor the cookie can ever turn this handler into an open redirect.
+ */
+function sanitizeDestination(
+  candidate: string | null | undefined,
+): string | null {
+  if (!candidate || !candidate.startsWith("/") || candidate.startsWith("//")) {
+    return null;
   }
 
   try {
-    const parsed = new URL(destination, "https://vistafront.invalid");
-    if (parsed.origin !== "https://vistafront.invalid") return "/dashboard";
+    const parsed = new URL(candidate, "https://vistafront.invalid");
+    if (parsed.origin !== "https://vistafront.invalid") return null;
     return `${parsed.pathname}${parsed.search}${parsed.hash}`;
   } catch {
-    return "/dashboard";
+    return null;
   }
+}
+
+function destinationFor(req: NextRequest): string {
+  const fromCookieChain = () =>
+    sanitizeDestination(req.nextUrl.searchParams.get("intended")) ??
+    sanitizeDestination(req.cookies.get("auth_next_url")?.value) ??
+    "/dashboard";
+
+  const { pathname, search } = req.nextUrl;
+
+  // A direct GET of this internal endpoint — no proxy rewrite happened.
+  // The `intended` query parameter (forwarded by the proxy under framework
+  // versions that expose the rewritten URL) and the cookie are all there is.
+  if (pathname.startsWith("/api/")) {
+    return fromCookieChain();
+  }
+
+  // A proxied recovery of a real page. This Next build hands the handler the
+  // ORIGINAL request URL — there is no rewrite marker on the request — so
+  // `pathname` IS the page being recovered: a document navigation, a
+  // client-side transition, a `router.refresh()`, or a `<Link>` prefetch. It
+  // is the only value describing where the user actually is, and it is what
+  // recovery must return them to.
+  //
+  // The old code answered with `auth_next_url` here instead. That cookie is
+  // stale by construction — it is stamped on every protected response and
+  // this build strips the RSC/prefetch headers, so a prefetch of a link the
+  // user never opened rewrote it. The next background session recovery (a
+  // `router.refresh()` kicked off by an `apiFetch` 401) then 307'd the user
+  // to that previewed page: the reported "spontaneous" jump.
+  const isAuthPage = AUTH_PATH_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`),
+  );
+  if (isAuthPage) {
+    return fromCookieChain();
+  }
+
+  return sanitizeDestination(`${pathname}${search}`) ?? "/dashboard";
 }
 
 /**
@@ -167,7 +219,8 @@ function deadSessionResponse(): ReturnType<typeof redirectTo> {
  *
  * This Route Handler runs on Node where the backend env is available, so it:
  *   1. Verifies the access token against Django, silently refreshing if 401.
- *   2. Valid → 307 to the captured auth_next_url (or /dashboard).
+ *   2. Valid → 307 back to the path the request came in on (see
+ *      `destinationFor`), falling back to `auth_next_url` or /dashboard.
  *   3. Invalid → clears the stale cookies and 307 to /login.
  *
  * Because it clears cookies on death, the next proxy pass sees a genuinely
