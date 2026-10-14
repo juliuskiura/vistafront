@@ -1,9 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import {
-  resolveCapabilityStyle,
-} from "@/lib/icon-maps";
+import { useFeatureIcon } from "@/lib/icon-maps";
 
 export interface CapabilityItem {
   description: string;
@@ -31,7 +29,7 @@ export function splitIntoColumns<T>(items: T[], columnCount = 2): T[][] {
 }
 
 function CapabilityRow({ item }: { item: CapabilityItem }) {
-  const { icon: Icon, iconBg, iconColor } = resolveCapabilityStyle(
+  const { icon: Icon, iconBg, iconColor } = useFeatureIcon(
     item.featureKey,
   );
   const title = item.description || item.featureKey || "Included capability";

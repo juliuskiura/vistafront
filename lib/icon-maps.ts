@@ -94,7 +94,24 @@ export const FEATURES_STYLES: Record<string, CapabilityGlyph> = {
 
 export const FALLBACK: CapabilityGlyph = { icon: Sparkles, tone: "slate" };
 
-export function resolveCapabilityStyle(featureKey?: string | null) {
+/** What a feature's resolved icon + tone looks like once flattened. */
+export interface FeatureIconStyle {
+  icon: LucideIcon;
+  iconBg: string;
+  iconColor: string;
+}
+
+/**
+ * The single source of truth for feature → icon/tone resolution.
+ *
+ * Consumed by `useFeatureIcon` (this file) and, through it, by components.
+ * `lib/icons.tsx` is the single source of truth for the icon components
+ * themselves and imports nothing from here, so the dependency runs one way
+ * only: this module consumes `lib/icons.tsx`, and never the reverse.
+ */
+export function resolveCapabilityStyle(
+  featureKey?: string | null,
+): FeatureIconStyle {
   // 1. Exact feature match
   if (featureKey && FEATURES_STYLES[featureKey]) {
     const glyph = FEATURES_STYLES[featureKey];
@@ -110,4 +127,17 @@ export function resolveCapabilityStyle(featureKey?: string | null) {
 
   // 3. Global fallback
   return { icon: FALLBACK.icon, ...TONES[FALLBACK.tone] };
+}
+
+/**
+ * The one entry point components use for a feature's icon.
+ *
+ * Not a real React hook — no state or effects — but named `use*` by
+ * convention (AGENTS.md §10) and therefore subject to the rules of hooks:
+ * call it at the top level of a component (or another hook), never inside a
+ * callback such as a `.map()`. When a list needs the icon per item, extract
+ * a small child component and call it there.
+ */
+export function useFeatureIcon(featureKey?: string | null): FeatureIconStyle {
+  return resolveCapabilityStyle(featureKey);
 }

@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 
-import type { OrderItem, SubsPlan } from "@/lib/api";
+import type { OrderItem, PlanFeature, SubsPlan } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { resolveCapabilityStyle } from "@/lib/icon-maps";
+import { useFeatureIcon } from "@/lib/icon-maps";
 import {
   Check,
   ChevronDown,
@@ -30,6 +30,41 @@ function PlanThumb() {
       <span className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-white shadow-sm">
         <Zap className="h-3.5 w-3.5 text-primary" />
       </span>
+    </div>
+  );
+}
+
+/**
+ * One row in the expanded feature list.
+ *
+ * Extracted from `FeatureChips`' `.map()` on purpose: `useFeatureIcon` is
+ * `use*`-named, so the rules of hooks forbid calling it inside a callback.
+ * A small child component puts the call at the top level where the rule —
+ * and React itself — expect it.
+ */
+function FeatureRow({ feature }: { feature: PlanFeature }) {
+  const { icon: Icon, iconBg, iconColor } = useFeatureIcon(feature.feature);
+
+  return (
+    <div className="flex items-start gap-2 text-xs">
+      <span
+        className={cn(
+          "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
+          iconBg,
+        )}
+      >
+        <Icon className={cn("h-3 w-3", iconColor)} />
+      </span>
+      <div>
+        <p className="font-semibold text-foreground">
+          {feature.label || feature.feature}
+        </p>
+        {feature.description && (
+          <p className="text-[11px] text-muted-foreground">
+            {feature.description}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
@@ -66,33 +101,9 @@ function FeatureChips({ plan }: { plan: SubsPlan }) {
         </div>
       ) : (
         <div className="space-y-2 rounded-xl border border-border/70 bg-muted/30 p-3">
-          {features.map((feature) => {
-            const { icon: Icon, iconBg, iconColor } = resolveCapabilityStyle(
-              feature.feature,
-            );
-            return (
-              <div key={feature.nanoid} className="flex items-start gap-2 text-xs">
-                <span
-                  className={cn(
-                    "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
-                    iconBg,
-                  )}
-                >
-                  <Icon className={cn("h-3 w-3", iconColor)} />
-                </span>
-                <div>
-                  <p className="font-semibold text-foreground">
-                    {feature.label || feature.feature}
-                  </p>
-                  {feature.description && (
-                    <p className="text-[11px] text-muted-foreground">
-                      {feature.description}
-                    </p>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+          {features.map((feature) => (
+            <FeatureRow key={feature.nanoid} feature={feature} />
+          ))}
           <button
             type="button"
             onClick={() => setOpen(false)}
