@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Settings,
   Plus,
+  AlertCircle,
 } from "@/lib/icons";
 import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
 import type { ManagedChannel, SocialPlatform } from "@/lib/api/types";
@@ -48,6 +49,7 @@ interface ChannelCardProps {
   onSync: (page: ManagedChannel) => void;
   onDisable: (page: ManagedChannel) => void;
   onDisconnect: (page: ManagedChannel) => void;
+  onPurge: (page: ManagedChannel) => void;
   onReconnect: (platform: SocialPlatform) => void;
   canConnect: boolean;
 }
@@ -62,6 +64,7 @@ export function ChannelCard({
   onSync,
   onDisable,
   onDisconnect,
+  onPurge,
   onReconnect,
   canConnect,
 }: ChannelCardProps) {
@@ -77,6 +80,10 @@ export function ChannelCard({
   // Connected ⇔ the platform confirmed the token is live. `is_active` says the
   // row is enabled, which is not the same as "can this page actually connect".
   const isConnected = health.tone === "ok" || health.tone === "warn";
+  // A row the backend will let us purge: it is disabled (`is_active=false`).
+  // This mirrors the server guard exactly, so the Delete affordance never
+  // appears for a channel the API would refuse.
+  const canPurge = !page.is_active;
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
 
   return (
@@ -229,11 +236,19 @@ export function ChannelCard({
         <Sheet>
           <SheetTrigger asChild>
             <Button
-              variant="outline"
+              variant={canPurge ? "destructive" : "outline"}
               className="shrink-0 gap-1.5 rounded-full px-3 text-xs"
-              title="Settings for this channel"
+              title={
+                canPurge
+                  ? "This channel is disconnected — open to delete it"
+                  : "Settings for this channel"
+              }
             >
-              <Settings className="w-4 h-4" />
+              {canPurge ? (
+                <AlertCircle className="w-4 h-4" />
+              ) : (
+                <Settings className="w-4 h-4" />
+              )}
               Settings
             </Button>
           </SheetTrigger>
@@ -246,6 +261,7 @@ export function ChannelCard({
               onSync={onSync}
               onDisable={onDisable}
               onDisconnect={onDisconnect}
+              onPurge={onPurge}
               onReconnect={onReconnect}
             />
           </SheetContent>

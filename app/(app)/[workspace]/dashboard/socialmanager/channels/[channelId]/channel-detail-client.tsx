@@ -171,6 +171,7 @@ export function ChannelDetailClient({
         igResult={igResult}
         workspaceDomain={workspaceDomain}
         channelId={channelId}
+        isActive={channel.is_active}
       />
 
       <ChannelPosts

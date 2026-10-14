@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { SheetClose, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { RefreshCw, ShieldAlert, Unplug, X, Settings } from "@/lib/icons";
+import { RefreshCw, ShieldAlert, Unplug, Trash2, X, Settings } from "@/lib/icons";
 import type { ManagedChannel, SocialPlatform } from "@/lib/api/types";
 import { VSButton } from "@/components/shared/components/customUi/VSButton";
 
@@ -14,6 +14,7 @@ interface ChannelActionsSheetProps {
   onSync: (page: ManagedChannel) => void;
   onDisable: (page: ManagedChannel) => void;
   onDisconnect: (page: ManagedChannel) => void;
+  onPurge: (page: ManagedChannel) => void;
   onReconnect: (platform: SocialPlatform) => void;
 }
 
@@ -24,6 +25,7 @@ export function ChannelActionsSheet({
   onSync,
   onDisable,
   onDisconnect,
+  onPurge,
   onReconnect,
 }: ChannelActionsSheetProps) {
   const [syncing, setSyncing] = useState(false);
@@ -65,61 +67,73 @@ export function ChannelActionsSheet({
           <p className="text-xs text-slate-600">Manage this channel&apos;s connection</p>
         </div>
 
-        <Button
-          onClick={handleSync}
-          disabled={syncing || !canConnect}
-          className="w-full justify-start gap-3 h-14 p-4"
-          variant="outline"
-        >
-          <div className="bg-slate-50 p-2 rounded-lg shrink-0">
-            <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""} text-slate-600`} />
-          </div>
-          <div className="flex flex-col items-start flex-1 min-w-0">
-            <span className="font-medium text-sm truncate">Sync Audience</span>
-            <span className="text-xs text-slate-500 truncate">
-              Refresh token
-            </span>
-          </div>
-        </Button>
+        {page.is_active && (
+          <Button
+            onClick={handleSync}
+            disabled={syncing || !canConnect}
+            className="w-full justify-start gap-3 h-14 p-4"
+            variant="outline"
+          >
+            <div className="bg-slate-50 p-2 rounded-lg shrink-0">
+              <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""} text-slate-600`} />
+            </div>
+            <div className="flex flex-col items-start flex-1 min-w-0">
+              <span className="font-medium text-sm truncate">Sync Audience</span>
+              <span className="text-xs text-slate-500 truncate">
+                Refresh token
+              </span>
+            </div>
+          </Button>
+        )}
+
+        {page.is_active && (
+          <Button
+            onClick={handleDisable}
+            disabled={disabling || !canConnect}
+            className="w-full justify-start gap-3 p-4 h-auto"
+            variant="secondary"
+          >
+            <div className="p-2 rounded-lg shrink-0">
+              <ShieldAlert className="w-4 h-4" />
+            </div>
+
+            <div className="flex flex-col items-start flex-1 min-w-0">
+              <span className="font-medium text-sm">
+                Disable
+              </span>
+
+              <span className="text-xs whitespace-normal break-words text-left">
+                Keep the connection, but SocialManager temporarily stops using it
+              </span>
+            </div>
+          </Button>
+        )}
 
         <Button
-          onClick={handleDisable}
-          disabled={disabling || !canConnect}
-          className="w-full justify-start gap-3 p-4 h-auto"
-          variant="secondary"
-        >
-          <div className="p-2 rounded-lg shrink-0">
-            <ShieldAlert className="w-4 h-4" />
-          </div>
-
-          <div className="flex flex-col items-start flex-1 min-w-0">
-            <span className="font-medium text-sm">
-              Disable
-            </span>
-
-            <span className="text-xs whitespace-normal break-words text-left">
-              Keep the connection, but SocialManager temporarily stops using it
-            </span>
-          </div>
-        </Button>
-
-        <Button
-          onClick={() => onDisconnect(page)}
+          onClick={() =>
+            page.is_active ? onDisconnect(page) : onPurge(page)
+          }
           disabled={!canConnect}
           className="w-full justify-start gap-3 p-4 h-auto"
           variant="destructive"
         >
           <div className="p-2 rounded-lg shrink-0">
-            <Unplug className="w-4 h-4" />
+            {page.is_active ? (
+              <Unplug className="w-4 h-4" />
+            ) : (
+              <Trash2 className="w-4 h-4" />
+            )}
           </div>
 
           <div className="flex flex-col items-start flex-1 min-w-0">
             <span className="font-medium text-sm">
-              Disconnect
+              {page.is_active ? "Disconnect" : "Delete"}
             </span>
 
             <span className="text-xs whitespace-normal break-words text-left opacity-90">
-              Remove this page's access — other pages on the same account stay connected.
+              {page.is_active
+                ? "Remove this page's access — other pages on the same account stay connected."
+                : "Completely removes this channel — its posts, comments, messages and all of its data. This cannot be undone."}
             </span>
           </div>
         </Button>

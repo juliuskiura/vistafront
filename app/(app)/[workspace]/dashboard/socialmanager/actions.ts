@@ -30,10 +30,12 @@ import {
   deleteAccount,
   syncAccount,
   revokeAccount,
+  ServerFetchError,
   oauthInit,
   getConnectedInstagram,
   verifyPage,
   updateManagedChannel,
+  purgeChannel,
   syncPosts,
   getPostsSyncStatus,
   syncAnalytics,
@@ -703,6 +705,34 @@ export async function disableChannelAction(
 
   revalidatePath(`/${workspace}/dashboard/socialmanager`);
   return { status: "success", message: "Channel disabled." };
+}
+
+/**
+ * Permanently remove a disconnected channel and all of its data.
+ *
+ * The backend hard-deletes the page and cascades to its posts, comments,
+ * messages and metrics, retiring the owning account when this was its last
+ * channel. A still-connected channel is refused with 409 — surface that
+ * explicitly so the user knows to disconnect it first.
+ */
+export async function purgeChannelAction(
+  nanoid: string,
+  workspace: string,
+): Promise<AccountActionState> {
+  try {
+    await purgeChannel(nanoid, workspace);
+  } catch (error) {
+    if (error instanceof ServerFetchError && error.status === 409) {
+      return {
+        status: "error",
+        message: "This channel is still connected. Disconnect it first.",
+      };
+    }
+    return { status: "error", message: "Failed to delete channel." };
+  }
+
+  revalidatePath(`/${workspace}/dashboard/socialmanager`);
+  return { status: "success", message: "Channel and its data deleted." };
 }
 
 const AccountEmailSchema = z.object({

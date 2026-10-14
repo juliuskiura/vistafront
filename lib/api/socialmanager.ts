@@ -489,6 +489,22 @@ export function updateManagedChannel(
   });
 }
 
+/**
+ * Permanently remove a disconnected channel.
+ *
+ * Hard-deletes the page and everything that hangs off it (its posts,
+ * comments, messages, metrics). The backend refuses (409) a channel that is
+ * still connected, so disconnect it first. When this was the account's last
+ * channel, the owning account connection is deleted too.
+ */
+export function purgeChannel(nanoid: string, workspace: string): Promise<void> {
+  return serverMutate<void>(`/apis/socialmanager/pages/${nanoid}/`, {
+    body: {},
+    method: "DELETE",
+    workspace,
+  });
+}
+
 export function getConnectedInstagram(
   nanoid: string,
   workspace: string,

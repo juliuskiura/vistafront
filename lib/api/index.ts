@@ -203,6 +203,7 @@ export {
   listQueueItems,
   oauthInit,
   publishPost,
+  purgeChannel,
   pushRecipientDelete,
   pushRecipientUpdate,
   reconnectPage,

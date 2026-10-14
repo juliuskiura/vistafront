@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useConnectAccount } from "@/lib/context";
 import { RefreshCw, AlertCircle } from "@/lib/icons";
-import { syncAccountAction, disableChannelAction } from "../actions";
+import { syncAccountAction, disableChannelAction, purgeChannelAction } from "../actions";
 import { ChannelCard } from "./_components/channel-card";
 import { ConnectChannels } from "./_components/connect-channels";
 import { describeChannelHealth, type VerifyVerdict } from "./_components/channel-health-label";
@@ -64,6 +64,8 @@ export function ChannelsClient({
   const [disconnectTarget, setDisconnectTarget] =
     useState<ManagedChannel | null>(null);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [purgeTarget, setPurgeTarget] = useState<ManagedChannel | null>(null);
+  const [purging, setPurging] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const router = useRouter();
 
@@ -122,6 +124,22 @@ export function ChannelsClient({
       setDisconnectTarget(null);
     }
   }, [disconnectTarget, ws, router]);
+
+  // Permanent removal of an already-disconnected channel: hard-deletes the
+  // page and everything hanging off it, and retires the owning account when
+  // this was its last channel. Only ever offered on an inactive row, matching
+  // the backend guard.
+  const handleConfirmPurge = useCallback(async () => {
+    if (!purgeTarget) return;
+    setPurging(true);
+    try {
+      await purgeChannelAction(purgeTarget.nanoid, ws);
+      router.refresh();
+    } finally {
+      setPurging(false);
+      setPurgeTarget(null);
+    }
+  }, [purgeTarget, ws, router]);
 
   const handleReconnect = useCallback(
     (platform: SocialPlatform) =>
@@ -210,6 +228,7 @@ export function ChannelsClient({
               onSync={handleSync}
               onDisable={setDisableTarget}
               onDisconnect={setDisconnectTarget}
+              onPurge={setPurgeTarget}
               onReconnect={handleReconnect}
             />
           ))}
@@ -244,11 +263,10 @@ export function ChannelsClient({
             <li>Other pages on the same account stay connected.</li>
             <li>Posts already published on the platform are not deleted.</li>
             <li>
-              This channel&apos;s saved data is permanently deleted within 14
-              days — and if it is the account&apos;s last channel, the account
-              connection is deleted as well.
+              Nothing is deleted here — you can permanently remove this channel
+              and its data afterwards with Delete.
             </li>
-            <li>This cannot be undone — reconnect to use it again.</li>
+            <li>Reconnect this page at any time to use it again.</li>
           </ul>
         }
         confirmLabel={disconnecting ? "Disconnecting…" : "Disconnect"}
@@ -256,6 +274,33 @@ export function ChannelsClient({
         size="md"
         onConfirm={handleConfirmDisconnect}
         confirming={disconnecting}
+      />
+
+      <ConfirmDialog
+        open={purgeTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setPurgeTarget(null);
+        }}
+        title="Delete channel permanently?"
+        description={
+          <ul className="list-disc space-y-1.5 pl-5 text-left">
+            <li>
+              Permanently removes this channel — its posts, comments, messages
+              and all of its data.
+            </li>
+            <li>
+              If it is the account&apos;s last channel, the account connection
+              is deleted as well.
+            </li>
+            <li>Posts already published on the platform are not deleted.</li>
+            <li>This cannot be undone.</li>
+          </ul>
+        }
+        confirmLabel={purging ? "Deleting…" : "Delete"}
+        variant="destructive"
+        size="md"
+        onConfirm={handleConfirmPurge}
+        confirming={purging}
       />
     </div>
   );

@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Unplug } from "@/lib/icons";
+import { CheckCircle2, Trash2, Unplug } from "@/lib/icons";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SocialIcon } from "@/components/social-icons";
 import type { ConnectedInstagramResult, PostsSyncStatusResult } from "@/lib/api/types";
-import { disableChannelAction } from "../../../actions";
+import { disableChannelAction, purgeChannelAction } from "../../../actions";
 
 export type SyncResult = NonNullable<PostsSyncStatusResult["result"]>;
 export type InstagramResult = ConnectedInstagramResult;
@@ -19,6 +19,8 @@ interface ChannelActionsProps {
   igResult: InstagramResult | null;
   workspaceDomain: string;
   channelId: string;
+  /** Whether the channel is still connected — decides Disconnect vs Delete. */
+  isActive: boolean;
 }
 
 export function ChannelActions({
@@ -26,6 +28,7 @@ export function ChannelActions({
   igResult,
   workspaceDomain,
   channelId,
+  isActive,
 }: ChannelActionsProps) {
   const ws = workspaceDomain.toLowerCase();
   const router = useRouter();
@@ -33,6 +36,8 @@ export function ChannelActions({
   const [disabling, setDisabling] = useState(false);
   const [disconnectOpen, setDisconnectOpen] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [purgeOpen, setPurgeOpen] = useState(false);
+  const [purging, setPurging] = useState(false);
 
   const handleDisable = async () => {
     setDisabling(true);
@@ -57,6 +62,20 @@ export function ChannelActions({
       router.refresh();
     } finally {
       setDisconnecting(false);
+    }
+  };
+
+  // Permanent removal of an already-disconnected channel: hard-deletes the
+  // page and its data, then returns to the list (this detail page no longer
+  // has a row to show).
+  const handlePurge = async () => {
+    setPurging(true);
+    try {
+      await purgeChannelAction(channelId, ws);
+      router.push(`/${ws}/dashboard/socialmanager/channels`);
+      router.refresh();
+    } finally {
+      setPurging(false);
     }
   };
 
@@ -106,27 +125,42 @@ export function ChannelActions({
       )}
 
       <div className="flex flex-wrap gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setDisableOpen(true)}
-          disabled={disabling}
-          className="gap-2"
-        >
-          <Unplug className="size-4" />
-          {disabling ? "Disabling…" : "Disable Channel"}
-        </Button>
+        {isActive && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setDisableOpen(true)}
+            disabled={disabling}
+            className="gap-2"
+          >
+            <Unplug className="size-4" />
+            {disabling ? "Disabling…" : "Disable Channel"}
+          </Button>
+        )}
 
-        <Button
-          variant="destructive"
-          size="sm"
-          onClick={() => setDisconnectOpen(true)}
-          disabled={disconnecting}
-          className="gap-2"
-        >
-          <Unplug className="size-4" />
-          {disconnecting ? "Disconnecting…" : "Disconnect"}
-        </Button>
+        {isActive ? (
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setDisconnectOpen(true)}
+            disabled={disconnecting}
+            className="gap-2"
+          >
+            <Unplug className="size-4" />
+            {disconnecting ? "Disconnecting…" : "Disconnect"}
+          </Button>
+        ) : (
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setPurgeOpen(true)}
+            disabled={purging}
+            className="gap-2"
+          >
+            <Trash2 className="size-4" />
+            {purging ? "Deleting…" : "Delete"}
+          </Button>
+        )}
       </div>
 
       <ConfirmDialog
@@ -153,11 +187,10 @@ export function ChannelActions({
             <li>Other pages on the same account stay connected.</li>
             <li>Posts already published on the platform are not deleted.</li>
             <li>
-              This channel&apos;s saved data is permanently deleted within 14
-              days — and if it is the account&apos;s last channel, the account
-              connection is removed as well.
+              Nothing is deleted here — you can permanently remove this channel
+              and its data afterwards with Delete.
             </li>
-            <li>This cannot be undone — reconnect to use it again.</li>
+            <li>Reconnect this page at any time to use it again.</li>
           </ul>
         }
         confirmLabel={disconnecting ? "Disconnecting…" : "Disconnect"}
@@ -165,6 +198,31 @@ export function ChannelActions({
         size="md"
         onConfirm={handleDisconnect}
         confirming={disconnecting}
+      />
+
+      <ConfirmDialog
+        open={purgeOpen}
+        onOpenChange={setPurgeOpen}
+        title="Delete channel permanently?"
+        description={
+          <ul className="list-disc space-y-1.5 pl-5 text-left">
+            <li>
+              Permanently removes this channel — its posts, comments, messages
+              and all of its data.
+            </li>
+            <li>
+              If it is the account&apos;s last channel, the account connection
+              is deleted as well.
+            </li>
+            <li>Posts already published on the platform are not deleted.</li>
+            <li>This cannot be undone.</li>
+          </ul>
+        }
+        confirmLabel={purging ? "Deleting…" : "Delete"}
+        variant="destructive"
+        size="md"
+        onConfirm={handlePurge}
+        confirming={purging}
       />
     </>
   );
