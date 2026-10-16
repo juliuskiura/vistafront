@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import localFont from "next/font/local";
 
 import { SessionRefreshProvider } from "@/lib/context/SessionRefreshContext";
@@ -54,21 +55,7 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        <script
-          suppressHydrationWarning
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                try {
-                  var theme = localStorage.getItem('theme');
-                  if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                    document.documentElement.classList.add('dark');
-                  }
-                } catch(e) {}
-              })();
-            `,
-          }}
-        />
+        <Script src="/js/theme-init.js" strategy="beforeInteractive" suppressHydrationWarning />
       </head>
       <body className="min-h-full flex flex-col">
         <ToastProvider>

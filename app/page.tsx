@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import Navbar from "@/components/navbar/navbar";
 import { Button } from "@/components/ui/button";
 
 const networks = [
@@ -115,13 +116,11 @@ const networks = [
 export default function Home() {
   return (
     <main className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col font-sans">
-      <div className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-12 flex flex-col lg:flex-row items-center justify-between gap-10 lg:gap-14">
+      <Navbar />
+      <div className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-12 flex flex-col lg:flex-row items-start justify-between gap-10 lg:gap-14">
         {/* Left: hero panel */}
         <div className="flex-1 max-w-xl space-y-6 lg:pr-4 text-left">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200/80 text-xs font-bold text-[#374bd8]">
-            <span className="w-2 h-2 rounded-full bg-[#374bd8] animate-pulse" />
-            <span>Unified Multi-Platform Engine</span>
-          </div>
+        
 
           <h1 className="font-jakarta text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight">
             Manage, publish, and moderate all channels in{" "}
