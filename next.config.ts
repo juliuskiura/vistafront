@@ -11,6 +11,7 @@ process.env.BACKEND_URL = BACKEND_URL;
 process.env.NEXT_PUBLIC_STATUS = NEXT_STATUS;
 
 const nextConfig: NextConfig = {
+  
   // No `env` block on purpose. NEXT_PUBLIC_* is inlined by Next automatically,
   // and the app is single-origin, so the browser needs no injected values.
   //
@@ -19,8 +20,15 @@ const nextConfig: NextConfig = {
   // resources -- including the HMR websocket -- unless it is allow-listed here.
   // Without this, `wss://app.vistasolve.net/_next/hmr` fails on every reload.
   allowedDevOrigins: ["app.vistasolve.net", "app.vistasolve.com"],
+  // The Django API uses trailing slashes; normalize page URLs in proxy.ts
+  // while allowing `/apis/*` requests to reach the rewrite unchanged.
+  skipTrailingSlashRedirect: true,
   async rewrites() {
     return [
+      {
+        source: "/apis/:path*/",
+        destination: `${API_PROXY_TARGET}/apis/:path*/`,
+      },
       {
         source: "/apis/:path*",
         destination: `${API_PROXY_TARGET}/apis/:path*`,

@@ -146,8 +146,14 @@ export function LiveRecipients({
       <ul className="divide-y divide-neutral-100">
         {live.map((recipient) => {
           const page = pageByNanoid.get(recipient.managed_page);
-          const style = styleOf(page?.platform);
+          const platform = page?.door || page?.platform;
+          const isInstagramLogin = platform === "instagram";
+          const isInstagramFacebookLogin = platform === "instagramfb";
+          const isInstagram = isInstagramLogin || isInstagramFacebookLogin;
+          const canEdit = !isInstagram;
+          const canDelete = !isInstagramLogin;
           const busy = pendingNanoid === recipient.nanoid;
+          const style = styleOf(page?.platform);
           return (
             <li
               key={recipient.nanoid}
@@ -178,8 +184,15 @@ export function LiveRecipients({
                 <Button
                   size="sm"
                   variant="outline"
-                  className="gap-1.5"
-                  disabled={Boolean(pendingNanoid)}
+                  className="gap-1.5 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={Boolean(pendingNanoid) || !canEdit}
+                  title={
+                    isInstagramLogin
+                      ? "Instagram Login does not support editing published captions through Meta."
+                      : isInstagramFacebookLogin
+                        ? "Instagram does not support editing a published caption. Delete and republish the post to replace it."
+                        : undefined
+                  }
                   onClick={() => {
                     setError(null);
                     setNotice(null);
@@ -192,8 +205,15 @@ export function LiveRecipients({
                 <Button
                   size="sm"
                   variant="outline"
-                  className="gap-1.5 border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700"
-                  disabled={Boolean(pendingNanoid)}
+                  className="gap-1.5 border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={Boolean(pendingNanoid) || !canDelete}
+                  title={
+                    isInstagramLogin
+                      ? "Instagram Login does not support deleting published media through Meta."
+                      : isInstagramFacebookLogin
+                        ? "Delete this Instagram copy, then republish the post to replace it."
+                        : undefined
+                  }
                   onClick={() => {
                     setError(null);
                     setNotice(null);
@@ -208,6 +228,13 @@ export function LiveRecipients({
                   Delete
                 </Button>
               </span>
+              {isInstagram && (
+                <span className="basis-full text-right text-[11px] text-neutral-500">
+                  {isInstagramFacebookLogin
+                    ? "Instagram captions cannot be edited. To replace this copy, delete it and republish the post."
+                    : "Instagram Login does not support editing or deleting published posts through Meta."}
+                </span>
+              )}
             </li>
           );
         })}

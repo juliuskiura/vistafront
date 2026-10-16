@@ -164,32 +164,7 @@ export function RecipientRow({
             <img src={thumbnail} alt="" loading="lazy" className="size-full object-cover" />
           </div>
         )}
-        {onEdit && onDelete && isLiveCopy(recipient) && (
-          <span className="flex shrink-0 items-center gap-1">
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1"
-              disabled={pendingNanoid !== null}
-              onClick={() => onEdit(recipient)}
-            >
-              <Edit3 className="size-3" />
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1 border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700"
-              disabled={pendingNanoid !== null}
-              onClick={() => onDelete(recipient)}
-            >
-              {pendingNanoid === recipient.nanoid ? (
-                <Loader2 className="size-3 animate-spin" />
-              ) : (
-                <Trash2 className="size-3" />
-              )}
-            </Button>
-          </span>
-        )}
+       
       </div>
 
       {/* Platform Post Sheet */}

@@ -1,0 +1,55 @@
+2026-10-14T14:25:25: ▲ Next.js 16.4.0
+2026-10-14T14:25:25: - Local:         http://localhost:5173
+2026-10-14T14:25:25: - Network:       http://10.0.0.2:5173
+2026-10-14T14:25:25: ✓ Ready in 184ms
+2026-10-14T14:25:25: ✓ Running next.config.ts took 40ms
+2026-10-14T14:57:17: ▲ Next.js 16.4.0
+2026-10-14T14:57:17: - Local:         http://localhost:5173
+2026-10-14T14:57:17: - Network:       http://10.0.0.2:5173
+2026-10-14T14:57:17: ✓ Ready in 188ms
+2026-10-14T14:57:17: ✓ Running next.config.ts took 35ms
+2026-10-14T15:53:18: ▲ Next.js 16.4.0
+2026-10-14T15:53:18: - Local:         http://localhost:5173
+2026-10-14T15:53:18: - Network:       http://10.0.0.2:5173
+2026-10-14T15:53:18: ✓ Ready in 432ms
+2026-10-14T15:53:19: ✓ Running next.config.ts took 84ms
+2026-10-14T18:25:10: ▲ Next.js 16.4.0
+2026-10-14T18:25:10: - Local:         http://localhost:5173
+2026-10-14T18:25:10: - Network:       http://10.0.0.2:5173
+2026-10-14T18:25:10: ✓ Ready in 188ms
+2026-10-14T18:25:10: ✓ Running next.config.ts took 33ms
+2026-10-14T19:12:30: ▲ Next.js 16.4.0
+2026-10-14T19:12:30: - Local:         http://localhost:5173
+2026-10-14T19:12:30: - Network:       http://10.0.0.2:5173
+2026-10-14T19:12:30: ✓ Ready in 189ms
+2026-10-14T19:12:30: ✓ Running next.config.ts took 36ms
+2026-10-14T19:13:27: ▲ Next.js 16.4.0
+2026-10-14T19:13:27: - Local:         http://localhost:5173
+2026-10-14T19:13:27: - Network:       http://10.0.0.2:5173
+2026-10-14T19:13:27: ✓ Ready in 186ms
+2026-10-14T19:13:27: ✓ Running next.config.ts took 33ms
+2026-10-14T19:27:41: ▲ Next.js 16.4.0
+2026-10-14T19:27:41: - Local:         http://localhost:5173
+2026-10-14T19:27:41: - Network:       http://10.0.0.2:5173
+2026-10-14T19:27:41: ✓ Ready in 191ms
+2026-10-14T19:27:41: ✓ Running next.config.ts took 41ms
+2026-10-14T20:09:50: ▲ Next.js 16.4.0
+2026-10-14T20:09:50: - Local:         http://localhost:5173
+2026-10-14T20:09:50: - Network:       http://10.0.0.2:5173
+2026-10-14T20:09:50: ✓ Ready in 191ms
+2026-10-14T20:09:50: ✓ Running next.config.ts took 33ms
+2026-10-14T20:13:07: ▲ Next.js 16.4.0
+2026-10-14T20:13:07: - Local:         http://localhost:5173
+2026-10-14T20:13:07: - Network:       http://10.0.0.2:5173
+2026-10-14T20:13:07: ✓ Ready in 190ms
+2026-10-14T20:13:07: ✓ Running next.config.ts took 34ms
+2026-10-14T20:14:40: ▲ Next.js 16.4.0
+2026-10-14T20:14:40: - Local:         http://localhost:5173
+2026-10-14T20:14:40: - Network:       http://10.0.0.2:5173
+2026-10-14T20:14:40: ✓ Ready in 198ms
+2026-10-14T20:14:40: ✓ Running next.config.ts took 35ms
+2026-10-16T01:12:45: ▲ Next.js 16.4.0
+2026-10-16T01:12:45: - Local:         http://localhost:5173
+2026-10-16T01:12:45: - Network:       http://10.0.0.2:5173
+2026-10-16T01:12:45: ✓ Ready in 319ms
+2026-10-16T01:12:45: ✓ Running next.config.ts took 38ms

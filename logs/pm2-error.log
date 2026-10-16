@@ -1,0 +1,56 @@
+2026-10-14T20:13:45: Failed to proxy https://app.vistasolve.com/apis/auth/jwt/create/ Error: socket hang up
+2026-10-14T20:13:45:     at ignore-listed frames {
+2026-10-14T20:13:45:   code: 'ECONNRESET'
+2026-10-14T20:13:45: }
+2026-10-14T20:13:45: Error: socket hang up
+2026-10-14T20:13:45:     at ignore-listed frames {
+2026-10-14T20:13:45:   code: 'ECONNRESET'
+2026-10-14T20:13:45: }
+2026-10-14T20:15:42: Failed to proxy https://app.vistasolve.com/apis/auth/jwt/create/ Error: socket hang up
+2026-10-14T20:15:42:     at ignore-listed frames {
+2026-10-14T20:15:42:   code: 'ECONNRESET'
+2026-10-14T20:15:42: }
+2026-10-14T20:15:42: Error: socket hang up
+2026-10-14T20:15:42:     at ignore-listed frames {
+2026-10-14T20:15:42:   code: 'ECONNRESET'
+2026-10-14T20:15:42: }
+2026-10-14T20:16:28: Failed to proxy https://app.vistasolve.com/apis/auth/jwt/create/ Error: socket hang up
+2026-10-14T20:16:28:     at ignore-listed frames {
+2026-10-14T20:16:28:   code: 'ECONNRESET'
+2026-10-14T20:16:28: }
+2026-10-14T20:16:28: Error: socket hang up
+2026-10-14T20:16:28:     at ignore-listed frames {
+2026-10-14T20:16:28:   code: 'ECONNRESET'
+2026-10-14T20:16:28: }
+2026-10-14T20:17:12: Failed to proxy https://app.vistasolve.com/apis/auth/jwt/create/ Error: socket hang up
+2026-10-14T20:17:12:     at ignore-listed frames {
+2026-10-14T20:17:12:   code: 'ECONNRESET'
+2026-10-14T20:17:12: }
+2026-10-14T20:17:12: Error: socket hang up
+2026-10-14T20:17:12:     at ignore-listed frames {
+2026-10-14T20:17:12:   code: 'ECONNRESET'
+2026-10-14T20:17:12: }
+2026-10-14T20:17:47: Failed to proxy https://app.vistasolve.com/apis/auth/users/me/ Error: socket hang up
+2026-10-14T20:17:47:     at ignore-listed frames {
+2026-10-14T20:17:47:   code: 'ECONNRESET'
+2026-10-14T20:17:47: }
+2026-10-14T20:17:47: Error: socket hang up
+2026-10-14T20:17:47:     at ignore-listed frames {
+2026-10-14T20:17:47:   code: 'ECONNRESET'
+2026-10-14T20:17:47: }
+2026-10-14T20:20:15: Failed to proxy https://app.vistasolve.com/apis/auth/jwt/create/ Error: socket hang up
+2026-10-14T20:20:15:     at ignore-listed frames {
+2026-10-14T20:20:15:   code: 'ECONNRESET'
+2026-10-14T20:20:15: }
+2026-10-14T20:20:15: Error: socket hang up
+2026-10-14T20:20:15:     at ignore-listed frames {
+2026-10-14T20:20:15:   code: 'ECONNRESET'
+2026-10-14T20:20:15: }
+2026-10-14T20:24:33: Failed to proxy https://app.vistasolve.com/apis/auth/jwt/create/ Error: socket hang up
+2026-10-14T20:24:33:     at ignore-listed frames {
+2026-10-14T20:24:33:   code: 'ECONNRESET'
+2026-10-14T20:24:33: }
+2026-10-14T20:24:33: Error: socket hang up
+2026-10-14T20:24:33:     at ignore-listed frames {
+2026-10-14T20:24:33:   code: 'ECONNRESET'
+2026-10-14T20:24:33: }

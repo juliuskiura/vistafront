@@ -20,14 +20,16 @@
 import { APP_BASE_URL, isDeployedBuild } from "./env";
 
 /**
- * Server-to-server backend base. A loopback address here is intended: on the
- * deployed hosts the app and Django share a host, but a local checkout talks to
- * Django's dev port directly, which only server code can do.
+ * Production uses the canonical app origin so nginx forwards API requests to
+ * the app's Django service with the expected Host header. Local development
+ * talks directly to Django's dev port.
  */
 const DEV_BACKEND_URL = "http://127.0.0.1:8000";
+const PROD_BACKEND_URL = APP_BASE_URL;
 
 export const BACKEND_URL =
-  process.env.BACKEND_URL ?? (isDeployedBuild ? APP_BASE_URL : DEV_BACKEND_URL);
+  process.env.BACKEND_URL ??
+  (isDeployedBuild ? PROD_BACKEND_URL : DEV_BACKEND_URL);
 
 /** Where the /apis/ and /media/ rewrites send traffic. */
 export const API_PROXY_TARGET =

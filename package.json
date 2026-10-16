@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000 --turbo",
-    "build": "next build && node scripts/check-no-loopback-origin.mjs",
+    "build": "NEXT_STATUS=production next build && node scripts/check-no-loopback-origin.mjs",
     "build:prod": "NEXT_STATUS=production next build && node scripts/check-no-loopback-origin.mjs",
     "start": "next start -p 5173",
     "lint": "eslint"

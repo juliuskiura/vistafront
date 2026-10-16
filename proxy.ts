@@ -132,6 +132,14 @@ function rewriteToAuthCheck(
 
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
+  const isDjangoApiPath = pathname === "/apis" || pathname.startsWith("/apis/");
+
+  if (pathname !== "/" && pathname.endsWith("/") && !isDjangoApiPath) {
+    const canonicalUrl = request.nextUrl.clone();
+    canonicalUrl.pathname = pathname.slice(0, -1);
+    return NextResponse.redirect(canonicalUrl, 308);
+  }
+
   const isAsset = isAssetPath(pathname);
   const isPublic = isPublicPath(pathname);
   const access = request.cookies.get("access")?.value;
