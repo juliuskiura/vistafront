@@ -2,86 +2,237 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 
-const partners = [
+const networks = [
   {
-    name: "Discord",
-    path: "M20.317 4.37a19.79 19.79 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.372-.291a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z",
+    key: "facebook",
+    label: "Facebook",
+    svg: (
+      <svg width={16} height={16} viewBox="0 0 24 24" fill="none" className="shrink-0">
+        <circle cx="12" cy="12" r="12" fill="#1877F2" />
+        <path
+          d="M15.5 12.5H13V19H10.5V12.5H9V10H10.5V8.5C10.5 6.8 11.5 5.5 13.5 5.5H15.5V8H14C13.4 8 13 8.4 13 9V10H15.5L15.5 12.5Z"
+          fill="white"
+        />
+      </svg>
+    ),
   },
   {
-    name: "Instagram",
-    path: "M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z",
+    key: "instagram",
+    label: "Instagram",
+    svg: (
+      <svg width={16} height={16} viewBox="0 0 24 24" fill="none" className="shrink-0">
+        <defs>
+          <radialGradient
+            id="ig-grad"
+            cx="0.2"
+            cy="1"
+            r="1"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop offset="0%" stopColor="#FFD521" />
+            <stop offset="10%" stopColor="#FFD521" />
+            <stop offset="50%" stopColor="#F50000" />
+            <stop offset="100%" stopColor="#B900B4" />
+          </radialGradient>
+        </defs>
+        <rect width="24" height="24" rx="6" fill="url(#ig-grad)" />
+        <circle cx="12" cy="12" r="4.2" stroke="white" strokeWidth={1.8} />
+        <rect
+          x="4"
+          y="4"
+          width="16"
+          height="16"
+          rx="4.5"
+          stroke="white"
+          strokeWidth={1.8}
+        />
+        <circle cx="16.5" cy="7.5" r="1.1" fill="white" />
+      </svg>
+    ),
   },
   {
-    name: "Spotify",
-    path: "M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z",
+    key: "linkedin",
+    label: "LinkedIn",
+    svg: (
+      <svg width={16} height={16} viewBox="0 0 24 24" fill="none" className="shrink-0">
+        <rect width="24" height="24" rx="4" fill="#0A66C2" />
+        <path
+          d="M7.5 9.5H5.5V18.5H7.5V9.5ZM6.5 8.5C7.2 8.5 7.7 7.9 7.7 7.2C7.7 6.5 7.2 6 6.5 6C5.8 6 5.3 6.5 5.3 7.2C5.3 7.9 5.8 8.5 6.5 8.5ZM18.5 18.5H16.5V14.5C16.5 13.5 16 12.8 14.9 12.8C14 12.8 13.5 13.5 13.3 14.1V18.5H11.3V9.5H13.3V10.8C13.6 10.3 14.3 9.3 15.8 9.3C17.3 9.3 18.5 10.3 18.5 12.5V18.5Z"
+          fill="white"
+        />
+      </svg>
+    ),
   },
   {
-    name: "YouTube",
-    path: "M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z",
+    key: "twitter",
+    label: "X (Twitter)",
+    svg: (
+      <svg width={16} height={16} viewBox="0 0 24 24" fill="none" className="shrink-0">
+        <rect width="24" height="24" rx="12" fill="#000000" />
+        <path
+          d="M16.5 6H18.5L14 11.2L19.3 18H15.2L12 13.8L8.4 18H6.4L11.2 12.5L6.1 6H10.3L13.2 9.9L16.5 6ZM15.8 16.8H16.9L9.6 7.1H8.4L15.8 16.8Z"
+          fill="white"
+        />
+      </svg>
+    ),
   },
   {
-    name: "TikTok",
-    path: "M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z",
+    key: "tiktok",
+    label: "TikTok",
+    svg: (
+      <svg width={16} height={16} viewBox="0 0 24 24" fill="none" className="shrink-0">
+        <rect width="24" height="24" rx="12" fill="#000000" />
+        <path
+          d="M14.5 5.5C15 6.8 16 7.8 17.5 8V10.5C16.3 10.5 15.3 10 14.5 9.3V14C14.5 16.5 12.5 18.5 10 18.5C7.5 18.5 5.5 16.5 5.5 14C5.5 11.5 7.5 9.5 10 9.5C10.4 9.5 10.7 9.6 11 9.7V12.2C10.7 12.1 10.4 12 10 12C8.9 12 8 12.9 8 14C8 15.1 8.9 16 10 16C11.1 16 12 15.1 12 14V5.5H14.5Z"
+          fill="white"
+        />
+        <path
+          d="M14.5 5.5C15 6.8 16 7.8 17.5 8V8.6C16 8.4 15 7.4 14.5 6.1V5.5Z"
+          fill="#25F4EE"
+        />
+        <path
+          d="M12 14C12 15.1 11.1 16 10 16C8.9 16 8 15.1 8 14C8 13.6 8.1 13.3 8.3 13C8.1 13.3 8 13.6 8 14C8 15.1 8.9 16 10 16C11.1 16 12 15.1 12 14Z"
+          fill="#FE2C55"
+        />
+      </svg>
+    ),
   },
-];
+  {
+    key: "youtube",
+    label: "YouTube",
+    svg: (
+      <svg width={16} height={16} viewBox="0 0 24 24" fill="none" className="shrink-0">
+        <rect width="24" height="24" rx="12" fill="#FF0000" />
+        <path
+          d="M16.5 9.5C17.3 9.7 17.8 10.4 18 11.2C18.3 12.5 18.3 14 18.3 14C18.3 14 18.3 15.5 18 16.8C17.8 17.6 17.3 18.3 16.5 18.5C15.2 18.8 12 18.8 12 18.8C12 18.8 8.8 18.8 7.5 18.5C6.7 18.3 6.2 17.6 6 16.8C5.7 15.5 5.7 14 5.7 14C5.7 14 5.7 12.5 6 11.2C6.2 10.4 6.7 9.7 7.5 9.5C8.8 9.2 12 9.2 12 9.2C12 9.2 15.2 9.2 16.5 9.5ZM10.5 16.2L14.8 14L10.5 11.8V16.2Z"
+          fill="white"
+        />
+      </svg>
+    ),
+  },
+] as const;
 
 export default function Home() {
   return (
-    <main className="flex flex-1 flex-col items-center justify-center bg-background p-4 sm:p-6 md:p-8">
-      <div className="flex w-full max-w-5xl flex-col overflow-hidden rounded-[2.5rem] border border-border bg-card shadow-2xl md:flex-row md:rounded-[3rem]">
-        {/* Left: Visual panel (stacked above on mobile, left column on desktop) */}
-        <section className="relative flex min-h-[280px] flex-1 flex-col overflow-hidden bg-gradient-to-br from-[#1a3cff] via-[#0052cc] to-[#0a1e6b] p-8 md:min-h-[560px] md:rounded-l-[3rem] md:p-12">
-          {/* Organic mesh / fluid shapes */}
-          <div className="pointer-events-none absolute -left-16 -top-16 h-64 w-64 rounded-full bg-[#4d7fff]/60 blur-3xl" />
-          <div className="pointer-events-none absolute right-0 top-1/3 h-72 w-72 rounded-full bg-[#00e5ff]/40 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-20 left-1/4 h-72 w-72 rounded-full bg-[#7a5cff]/50 blur-3xl" />
-          <div className="pointer-events-none absolute -right-8 -bottom-8 h-56 w-56 rounded-full bg-[#19e664]/30 blur-3xl" />
-
-          {/* Headline */}
-          <div className="relative z-10">
-            <h1 className="font-display text-xl font-bold leading-snug tracking-tight text-white sm:text-2xl md:text-3xl lg:leading-[1.15]">
-              Welcome home to the CRM that finally has your back.
-            </h1>
-            <p className="mt-4 max-w-md text-sm leading-relaxed text-white/80 sm:text-base">
-              Take a breath. Every project, every post, every conversation
-              your team needs is waiting for you in one calm, organized place.
-              From the first kickoff meeting to the final celebratory reply,
-              Vistasolve quietly keeps everything on track so you can focus on
-              the work that actually matters.
-            </p>
-            <p className="mt-3 max-w-md text-sm leading-relaxed text-white/70 sm:text-base">
-              Plan projects with confidence, schedule and respond across every
-              social channel without the chaos, and trust that nothing will
-              slip through the cracks. You are in good hands.
-            </p>
+    <main className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col font-sans">
+      <div className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-12 flex flex-col lg:flex-row items-center justify-between gap-10 lg:gap-14">
+        {/* Left: hero panel */}
+        <div className="flex-1 max-w-xl space-y-6 lg:pr-4 text-left">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200/80 text-xs font-bold text-[#374bd8]">
+            <span className="w-2 h-2 rounded-full bg-[#374bd8] animate-pulse" />
+            <span>Unified Multi-Platform Engine</span>
           </div>
 
-          {/* Partners */}
-          <div className="relative z-10 mt-auto pt-10">
-            <p className="mb-5 text-center text-sm font-medium tracking-wide text-white/60">
-              Trusted by teams who rely on
-            </p>
-            <div className="flex items-center justify-center gap-6 opacity-60 sm:gap-8">
-              {partners.map((p) => (
-                <svg
-                  key={p.name}
-                  viewBox="0 0 24 24"
-                  className="h-6 w-6 fill-white sm:h-7 sm:w-7"
-                  aria-label={p.name}
-                  role="img"
+          <h1 className="font-jakarta text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight">
+            Manage, publish, and moderate all channels in{" "}
+            <span className="text-[#374bd8]">one place.</span>
+          </h1>
+
+          <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
+            Eliminate tedious tab-switching. Compose rich campaigns for
+            Facebook, Instagram, LinkedIn, X, TikTok, and YouTube, then read
+            and reply to all cross-platform comments from a single unified
+            inbox.
+          </p>
+
+          {/* Connected networks */}
+          <div className="pt-2">
+            <span className="text-[11px] uppercase font-bold tracking-wider text-slate-400 block mb-2.5">
+              Connected Networks Live Sync:
+            </span>
+            <div className="flex items-center gap-2 flex-wrap">
+              {networks.map((n) => (
+                <div
+                  key={n.key}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 shadow-2xs text-xs font-semibold text-slate-700"
                 >
-                  <path d={p.path} />
-                </svg>
+                  {n.svg}
+                  <span>{n.label}</span>
+                </div>
               ))}
             </div>
           </div>
-        </section>
 
-        {/* Right: Call-to-action panel */}
-        <section className="flex flex-1 items-center justify-center bg-[radial-gradient(ellipse_at_top_right,rgba(63,0,255,0.08),transparent_50%),var(--color-background)] p-6 sm:p-10 md:p-12">
-          <div className="flex w-full max-w-sm flex-col items-start gap-6">
-            <div>
-              <h2 className="font-display text-2xl font-semibold tracking-tight text-foreground">
+          {/* Feature highlights */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-4">
+            <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-2xs flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <svg
+                  width={16}
+                  height={16}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={3}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                  <polyline points="22 4 12 14.01 9 11.01" />
+                </svg>
+              </div>
+              <div>
+                <span className="text-xs font-bold text-slate-900 block">
+                  Simultaneous Publishing
+                </span>
+                <span className="text-[11px] text-slate-500 mt-0.5 leading-snug block">
+                  Compose once, tailor per network, and schedule in seconds.
+                </span>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-2xs flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-indigo-50 text-[#374bd8] flex items-center justify-center shrink-0">
+                <svg
+                  width={16}
+                  height={16}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+              </div>
+              <div>
+                <span className="text-xs font-bold text-slate-900 block">
+                  Multi-Channel Moderation
+                </span>
+                <span className="text-[11px] text-slate-500 mt-0.5 leading-snug block">
+                  Filter, read threads, and answer comments with AI
+                  suggestions.
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Testimonial */}
+          <div className="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-100 flex items-center gap-3.5">
+            <img
+              src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop&crop=face"
+              alt="Elena Rostova"
+              className="w-10 h-10 rounded-full object-cover ring-2 ring-white shrink-0"
+            />
+            <div className="min-w-0">
+              <p className="text-xs text-slate-700 italic leading-snug">
+                “Vistasolve transformed our marketing operations. Being able to
+                moderate all channel comments from one central view saved us
+                hours every day.”
+              </p>
+              <span className="text-[11px] font-bold text-slate-900 block mt-1">
+                Elena Rostova &middot; Operations Lead
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: gutted auth card shell + preserved CTA buttons */}
+        <div className="w-full max-w-md shrink-0">
+          <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xl overflow-hidden p-6 sm:p-8 space-y-6">
+            <div className="text-left">
+              <h2 className="font-jakarta text-2xl font-semibold tracking-tight text-foreground">
                 Ready when you are
               </h2>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
@@ -103,7 +254,7 @@ export default function Home() {
               </Button>
             </div>
           </div>
-        </section>
+        </div>
       </div>
     </main>
   );
