@@ -65,7 +65,7 @@ export default async function WorkspaceLayout({
   const allWorkspaces = await listWorkspaces().catch(rethrowTransient());
   const active = await requireWorkspace(slug, allWorkspaces);
   const [nav, subscription, rooms] = await Promise.all([
-    getNavigationSidebar().catch(rethrowTransient()),
+    getNavigationSidebar(active.domain).catch(rethrowTransient()),
     getSubscriptionState({ workspace: active.nanoid }).catch((error) => {
       const failure = asTransientFailure(error);
       if (failure !== error) throw failure;

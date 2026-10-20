@@ -22,11 +22,15 @@ export async function getDashboardWidgets(workspace: string): Promise<DashboardW
 /**
  * Server-rendered navigation tree for the current workspace.
  *
- * Backed by `/apis/navigation/sidebar/`. The tree already includes the
- * correct `to` paths for the active workspace.
+ * Backed by `/apis/navigation/sidebar/`. The `workspace` parameter
+ * is forwarded as the `X-Workspace` header so the middleware
+ * resolves the active tenant.
  */
-export async function getNavigationSidebar(): Promise<NavItem[]> {
-  const data = await serverFetch<NavItem[] | Paginated<NavItem>>("/apis/navigation/sidebar/");
+export async function getNavigationSidebar(workspace: string): Promise<NavItem[]> {
+  const data = await serverFetch<NavItem[] | Paginated<NavItem>>(
+    "/apis/navigation/sidebar/",
+    { workspace },
+  );
   if (Array.isArray(data)) {
     return data;
   }
