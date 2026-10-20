@@ -18,7 +18,7 @@ import { ChannelAbout } from "./_components/channel-about";
 import { ChannelPosts } from "./_components/channel-posts";
 import { ChannelActions, type InstagramResult, type SyncResult } from "./_components/channel-actions";
 import { PostCommentsSheet } from "./_components/post-comments-sheet";
-import { getTokenHealth } from "@/components/socialmanager/platform-gradients";
+import { tokenHealthFromConnection } from "@/components/socialmanager/platform-gradients";
 
 interface Props {
   channel: ManagedChannel | null;
@@ -125,7 +125,7 @@ export function ChannelDetailClient({
     );
   }
 
-  const token = getTokenHealth(channel.token_expires_at);
+  const token = tokenHealthFromConnection(channel.health);
   const isSyncingPending = isSyncing || !!syncTaskId;
 
   return (

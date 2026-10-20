@@ -36,6 +36,7 @@ import type {
   SyncChannelSelectionResult,
   SyncTaskResult,
   ModerationTaskResult,
+  VerifyResult,
 } from "./types";
 
 /**
@@ -387,13 +388,23 @@ export function listChannelCapabilities(
   );
 }
 
+/**
+ * Ask the backend whether a channel can still connect with its stored token.
+ *
+ * The viewset answers `200` with `{ok: true, health}` on success and `400` with
+ * `{ok: false, error, error_type, health}` when the token cannot reach the page.
+ * That `400` is a *verdict*, not a transport failure, so it is opted in via
+ * `acceptStatuses` and returned as data — the caller needs `health` to pick
+ * "Connected" over "Disconnected". Only a genuine failure (401/403/429/5xx or
+ * a transport error) throws.
+ */
 export function verifyPage(
   nanoid: string,
   workspace: string,
-): Promise<{ ok: boolean; error?: string; error_type?: string }> {
-  return serverMutate<{ ok: boolean; error?: string; error_type?: string }>(
+): Promise<VerifyResult> {
+  return serverMutate<VerifyResult>(
     `/apis/socialmanager/pages/${nanoid}/verify/`,
-    { body: {}, workspace },
+    { body: {}, workspace, acceptStatuses: [400] },
   );
 }
 

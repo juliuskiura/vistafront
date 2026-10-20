@@ -263,6 +263,12 @@ export async function serverMutate<T>(
   });
 
   if (!response.ok) {
+    // Some endpoints carry a business verdict in an error status (e.g. verify
+    // answers 400 with the verdict). Those callers opt the status in explicitly
+    // and get the parsed body back; everything else throws as before.
+    if (options.acceptStatuses?.includes(response.status)) {
+      return (await response.json()) as T;
+    }
     throw new ServerFetchError(response.status, await response.text(), path);
   }
 

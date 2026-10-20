@@ -1322,6 +1322,42 @@ export interface ContentConstraint {
   media_constraints: MediaConstraint[];
 }
 
+/** A platform-neutral verdict on whether a channel can still publish.
+ *
+ *  The backend folds each platform's token model into one of these states so
+ *  the frontend never does date arithmetic on `token_expires_at` — which means
+ *  a different thing on every platform (TikTok's access token lives 24 hours
+ *  while the backend rotates its 365-day refresh token hourly; a Meta Page
+ *  token never expires at all). This is the only shape the UI is allowed to
+ *  read to decide a channel's status. */
+export interface ConnectionHealth {
+  state:
+    | "connected"
+    | "expiring"
+    | "expired"
+    | "no_access_token"
+    | "reconnect_required"
+    | "unreachable";
+  /** ISO expiry of the effective, refresh-aware credential, or `null` when the
+   *  connection does not expire. */
+  expires_at: string | null;
+  /** The fix the UI should offer, if any. `sync` re-lists the account's pages;
+   *  `reconnect` needs the user in a browser. */
+  remedy: "none" | "sync" | "reconnect";
+  /** A sentence the UI may show verbatim. */
+  message: string;
+}
+
+/** The body `POST /apis/socialmanager/pages/{nanoid}/verify/` returns. A `400`
+ *  is a *verdict* (`ok: false`) rather than a transport error, so `health` is
+ *  present on both success and failure. */
+export interface VerifyResult {
+  ok: boolean;
+  health: ConnectionHealth;
+  error?: string;
+  error_type?: string;
+}
+
 export interface ManagedChannel {
   id: string;
   nanoid: string;
@@ -1329,6 +1365,9 @@ export interface ManagedChannel {
   platform: string;
   platform_name: string;
   account_name: string;
+  /** Stored-data connection health. A live verify verdict overrides it; both
+   *  are the same shape so the UI maps one `state` either way. */
+  health: ConnectionHealth;
   /** Which door the owning account signed in through: `direct`,
    *  `facebook_page`, or `instagram_login`. This — not `platform` — is how a
    *  channel connected through a Facebook Page is told apart from one the user

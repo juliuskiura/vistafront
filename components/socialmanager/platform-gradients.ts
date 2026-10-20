@@ -1,3 +1,5 @@
+import type { ConnectionHealth } from "@/lib/api/types";
+
 export type TokenStatus = "active" | "expiring_soon" | "expired";
 
 export interface TokenHealth {
@@ -44,14 +46,39 @@ export function getPlatformGradient(platform: string): string {
   return PLATFORM_GRADIENTS[platform] ?? "from-primary-600 to-purple-600";
 }
 
-export function getTokenHealth(expiresAt: string | null): TokenHealth {
-  if (!expiresAt) return { status: "active", days: null };
-  const now = Date.now();
-  const expiry = new Date(expiresAt).getTime();
-  const days = Math.floor((expiry - now) / 86400000);
-  if (expiry <= now) return { status: "expired", days: 0 };
-  if (days <= 14) return { status: "expiring_soon", days };
-  return { status: "active", days };
+const DAY_MS = 86_400_000;
+
+/** Whole days until an ISO instant, or `null` when there is no expiry. */
+function daysUntil(iso: string | null): number | null {
+  if (!iso) return null;
+  const at = new Date(iso).getTime();
+  if (Number.isNaN(at)) return null;
+  return Math.floor((at - Date.now()) / DAY_MS);
+}
+
+/**
+ * Reduce the backend's connection-health verdict to the coarse token scale the
+ * detail hero and health card were built around.
+ *
+ * The frontend no longer derives this from `token_expires_at` — that value
+ * means a different thing on every platform (TikTok's access token lives 24
+ * hours; a Meta Page token never expires), so reading it here is what made a
+ * healthy TikTok channel look expired. The backend already folded those
+ * differences into `state`; this only re-shapes it for existing UI.
+ *
+ * The states the card has no dedicated visual for (`no_access_token`,
+ * `reconnect_required`, `unreachable`) all read as `expired` — they each need
+ * the same attention, and `health.message` carries the precise reason.
+ */
+export function tokenHealthFromConnection(health: ConnectionHealth): TokenHealth {
+  switch (health.state) {
+    case "connected":
+      return { status: "active", days: daysUntil(health.expires_at) };
+    case "expiring":
+      return { status: "expiring_soon", days: daysUntil(health.expires_at) ?? 0 };
+    default:
+      return { status: "expired", days: 0 };
+  }
 }
 
 export function tokenProgress(days: number | null): number {

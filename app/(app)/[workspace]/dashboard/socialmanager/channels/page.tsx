@@ -2,8 +2,7 @@ import { requireWorkspace } from "@/lib/auth/server";
 import { requireFeature } from "@/lib/features/guard";
 import { listAccounts, listPlatforms, verifyPage } from "@/lib/api";
 import { buildPlatformOptions } from "@/components/socialmanager/connect-account-modal/_components/platform-copy";
-import type { SocialAccount } from "@/lib/api/types";
-import type { VerifyVerdict } from "./_components/channel-health-label";
+import type { ConnectionHealth, SocialAccount } from "@/lib/api/types";
 import { ChannelsClient } from "./channels-client";
 
 /**
@@ -55,17 +54,19 @@ export default async function ChannelsPage({
   }, {});
 
   // Live confirmations from `POST /pages/{nanoid}/verify/` (a `GET /{page_id}`
-  // with the publishing token) of which channels can actually connect. Only
-  // active channels are asked, within the budget above.
+  // with the publishing token) of which channels can actually connect right
+  // now. Only active channels are asked, within the budget above; the rest fall
+  // back to the stored health the serializer attaches to every channel, so none
+  // renders as an ambiguous "Unverified".
   const toVerify = channels.filter((page) => page.is_active).slice(0, VERIFY_BUDGET);
   const settled = await Promise.allSettled(
     toVerify.map((page) =>
       verifyPage(page.nanoid, ws).then((verdict) => ({ nanoid: page.nanoid, verdict })),
     ),
   );
-  const verdicts = settled.reduce<Record<string, VerifyVerdict>>((map, result) => {
-    if (result.status === "fulfilled" && typeof result.value.verdict.ok === "boolean") {
-      map[result.value.nanoid] = result.value.verdict;
+  const liveHealths = settled.reduce<Record<string, ConnectionHealth>>((map, result) => {
+    if (result.status === "fulfilled" && result.value.verdict.health) {
+      map[result.value.nanoid] = result.value.verdict.health;
     }
     return map;
   }, {});
@@ -76,7 +77,7 @@ export default async function ChannelsPage({
       workspaceDomain={ws}
       pageToAccountNanoid={pageToAccountNanoid}
       pageToAccountEmail={pageToAccountEmail}
-      verdicts={verdicts}
+      liveHealths={liveHealths}
       accounts={accounts}
       instagramDoors={instagramDoors}
       recommendedDoorId={recommendedDoorId}

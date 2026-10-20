@@ -10,9 +10,9 @@ import { RefreshCw, AlertCircle } from "@/lib/icons";
 import { syncAccountAction, disableChannelAction, purgeChannelAction } from "../actions";
 import { ChannelCard } from "./_components/channel-card";
 import { ConnectChannels } from "./_components/connect-channels";
-import { describeChannelHealth, type VerifyVerdict } from "./_components/channel-health-label";
+import { describeChannelHealth } from "./_components/channel-health-label";
 import type { PlatformDoor } from "@/components/socialmanager/connect-account-modal/_components/platform-copy";
-import type { ManagedChannel, SocialAccount, SocialPlatform } from "@/lib/api/types";
+import type { ConnectionHealth, ManagedChannel, SocialAccount, SocialPlatform } from "@/lib/api/types";
 
 interface Props {
   channels: ManagedChannel[];
@@ -21,11 +21,12 @@ interface Props {
   /** The connected account's email per channel (when the platform released one). */
   pageToAccountEmail: Record<string, string>;
   /**
-   * A live `POST /pages/{nanoid}/verify/` answer per active channel, resolved
-   * on the server before first paint. Drives the card's Connected indicator:
-   * a channel only shows green once the platform confirms its token works.
+   * A live `POST /pages/{nanoid}/verify/` health verdict per active channel,
+   * resolved on the server before first paint. Overrides the stored
+   * `page.health` so a channel shows green only once the platform confirms its
+   * token works.
    */
-  verdicts?: Record<string, VerifyVerdict>;
+  liveHealths?: Record<string, ConnectionHealth>;
   /**
    * All connected accounts, used only to detect page-less Door 2
    * (`instagram`) accounts whose backend sync produced zero channels
@@ -50,7 +51,7 @@ export function ChannelsClient({
   workspaceDomain,
   pageToAccountNanoid,
   pageToAccountEmail,
-  verdicts = {},
+  liveHealths = {},
   accounts = [],
   instagramDoors = [],
   recommendedDoorId = null,
@@ -219,11 +220,12 @@ export function ChannelsClient({
               canConnect={canConnect}
               accountEmail={pageToAccountEmail[page.nanoid] ?? ""}
               accountNanoid={pageToAccountNanoid[page.nanoid] ?? ""}
-              health={describeChannelHealth({
-                verdict: page.is_active ? verdicts[page.nanoid] : undefined,
-                tokenExpiresAt: page.token_expires_at,
-                isActive: page.is_active,
-              })}
+              health={describeChannelHealth(
+                page.is_active
+                  ? liveHealths[page.nanoid] ?? page.health
+                  : undefined,
+                page.is_active,
+              )}
               syncing={syncingId === page.nanoid}
               onSync={handleSync}
               onDisable={setDisableTarget}

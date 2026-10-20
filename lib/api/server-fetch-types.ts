@@ -10,6 +10,15 @@ export interface MutateOptions {
   body: unknown;
   method?: "POST" | "PUT" | "PATCH" | "DELETE";
   workspace?: string;
+  /**
+   * HTTP status codes whose response body must be returned as data instead of
+   * throwing a {@link ServerFetchError}. Use this for endpoints that encode a
+   * business verdict in an error status — e.g. `POST /pages/{id}/verify/`
+   * answers `400` with `{ok, error, error_type}`. Never list `401`/`403`
+   * (session/CSRF — must stay terminal) or `429`/`5xx` (transient — must keep
+   * their throw-and-retry meaning) here.
+   */
+  acceptStatuses?: readonly number[];
 }
 
 export class ServerFetchError extends Error {

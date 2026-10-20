@@ -71,6 +71,7 @@ import type {
   PostComment,
   DeletePostResult,
   LivePostTaskResult,
+  VerifyResult,
 } from "@/lib/api/types";
 import type {
   CampaignActionState,
@@ -685,11 +686,20 @@ export async function deleteAccountAction(
 export async function verifyPageAction(
   nanoid: string,
   workspace: string,
-): Promise<{ ok: boolean; error?: string; error_type?: string }> {
+): Promise<VerifyResult> {
   try {
     return await verifyPage(nanoid, workspace);
   } catch {
-    return { ok: false, error: "Verification request failed." };
+    return {
+      ok: false,
+      error: "Verification request failed.",
+      health: {
+        state: "unreachable",
+        expires_at: null,
+        remedy: "none",
+        message: "Verification request failed.",
+      },
+    };
   }
 }
 
