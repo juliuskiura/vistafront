@@ -1,7 +1,7 @@
 "use client";
 
 import { Eraser } from "@/lib/icons";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 import {
@@ -85,6 +85,8 @@ export function HueColorPicker({
 }: HueColorPickerProps) {
   const [hsv, setHsv] = useState(() => hexToHsv(value));
   const [isDragging, setIsDragging] = useState<"field" | "hue" | null>(null);
+  const fieldRef = useRef<HTMLDivElement>(null);
+  const hueRef = useRef<HTMLDivElement>(null);
 
   const hex = useMemo(() => hsvToHex(hsv), [hsv]);
 
@@ -137,12 +139,12 @@ export function HueColorPicker({
           : (e as React.TouchEvent<HTMLDivElement>).touches[0].clientY;
 
       if (isDragging === "field") {
-        const field = document.querySelector<HTMLElement>("[data-color-field]");
+        const field = fieldRef.current;
         if (field) {
           handleFieldChange(clientX, clientY, field.getBoundingClientRect());
         }
       } else if (isDragging === "hue") {
-        const hue = document.querySelector<HTMLElement>("[data-color-hue]");
+        const hue = hueRef.current;
         if (hue) {
           handleHueChange(clientX, hue.getBoundingClientRect());
         }
@@ -169,6 +171,7 @@ export function HueColorPicker({
 
       {/* Saturation / brightness field */}
       <div
+        ref={fieldRef}
         data-color-field
         className="relative w-full h-20 rounded-lg border border-input overflow-hidden cursor-crosshair"
         onMouseDown={(e) => {
@@ -211,6 +214,7 @@ export function HueColorPicker({
 
       {/* Hue slider */}
       <div
+        ref={hueRef}
         className="relative w-full h-1.5 rounded-lg border border-input overflow-hidden cursor-pointer"
         data-color-hue
         onMouseDown={(e) => {

@@ -125,6 +125,7 @@ function NoteTypeForm({
               color_code: colorCode,
             }}
             fallback="Preview"
+            variant="pill"
           />
         </div>
       </div>
