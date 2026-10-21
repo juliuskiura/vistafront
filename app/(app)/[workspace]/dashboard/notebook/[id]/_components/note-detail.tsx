@@ -24,11 +24,13 @@ import { NoteHeader } from "./note-header";
 export function NoteDetail({
   note,
   type,
+  noteTypes,
   attachments,
   workspaceDomain,
 }: {
   note: Note;
   type: NoteTypeOption | null;
+  noteTypes: NoteTypeOption[];
   attachments: NoteAttachment[];
   workspaceDomain: string;
 }) {
@@ -45,6 +47,7 @@ export function NoteDetail({
       <NoteHeader
         note={note}
         type={type}
+        noteTypes={noteTypes}
         workspaceDomain={workspaceDomain}
         editing={editing}
         onEditingChange={setEditing}

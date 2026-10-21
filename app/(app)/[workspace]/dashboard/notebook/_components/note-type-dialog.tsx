@@ -105,7 +105,7 @@ function NoteTypeForm({
           autoFocus
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Meeting notes"
+          placeholder="Note Type/Category Name"
           aria-invalid={!!state.fieldErrors?.name}
           className={INPUT_CLASS}
         />

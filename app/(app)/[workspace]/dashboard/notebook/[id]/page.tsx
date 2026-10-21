@@ -81,6 +81,7 @@ export default async function NoteDetailPage({
         <NoteDetail
           note={note}
           type={type}
+          noteTypes={noteTypes}
           attachments={attachments}
           workspaceDomain={active.domain}
         />

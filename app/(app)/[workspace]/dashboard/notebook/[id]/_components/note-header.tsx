@@ -16,6 +16,8 @@ import { cn } from "@/lib/utils";
 
 import { NoteCardActions } from "../../_components/note-card-actions";
 import { TypeSwatch } from "../../_components/type-swatch";
+import { FieldError, INPUT_CLASS } from "../../_components/form-primitives";
+import { updateNoteMetaAction } from "../../actions";
 
 /**
  * The note's identity block, and the only client component on the page.
@@ -64,6 +66,7 @@ function scrollParentOf(el: HTMLElement): HTMLElement | null {
 interface NoteHeaderProps {
   note: Note;
   type: NoteTypeOption | null;
+  noteTypes: NoteTypeOption[];
   workspaceDomain: string;
   /** Whether the body below is the editor. */
   editing: boolean;
@@ -73,12 +76,17 @@ interface NoteHeaderProps {
 export function NoteHeader({
   note,
   type,
+  noteTypes,
   workspaceDomain,
   editing,
   onEditingChange,
 }: NoteHeaderProps) {
   const [pinned, setPinned] = useState(false);
   const headRef = useRef<HTMLDivElement>(null);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const titleRef = useRef<HTMLInputElement | null>(null);
+  const [metaPending, setMetaPending] = useState(false);
+  const [metaError, setMetaError] = useState<string | null>(null);
 
   useEffect(() => {
     const el = headRef.current;
@@ -114,6 +122,41 @@ export function NoteHeader({
   const html = noteContentHtml(note.content);
   const words = countWords(html);
 
+  const handleTitleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMetaPending(true);
+    setMetaError(null);
+    const formData = new FormData(e.currentTarget as HTMLFormElement);
+    const result = await (updateNoteMetaAction as unknown as (
+      formData: FormData,
+    ) => Promise<{ status: string; message?: string; fieldErrors?: Record<string, string[]> }>)(formData);
+    setMetaPending(false);
+    if (result.status === "success") {
+      setEditingTitle(false);
+    } else {
+      setMetaError(result.message ?? "Could not save title.");
+    }
+  };
+
+  const handleTypeChange = async (key: string) => {
+    if (!type || key === type.key) return;
+    setMetaPending(true);
+    setMetaError(null);
+    const formData = new FormData();
+    formData.set("workspace_domain", workspaceDomain);
+    formData.set("nanoid", note.nanoid);
+    formData.set("title", note.title);
+    formData.set("note_type", key);
+    formData.set("tags", note.tag_names.join(","));
+    const result2 = await (updateNoteMetaAction as unknown as (
+      formData: FormData,
+    ) => Promise<{ status: string; message?: string; fieldErrors?: Record<string, string[]> }>)(formData);
+    setMetaPending(false);
+    if (result2.status === "error") {
+      setMetaError(result2.message ?? "Could not change note type.");
+    }
+  };
+
   return (
     /*
      * The inset lives on the inner block, not on the sticky element itself.
@@ -125,82 +168,150 @@ export function NoteHeader({
      */
     <div ref={headRef} className="nb-sticky-head">
       <div className="nb-inset-x pb-3 pt-5 sm:pb-3.5 sm:pt-6">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-          <h1
-            className={cn(
-              "min-w-0 flex-1 truncate font-bold tracking-[-0.03em] text-foreground transition-[font-size] duration-200",
-              pinned ? "text-lg leading-tight" : "text-2xl leading-[1.15] sm:text-3xl",
+        <div className="flex flex-wrap items-start gap-x-4 gap-y-3">
+          <Button asChild variant="outline" size="sm" className="h-8">
+            <Link href={`/${workspaceDomain}/dashboard/notebook`}>
+              <ArrowLeft size={14} />
+              All notes
+            </Link>
+          </Button>
+
+          <div className="flex-1 min-w-0 flex flex-col gap-1">
+            {editingTitle ? (
+              <form
+                onSubmit={handleTitleSubmit}
+                className="flex items-center gap-2"
+              >
+                <input
+                  ref={titleRef}
+                  type="text"
+                  name="title"
+                  defaultValue={note.title}
+                  autoFocus
+                  className={INPUT_CLASS}
+                  maxLength={255}
+                />
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={metaPending}
+                >
+                  Save
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setEditingTitle(false)}
+                  disabled={metaPending}
+                >
+                  Cancel
+                </Button>
+                {metaError && (
+                  <p className="text-xs text-destructive">{metaError}</p>
+                )}
+              </form>
+            ) : (
+              <div className="flex items-center gap-2">
+                <h1
+                  className={cn(
+                    "min-w-0 flex-1 truncate font-bold tracking-[-0.03em] text-foreground transition-[font-size] duration-200",
+                    pinned ? "text-lg leading-tight" : "text-2xl leading-[1.15] sm:text-3xl",
+                  )}
+                >
+                  {note.title}
+                </h1>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 px-2"
+                  aria-label="Edit title"
+                  disabled={metaPending}
+                  onClick={() => setEditingTitle(true)}
+                >
+                  <PenLine size={14} />
+                </Button>
+              </div>
             )}
-          >
-            {note.title}
-          </h1>
+            {metaError && editingTitle === false && (
+              <p className="text-xs text-destructive">{metaError}</p>
+            )}
+          </div>
 
-          {/*
-            The page's controls, in one cluster: navigation out, information
-            in, the action, and the housekeeping behind it.
-
-            Below `sm` this cluster wraps onto its own line under the title,
-            because a title, three buttons, and a Quick Tools trigger do not
-            fit across a phone. The title drops to `text-2xl` there for the
-            same reason — `flex-1` would otherwise squeeze it to nothing
-            rather than wrap.
-          */}
-          <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
-            <Button asChild variant="outline" size="sm" className="h-8">
-              <Link href={`/${workspaceDomain}/dashboard/notebook`}>
-                <ArrowLeft size={14} />
-                All notes
-              </Link>
-            </Button>
-
-            {/* Phone only. Above `sm` the metadata is its own line, so the
-                popover would duplicate it. */}
+          <div className="flex items-center gap-2">
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-8 px-2 sm:hidden"
-                  aria-label="Note details"
+                  className="h-8 min-w-[120px]"
+                  disabled={metaPending}
                 >
-                  <Info size={14} />
+                  <TypeSwatch
+                    type={type}
+                    fallback={note.note_type_display ?? String(note.note_type)}
+                    variant="pill"
+                    className="mr-1"
+                  />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent align="start" className="w-64 text-xs">
-                <NoteMeta note={note} type={type} words={words} />
+              <PopoverContent align="start" className="w-64 p-2">
+                <div className="flex flex-col gap-1">
+                  {noteTypes.map((t) => {
+                    const selected = type?.key === t.key;
+                    return (
+                      <button
+                        key={t.nanoid}
+                        type="button"
+                        onClick={() => handleTypeChange(t.key)}
+                        disabled={selected || metaPending}
+                        className={cn(
+                          "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors",
+                          selected
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:bg-accent",
+                        )}
+                      >
+                        <TypeSwatch type={t} fallback={t.name} variant="dot" className="size-2" />
+                        <span>{t.name}</span>
+                        {selected && (
+                          <span className="ml-auto text-xs text-primary-foreground">
+                            Current
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </PopoverContent>
             </Popover>
 
-            <div className="ml-auto flex items-center gap-2">
-              {editing ? null : (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-8 px-2 sm:px-3"
-                  // Icon only on a phone: the cluster already carries three
-                  // controls there, and a fourth word-width button would wrap
-                  // the row onto a second line. The label stays in the
-                  // accessible name, so this is a width change, not a loss.
-                  aria-label="Edit content"
-                  onClick={() => onEditingChange(true)}
-                >
-                  <PenLine size={14} />
-                  <span className="hidden sm:inline">
-                    {html.trim() ? "Edit content" : "Add content"}
-                  </span>
-                </Button>
-              )}
-              <NoteCardActions
-                workspaceDomain={workspaceDomain}
-                nanoid={note.nanoid}
-                title={note.title}
-                favorite={note.favorite}
-                archived={note.archived}
-                variant="full"
-              />
-            </div>
+            {editing ? null : (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8 px-2 sm:px-3"
+                aria-label="Edit content"
+                disabled={metaPending}
+                onClick={() => onEditingChange(true)}
+              >
+                <PenLine size={14} />
+                <span className="hidden sm:inline">
+                  {html.trim() ? "Edit content" : "Add content"}
+                </span>
+              </Button>
+            )}
+            <NoteCardActions
+              workspaceDomain={workspaceDomain}
+              nanoid={note.nanoid}
+              title={note.title}
+              favorite={note.favorite}
+              archived={note.archived}
+              variant="full"
+            />
           </div>
         </div>
 
@@ -235,6 +346,7 @@ function NoteMeta({
       <TypeSwatch
         type={type}
         fallback={note.note_type_display ?? String(note.note_type)}
+        variant="pill"
       />
       {note.archived ? (
         <span className="rounded-full border border-border px-2 py-0.5 text-[11px]">
