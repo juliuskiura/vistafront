@@ -723,6 +723,13 @@ export interface Company {
   updated_at: string;
 }
 
+/**
+ * A contact.
+ *
+ * The list endpoint uses a reduced serializer, so `notes`, `deal_count` and
+ * `updated_at` are only present on a single-contact fetch. The record view
+ * fetches the full serializer; the list view does not need them.
+ */
 export interface Contact {
   nanoid: string;
   first_name: string;
@@ -737,13 +744,32 @@ export interface Contact {
   social_links?: CompanySocialLink[];
   deal_count?: number;
   created_at: string;
+  updated_at?: string;
+}
+
+/**
+ * A stage inside a pipeline.
+ *
+ * `Deal.stage` is a plain string holding the stage *name* — there is no
+ * foreign key to this model. Join on `name` to turn a deal's stage into an
+ * object; the `nanoid` and `order` are only useful for ordering the board
+ * columns and for creating new stages.
+ */
+export interface PipelineStage {
+  id: number;
+  nanoid: string;
+  pipeline: string;
+  name: string;
+  order: number;
+  created_at: string;
   updated_at: string;
 }
 
 export interface Pipeline {
   nanoid: string;
   name: string;
-  stages: string[];
+  /** Full stage objects (the reverse FK), not names. */
+  stages: PipelineStage[];
   description?: string;
   is_default?: boolean;
   deal_count?: number;
@@ -751,6 +777,19 @@ export interface Pipeline {
   updated_at: string;
 }
 
+/**
+ * A deal.
+ *
+ * `stage` is a plain string holding the stage *name* — the backend has no
+ * foreign key to `PipelineStage`, and the `move` action validates the name
+ * against the pipeline's stage names. Match it against
+ * `Pipeline.stages[].name` to place the deal on a board.
+ *
+ * The list endpoint uses a reduced serializer that omits `pipeline`,
+ * `pipeline_name`, `notes` and `updated_at`. Ask the list endpoint for a
+ * single pipeline at a time (`?pipeline=<nanoid>`) when you need the
+ * pipeline on every row.
+ */
 export interface Deal {
   nanoid: string;
   title: string;
@@ -759,14 +798,14 @@ export interface Deal {
   contact_name: string | null;
   company: string | null;
   company_name: string | null;
-  pipeline: string;
-  pipeline_name: string | null;
+  pipeline?: string;
+  pipeline_name?: string | null;
   stage: string;
   status: "open" | "won" | "lost";
   expected_close_date: string | null;
   notes?: string;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 export interface Country {
@@ -816,6 +855,111 @@ export type CreateCompanyBody = {
   verified?: boolean;
   total_listings?: number | null;
 };
+
+/**
+ * A category an observation can be filed under.
+ *
+ * The backend has no "create category" endpoint that works reliably for
+ * workspace members, so the UI falls back to free text when the list is
+ * empty — see the observations tab.
+ */
+export interface ObservationCategory {
+  id: number;
+  nanoid: string;
+  name: string;
+  description?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * An observation about a company.
+ *
+ * The list endpoint uses a reduced serializer that omits `company_name` and
+ * `updated_at`.
+ */
+export interface Observation {
+  id: number;
+  nanoid: string;
+  company: string;
+  company_name?: string;
+  category: string;
+  category_name: string;
+  title: string;
+  description?: string | null;
+  content?: Record<string, unknown>;
+  severity: number;
+  opportunity?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+/** The kind of work an activity represents (call, email, meeting, …). */
+export interface ActionType {
+  id: number;
+  nanoid: string;
+  name: string;
+  description?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * A scheduled piece of work on a company.
+ *
+ * There is no `description` on either serializer — the model has the column
+ * but nothing exposes it. The free-text body goes in `content`, which is a
+ * JSON blob; the UI stores `{ text: "…" }` in it.
+ *
+ * The list endpoint uses a reduced serializer that omits `company_name` and
+ * `updated_at`.
+ */
+export interface Activity {
+  id: number;
+  nanoid: string;
+  company: string;
+  company_name?: string;
+  contact: string | null;
+  contact_name: string | null;
+  action_type: string;
+  action_type_name: string;
+  subject: string;
+  due_at: string | null;
+  completed_at: string | null;
+  content?: Record<string, unknown>;
+  created_at: string;
+  updated_at?: string;
+}
+
+/** A qualified lead attached to a company. */
+export interface Lead {
+  id: number;
+  nanoid: string;
+  company: string;
+  company_name: string;
+  contact: string | null;
+  contact_name: string | null;
+  source: string;
+  status: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * A record type other apps can attach notes to.
+ *
+ * `key` is the stable slug (`"company"`, `"contact"`, …); `nanoid` is the
+ * identifier a `NoteRelation` points at. The two are not interchangeable —
+ * the relation API wants the nanoid.
+ */
+export interface RelatableModel {
+  nanoid: string;
+  key: string;
+  verbose_name: string;
+  icon?: string | null;
+  search_fields?: string[];
+}
 
 /* ──────────────────────────────────────────────────────────────────────
  * Notebook types

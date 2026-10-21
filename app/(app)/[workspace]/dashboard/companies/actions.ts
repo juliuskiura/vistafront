@@ -2,18 +2,36 @@
 
 import { revalidatePath } from "next/cache";
 
-import { createCompany, deleteCompany, createTierClassification } from "@/lib/api";
 import {
+  createCompany,
+  createIndustry,
+  createTierClassification,
+  deleteCompany,
+  deleteTierClassification,
+  updateTierClassification,
+} from "@/lib/api";
+import {
+  CreateTierClassificationSchema,
   NewCompanySchema,
   ProspectStatusSchema,
-  CreateTierClassificationSchema,
+  UpdateTierClassificationSchema,
   fieldErrorsFromZod,
   type NewCompanyInput,
-  type CreateTierClassificationInput,
 } from "@/lib/schemas";
 import {
   type CreateCompanyActionState,
+  type CrmActionState,
 } from "./action-state";
+import { backendMessage } from "./_actions-helpers";
+
+/**
+ * Server Actions for the CRM company record.
+ *
+ * Every action takes the workspace domain explicitly and forwards it to the
+ * fetcher: the CRM endpoints are tenant-scoped, and without the
+ * `X-Workspace` header Django's middleware silently answers `200 OK` with
+ * an empty list — a write would appear to succeed and change nothing.
+ */
 
 /**
  * Server Action: create a new company in the active workspace.
@@ -91,8 +109,10 @@ export async function createCompanyAction(
     console.error("createCompanyAction failed:", error);
     return {
       status: "error",
-      message:
+      message: backendMessage(
+        error,
         "We could not create the company. The name may already exist, or the server may be unavailable.",
+      ),
     };
   }
 
@@ -104,42 +124,33 @@ export async function createCompanyAction(
 }
 
 /**
- * Server Action: delete a company.
+ * Server Action: create an industry on the fly.
  *
- * Called from the bulk-action toolbar on the Companies table.
- * On success we `revalidatePath` so the list and breakdown cards refresh.
+ * `Industry.name` is unique, so creating one that already exists answers
+ * `400` — the message says so rather than failing vaguely.
  */
-export async function deleteCompanyAction(
-  nanoid: string,
-  workspace: string,
-): Promise<void> {
-  if (!nanoid || !workspace) return;
-  try {
-    await deleteCompany(nanoid, workspace);
-  } catch (error) {
-    console.error("deleteCompanyAction failed:", error);
+export async function createIndustryAction(input: {
+  workspaceDomain: string;
+  name: string;
+}): Promise<CrmActionState> {
+  const name = input.name.trim();
+  if (!name) {
+    return { status: "error", message: "Enter an industry name." };
   }
-  revalidatePath(`/[workspace]/dashboard/companies`, "page");
-}
+  try {
+    await createIndustry({ name }, input.workspaceDomain);
+  } catch (error) {
+    return {
+      status: "error",
+      message: backendMessage(
+        error,
+        "Could not create the industry. It may already exist.",
+      ),
+    };
+  }
 
-/**
- * Server Action: bulk-delete companies.
- *
- * Called from the bulk-action toolbar with the list of selected nanoids.
- * Runs the deletes in parallel and `revalidatePath`s once at the end.
- */
-export async function bulkDeleteCompaniesAction(
-  nanoids: string[],
-  workspace: string,
-): Promise<{ deleted: number; failed: number }> {
-  if (!workspace || nanoids.length === 0) return { deleted: 0, failed: 0 };
-  const results = await Promise.allSettled(
-    nanoids.map((nanoid) => deleteCompany(nanoid, workspace)),
-  );
-  const failed = results.filter((r) => r.status === "rejected").length;
-  const deleted = results.length - failed;
   revalidatePath(`/[workspace]/dashboard/companies`, "page");
-  return { deleted, failed };
+  return { status: "success", message: `Industry "${name}" created.` };
 }
 
 /**
@@ -157,7 +168,7 @@ export async function createTierClassificationAction(
       String(formData.get("description") ?? "").trim() === ""
         ? {}
         : { html: String(formData.get("description")).trim() },
-  } satisfies CreateTierClassificationInput;
+  };
 
   const parsed = CreateTierClassificationSchema.safeParse(raw);
   if (!parsed.success) {
@@ -181,4 +192,83 @@ export async function createTierClassificationAction(
     status: "success",
     message: `Tier "${parsed.data.label}" created.`,
   };
+}
+
+/**
+ * Server Action: rename a tier classification.
+ */
+export async function updateTierAction(input: {
+  workspaceDomain: string;
+  nanoid: string;
+  title: string;
+  label: string;
+}): Promise<CrmActionState> {
+  const parsed = UpdateTierClassificationSchema.safeParse({
+    workspace_domain: input.workspaceDomain,
+    nanoid: input.nanoid,
+    title: input.title,
+    label: input.label,
+  });
+  if (!parsed.success) {
+    return { status: "error", message: "Please fix the highlighted fields." };
+  }
+
+  try {
+    await updateTierClassification(
+      parsed.data.nanoid,
+      { title: parsed.data.title, label: parsed.data.label },
+      parsed.data.workspace_domain,
+    );
+  } catch (error) {
+    return {
+      status: "error",
+      message: backendMessage(error, "Could not update the tier."),
+    };
+  }
+
+  revalidatePath(`/[workspace]/dashboard/companies`, "page");
+  return { status: "success", message: "Tier updated." };
+}
+
+/**
+ * Server Action: delete a tier classification.
+ */
+export async function deleteTierAction(input: {
+  workspaceDomain: string;
+  nanoid: string;
+}): Promise<CrmActionState> {
+  if (!input.workspaceDomain || !input.nanoid) {
+    return { status: "error", message: "Missing tier." };
+  }
+  try {
+    await deleteTierClassification(input.nanoid, input.workspaceDomain);
+  } catch (error) {
+    return {
+      status: "error",
+      message: backendMessage(error, "Could not delete the tier."),
+    };
+  }
+
+  revalidatePath(`/[workspace]/dashboard/companies`, "page");
+  return { status: "success", message: "Tier deleted." };
+}
+
+/**
+ * Server Action: bulk-delete companies.
+ *
+ * Called from the bulk-action toolbar with the list of selected nanoids.
+ * Runs the deletes in parallel and `revalidatePath`s once at the end.
+ */
+export async function bulkDeleteCompaniesAction(
+  nanoids: string[],
+  workspace: string,
+): Promise<{ deleted: number; failed: number }> {
+  if (!workspace || nanoids.length === 0) return { deleted: 0, failed: 0 };
+  const results = await Promise.allSettled(
+    nanoids.map((nanoid) => deleteCompany(nanoid, workspace)),
+  );
+  const failed = results.filter((r) => r.status === "rejected").length;
+  const deleted = results.length - failed;
+  revalidatePath(`/[workspace]/dashboard/companies`, "page");
+  return { deleted, failed };
 }

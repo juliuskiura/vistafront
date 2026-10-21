@@ -77,56 +77,50 @@ export type NewNoteInput = z.infer<typeof NewNoteSchema>;
 
 /* ──────────────────────────────────────────────────────────────────────
  * Company (CRM)
+ *
+ * The CRM validation contracts live in their own module — `crm.ts` — so the
+ * file stays readable. They are re-exported here so `@/lib/schemas` remains
+ * the single import path for every schema in the app.
  * ────────────────────────────────────────────────────────────────────── */
 
-export const ProspectStatusSchema = z.enum([
-  "identified",
-  "researching",
-  "contact_ready",
-  "outreach_sent",
-  "engaged",
-  "qualified",
-  "customer",
-  "lost",
-]);
-
-export const SocialLinkSchema = z.object({
-  url: z.string().min(1, "URL or phone number is required."),
-  name: z.string().optional(),
-  is_primary: z.boolean().optional(),
-});
-
-export const NewCompanySchema = z.object({
-  workspace_domain: z.string().min(1, "Missing workspace."),
-  name: z.string().min(1, "Company name is required.").max(200),
-  domain: z.string().optional(),
-  industry: z.string().optional(),
-  size: z.string().optional(),
-  tier: z.string().nullable().optional(),
-  phone_numbers: z.array(z.string()).optional(),
-  social_links: z.array(SocialLinkSchema).optional(),
-  email: z.string().optional(),
-  country: z.string().optional(),
-  city: z.string().optional(),
-  address: z.string().optional(),
-  about: z.string().optional(),
-  status: ProspectStatusSchema.default("identified"),
-  verified: z.boolean().optional(),
-  total_listings: z
-    .number()
-    .int("Must be a whole number.")
-    .min(0, "Must be zero or greater.")
-    .optional(),
-});
-export type NewCompanyInput = z.infer<typeof NewCompanySchema>;
-
-/* ──────────────────────────────────────────────────────────────────────
- * Tier classification
- * ────────────────────────────────────────────────────────────────────── */
-
-export const CreateTierClassificationSchema = z.object({
-  title: z.string().optional(),
-  label: z.string().optional(),
-  description: z.record(z.string(), z.unknown()).optional(),
-});
-export type CreateTierClassificationInput = z.infer<typeof CreateTierClassificationSchema>;
+export {
+  ConnectNoteSchema,
+  CreateActivitySchema,
+  CreateContactSchema,
+  CreateDealSchema,
+  CreateIndustrySchema,
+  CreateLeadSchema,
+  CreateObservationSchema,
+  CreatePipelineSchema,
+  CreatePipelineStageSchema,
+  CreateTierClassificationSchema,
+  ContactStatusSchema,
+  MoveDealSchema,
+  NewCompanySchema,
+  ProspectStatusSchema,
+  SocialLinkSchema,
+  UpdateActivitySchema,
+  UpdateCompanyFieldSchema,
+  UpdateContactSchema,
+  UpdateDealSchema,
+  UpdateTierClassificationSchema,
+  type ConnectNoteInput,
+  type CreateActivityInput,
+  type CreateContactInput,
+  type CreateDealInput,
+  type CreateIndustryInput,
+  type CreateLeadInput,
+  type CreateObservationInput,
+  type CreatePipelineInput,
+  type CreatePipelineStageInput,
+  type CreateTierClassificationInput,
+  type MoveDealInput,
+  type NewCompanyInput,
+  type ProspectStatusInput,
+  type SocialLinkInput,
+  type UpdateActivityInput,
+  type UpdateCompanyFieldInput,
+  type UpdateContactInput,
+  type UpdateDealInput,
+  type UpdateTierClassificationInput,
+} from "./crm";

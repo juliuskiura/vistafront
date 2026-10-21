@@ -1,46 +1,29 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   useReactTable,
   getCoreRowModel,
   flexRender,
-  createColumnHelper,
   type RowSelectionState,
   type VisibilityState,
 } from "@tanstack/react-table";
-import {
-  ArrowDown,
-  ArrowUp,
-  ChevronUp,
-  ChevronDown,
-  SlidersHorizontal,
-} from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuCheckboxItem,
-} from "@/components/ui/dropdown-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import {
-  PROSPECT_LABELS,
-  STATUS_COLORS,
-} from "@/lib/crm/constants";
-import type {
-  Company,
-  ProspectStatus,
-  TierClassification,
-} from "@/lib/api";
+import { ArrowDown, ArrowUp, ChevronDown, ChevronUp } from "@/lib/icons";
+import type { Company, TierClassification } from "@/lib/api";
 import { bulkDeleteCompaniesAction } from "@/app/(app)/[workspace]/dashboard/companies/actions";
 import { useToast } from "@/lib/context";
+import {
+  buildCompanyColumns,
+  DEFAULT_VISIBLE_COLUMN_IDS,
+  SORTABLE_COLUMNS,
+  TOGGLEABLE_COLUMNS,
+} from "./_components/companies-table-columns";
+import { CompaniesTableToolbar } from "./_components/companies-table-toolbar";
+import { CompaniesBulkToolbar } from "./_components/companies-bulk-toolbar";
 
 interface Props {
   companies: Company[];
@@ -54,56 +37,6 @@ interface Props {
 }
 
 const STORAGE_KEY = "company-table-column-visibility";
-
-/**
- * Columns the user can sort by. Sorting itself is server-side; the table
- * only renders the control and reports the chosen field/direction upward
- * via `onOrderingChange`.
- */
-const SORTABLE_COLUMNS: Record<string, string> = {
-  name: "name",
-  status: "status",
-  verified: "verified",
-  industry: "industry",
-  contact_count: "contact_count",
-  total_listings: "total_listings",
-  tier: "tier",
-  created_at: "created_at",
-};
-
-const TOGGLEABLE_COLUMNS: { id: string; label: string }[] = [
-  { id: "name", label: "Name" },
-  { id: "status", label: "Status" },
-  { id: "verified", label: "Verified" },
-  { id: "industry", label: "Industry" },
-  { id: "size", label: "Size" },
-  { id: "domain", label: "Domain" },
-  { id: "email", label: "Email" },
-  { id: "country", label: "Country" },
-  { id: "city", label: "City" },
-  { id: "address", label: "Address" },
-  { id: "contact_count", label: "Contacts" },
-  { id: "total_listings", label: "Listings" },
-  { id: "tier", label: "Tier" },
-  { id: "phone_numbers", label: "Phone #" },
-  { id: "social_links", label: "Socials" },
-  { id: "about", label: "About" },
-  { id: "created_at", label: "Created" },
-];
-
-/**
- * Columns visible by default when the table first renders (toggle the rest
- * on via the "Columns" selector). Mirrors `DEFAULT_HIDDEN_COLUMNS` in the
- * original — only `name`, `status`, `industry`, and `contact_count` are
- * shown out of the box.
- */
-const DEFAULT_VISIBLE_COLUMN_IDS: string[] = [
-  "name",
-  "industry",
-  "contact_count",
-  "status",
-  "tier",
-];
 
 const DEFAULT_VISIBLE: VisibilityState = TOGGLEABLE_COLUMNS.reduce<VisibilityState>(
   (acc, c) => {
@@ -122,12 +55,6 @@ function readStoredVisibility(): VisibilityState {
     /* corrupted storage */
   }
   return DEFAULT_VISIBLE;
-}
-
-const columnHelper = createColumnHelper<Company>();
-
-function stripProtocol(url: string) {
-  return url.replace(/^https?:\/\//, "");
 }
 
 /**
@@ -150,6 +77,7 @@ export function CompaniesTable({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
     DEFAULT_VISIBLE,
   );
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
     setColumnVisibility(readStoredVisibility());
@@ -165,8 +93,6 @@ export function CompaniesTable({
       /* storage not available */
     }
   }, [columnVisibility]);
-
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const selectedNanoids = Object.keys(rowSelection).filter(
     (id) => rowSelection[id],
@@ -196,215 +122,22 @@ export function CompaniesTable({
     }
   }
 
-  const columns = [
-    columnHelper.display({
-      id: "select",
-      header: ({ table }) => (
-        <input
-          type="checkbox"
-          aria-label="Select all"
-          checked={table.getIsAllRowsSelected()}
-          ref={(el) => {
-            if (el) el.indeterminate = table.getIsSomeRowsSelected();
-          }}
-          onChange={table.getToggleAllRowsSelectedHandler()}
-          onClick={(e) => e.stopPropagation()}
-          className="size-4 cursor-pointer rounded border-input"
-        />
-      ),
-      cell: ({ row }) => (
-        <input
-          type="checkbox"
-          aria-label="Select row"
-          checked={row.getIsSelected()}
-          onChange={row.getToggleSelectedHandler()}
-          onClick={(e) => e.stopPropagation()}
-          className="size-4 cursor-pointer rounded border-input"
-        />
-      ),
-    }),
-    columnHelper.accessor("name", {
-      header: "Name",
-      cell: (info) => (
-        <Link
-          href={`/${workspaceDomain}/dashboard/companies/${info.row.original.nanoid}`}
-          className="font-medium hover:underline"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {info.getValue()}
-        </Link>
-      ),
-    }),
-    columnHelper.accessor("status", {
-      header: "Status",
-      cell: (info) => {
-        const s = info.getValue() as ProspectStatus;
-        return (
-          <span
-            className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${STATUS_COLORS[s] ?? ""}`}
-          >
-            {PROSPECT_LABELS[s]}
-          </span>
-        );
-      },
-    }),
-    columnHelper.accessor("verified", {
-      header: "Verified",
-      cell: (info) => (info.getValue() ? "Yes" : "No"),
-    }),
-    columnHelper.accessor("industry", {
-      header: "Industry",
-      cell: (info) => (
-        <span className="text-muted-foreground">
-          {info.getValue() || "—"}
-        </span>
-      ),
-    }),
-    columnHelper.accessor("contact_count", {
-      header: "Contacts",
-      cell: (info) => info.getValue() ?? 0,
-    }),
-    columnHelper.accessor("size", {
-      id: "size",
-      header: "Size",
-      cell: (info) => (info.getValue() as string) || "—",
-    }),
-    columnHelper.accessor("domain", {
-      id: "domain",
-      header: "Domain",
-      cell: (info) => {
-        const v = info.getValue() as string;
-        if (!v) return "—";
-        const href = /^https?:\/\//.test(v) ? v : `https://${v}`;
-        return (
-          <a
-            href={href}
-            target="_blank"
-            rel="noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="text-primary hover:underline"
-          >
-            {stripProtocol(v)}
-          </a>
-        );
-      },
-    }),
-    columnHelper.accessor("email", {
-      id: "email",
-      header: "Email",
-      cell: (info) => {
-        const v = info.getValue() as string;
-        return v ? (
-          <a
-            href={`mailto:${v}`}
-            onClick={(e) => e.stopPropagation()}
-            className="text-primary hover:underline"
-          >
-            {v}
-          </a>
-        ) : (
-          "—"
-        );
-      },
-    }),
-    columnHelper.accessor("country", {
-      id: "country",
-      header: "Country",
-      cell: (info) => (info.getValue() as string) || "—",
-    }),
-    columnHelper.accessor("city", {
-      id: "city",
-      header: "City",
-      cell: (info) => (info.getValue() as string) || "—",
-    }),
-    columnHelper.accessor("address", {
-      id: "address",
-      header: "Address",
-      cell: (info) => (info.getValue() as string) || "—",
-    }),
-    columnHelper.accessor("total_listings", {
-      id: "total_listings",
-      header: "Listings",
-      cell: (info) => (info.getValue() as number | null) ?? 0,
-    }),
-    columnHelper.accessor((row) => row.tier ?? "", {
-      id: "tier",
-      header: "Tier",
-      cell: (info) => {
-        const value = info.getValue() as string | null | undefined;
-        if (!value) return "—";
-        const found = tierClassifications.find((t) => t.nanoid === value);
-        if (found) return `${found.label} — ${found.title}`;
-        return info.row.original.tier_label ?? value;
-      },
-    }),
-    columnHelper.accessor("phone_numbers", {
-      id: "phone_numbers",
-      header: "Phone #",
-      cell: (info) => {
-        const v = (info.getValue() as string[]) ?? [];
-        return v.length
-          ? `${v.length} number${v.length > 1 ? "s" : ""}`
-          : "—";
-      },
-    }),
-    columnHelper.accessor("social_links", {
-      id: "social_links",
-      header: "Socials",
-      cell: (info) => {
-        const v =
-          (info.getValue() as { name?: string; url?: string }[]) ?? [];
-        return v.length ? `${v.length} linked` : "—";
-      },
-    }),
-    columnHelper.accessor("about", {
-      id: "about",
-      header: "About",
-      cell: (info) => {
-        const v = (info.getValue() as string) || "";
-        return v ? (
-          <span
-            className="block max-w-xs truncate text-muted-foreground"
-            title={v}
-          >
-            {v}
-          </span>
-        ) : (
-          "—"
-        );
-      },
-    }),
-    columnHelper.accessor("created_at", {
-      id: "created_at",
-      header: "Created",
-      cell: (info) =>
-        info.getValue() ? new Date(info.getValue() as string).toLocaleDateString() : "—",
-    }),
-  ];
+  const columns = buildCompanyColumns(workspaceDomain, tierClassifications);
 
   const table = useReactTable({
     data: companies,
     columns,
     state: { rowSelection, columnVisibility },
-    getRowId: (row) => row.nanoid,
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
-    // Sorting is handled by the server, not the client table model.
-    manualSorting: true,
   });
 
-  function handleBulkDelete() {
-    if (selectedCount === 0) return;
-    setDeleteDialogOpen(true);
-  }
-
-  async function confirmBulkDelete() {
-    const nanoids = [...selectedNanoids];
-    try {
+  const confirmBulkDelete = () => {
+    startTransition(async () => {
       const { deleted, failed } = await bulkDeleteCompaniesAction(
-        nanoids,
+        selectedNanoids,
         workspaceNanoid,
       );
       toast.push({
@@ -415,197 +148,134 @@ export function CompaniesTable({
             : `Deleted ${deleted}; ${failed} failed.`,
       });
       setRowSelection({});
-    } catch (error) {
-      console.error("bulkDeleteCompaniesAction failed:", error);
-      toast.push({
-        variant: "error",
-        message: "Could not delete the selected companies.",
-      });
-    }
-  }
+      setDeleteDialogOpen(false);
+    });
+  };
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
-              <SlidersHorizontal size={14} className="size-3.5 mr-1.5" />
-              Columns
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {TOGGLEABLE_COLUMNS.map((col) => (
-              <DropdownMenuCheckboxItem
-                key={col.id}
-                checked={table.getColumn(col.id)?.getIsVisible() ?? true}
-                onCheckedChange={(value) =>
-                  table.getColumn(col.id)?.toggleVisibility(!!value)
-                }
-                onSelect={(e) => e.preventDefault()}
-              >
-                {col.label}
-              </DropdownMenuCheckboxItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+      <CompaniesTableToolbar table={table} />
 
       {selectedCount > 0 ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2">
-          <span className="text-sm font-medium text-muted-foreground">
-            {selectedCount} selected
-          </span>
-          <div className="ml-auto flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={selectedCount !== 1}
-              onClick={() =>
-                router.push(
-                  `/${workspaceDomain}/dashboard/companies/${selectedNanoids[0]}`,
-                )
-              }
-            >
-              View
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={selectedCount !== 1}
-            >
-              Edit
-            </Button>
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={handleBulkDelete}
-              disabled={pending}
-            >
-              {pending ? "Deleting…" : "Delete"}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setRowSelection({})}
-            >
-              Clear
-            </Button>
-          </div>
-        </div>
+        <CompaniesBulkToolbar
+          selectedCount={selectedCount}
+          selectedNanoids={selectedNanoids}
+          workspaceDomain={workspaceDomain}
+          pending={pending}
+          onDelete={() => setDeleteDialogOpen(true)}
+          onClear={() => setRowSelection({})}
+        />
       ) : null}
 
       <Card className="overflow-x-auto overflow-hidden rounded-xl border bg-card shadow-sm">
         <div className="overflow-x-auto">
-          <table className="text-sm min-w-full">
+          <table className="min-w-full text-sm">
             <thead>
-            {table.getHeaderGroups().map((hg) => (
-              <tr key={hg.id} className="border-b bg-muted/50 text-left">
-                {hg.headers.map((header) => {
-                  const columnId = header.column.id;
-                  const isSortable = columnId in SORTABLE_COLUMNS;
-                  const isActive =
-                    isSortable &&
-                    currentField === SORTABLE_COLUMNS[columnId];
-                  const sortDir = isActive ? currentDir : null;
-                  return (
-                    <th key={header.id} className="px-4 py-3 font-medium">
-                      {header.isPlaceholder
-                        ? null
-                        : columnId === "select"
-                          ? flexRender(
-                              header.column.columnDef.header,
-                              header.getContext(),
-                            )
-                          : isSortable
-                            ? (
-                              <button
-                                type="button"
-                                onClick={() => handleSortToggle(columnId)}
-                                className="inline-flex items-center gap-1 hover:text-foreground"
-                                aria-label={`Sort by ${columnId}`}
-                              >
-                                {flexRender(
+              {table.getHeaderGroups().map((hg) => (
+                <tr key={hg.id} className="border-b bg-muted/50 text-left">
+                  {hg.headers.map((header) => {
+                    const columnId = header.column.id;
+                    const isSortable = columnId in SORTABLE_COLUMNS;
+                    const isActive =
+                      isSortable && currentField === SORTABLE_COLUMNS[columnId];
+                    const sortDir = isActive ? currentDir : null;
+                    return (
+                      <th key={header.id} className="px-4 py-3 font-medium">
+                        {header.isPlaceholder
+                          ? null
+                          : columnId === "select"
+                            ? flexRender(
+                                header.column.columnDef.header,
+                                header.getContext(),
+                              )
+                            : isSortable
+                              ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSortToggle(columnId)}
+                                  className="inline-flex items-center gap-1 hover:text-foreground"
+                                  aria-label={`Sort by ${columnId}`}
+                                >
+                                  {flexRender(
+                                    header.column.columnDef.header,
+                                    header.getContext(),
+                                  )}
+                                  {sortDir === "asc" ? (
+                                    <ArrowUp
+                                      className="size-3.5 text-foreground"
+                                      aria-hidden="true"
+                                    />
+                                  ) : sortDir === "desc" ? (
+                                    <ArrowDown
+                                      className="size-3.5 text-foreground"
+                                      aria-hidden="true"
+                                    />
+                                  ) : (
+                                    <span className="flex flex-col text-foreground">
+                                      <ChevronUp
+                                        className="size-2.5"
+                                        aria-hidden="true"
+                                      />
+                                      <ChevronDown
+                                        className="size-2.5"
+                                        aria-hidden="true"
+                                      />
+                                    </span>
+                                  )}
+                                </button>
+                              )
+                              : flexRender(
                                   header.column.columnDef.header,
                                   header.getContext(),
                                 )}
-                                {sortDir === "asc" ? (
-                                  <ArrowUp
-                                    size={14}
-                                    className="size-3.5 text-foreground"
-                                  />
-                                ) : sortDir === "desc" ? (
-                                  <ArrowDown
-                                    size={14}
-                                    className="size-3.5 text-foreground"
-                                  />
-                                ) : (
-                                  <span className="flex flex-col text-foreground">
-                                    <ChevronUp
-                                      size={10}
-                                      className="size-2.5"
-                                    />
-                                    <ChevronDown
-                                      size={10}
-                                      className="size-2.5"
-                                    />
-                                  </span>
-                                )}
-                              </button>
-                            )
-                            : flexRender(
-                                header.column.columnDef.header,
-                                header.getContext(),
-                              )}
-                    </th>
-                  );
-                })}
-              </tr>
-            ))}
-          </thead>
-          <tbody>
-            {table.getRowModel().rows.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={table.getVisibleLeafColumns().length}
-                  className="px-4 py-6 text-center text-sm text-muted-foreground"
-                >
-                  No companies.
-                </td>
-              </tr>
-            ) : (
-              table.getRowModel().rows.map((row) => (
-                <tr
-                  key={row.id}
-                  onClick={() =>
-                    router.push(
-                      `/${workspaceDomain}/dashboard/companies/${row.original.nanoid}`,
-                    )
-                  }
-                  className="cursor-pointer border-b last:border-0 hover:bg-muted/50"
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <td
-                      key={cell.id}
-                      onClick={
-                        cell.column.id === "select"
-                          ? (e) => e.stopPropagation()
-                          : undefined
-                      }
-                      className="px-4 py-3"
-                    >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
-                  ))}
+                      </th>
+                    );
+                  })}
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ))}
+            </thead>
+            <tbody>
+              {table.getRowModel().rows.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={table.getVisibleLeafColumns().length}
+                    className="px-4 py-6 text-center text-sm text-muted-foreground"
+                  >
+                    No companies.
+                  </td>
+                </tr>
+              ) : (
+                table.getRowModel().rows.map((row) => (
+                  <tr
+                    key={row.id}
+                    onClick={() =>
+                      router.push(
+                        `/${workspaceDomain}/dashboard/companies/${row.original.nanoid}`,
+                      )
+                    }
+                    className="cursor-pointer border-b last:border-0 hover:bg-muted/50"
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <td
+                        key={cell.id}
+                        onClick={
+                          cell.column.id === "select"
+                            ? (e) => e.stopPropagation()
+                            : undefined
+                        }
+                        className="px-4 py-3"
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </Card>
+
       <ConfirmDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}

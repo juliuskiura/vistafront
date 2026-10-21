@@ -1,31 +1,71 @@
 import Link from "next/link";
 
-import { getCompany, type ProspectStatus } from "@/lib/api";
+import {
+  getCompany,
+  listActionTypes,
+  listActivities,
+  listContacts,
+  listCountries,
+  listDeals,
+  listIndustries,
+  listLeads,
+  listNoteTypes,
+  listObservations,
+  listObservationCategories,
+  listRelatableModels,
+  listTierClassifications,
+  type ActionType,
+  type Activity,
+  type Contact,
+  type Country,
+  type Deal,
+  type Industry,
+  type Lead,
+  type NoteTypeOption,
+  type Observation,
+  type ObservationCategory,
+  type RelatableModel,
+  type TierClassification,
+} from "@/lib/api";
+import { listNotes } from "@/lib/api/notebook";
+import type { Note } from "@/lib/api/types";
 import { requireWorkspace } from "@/lib/auth/server";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Banner } from "@/components/banner";
+import { CompanyRecord } from "@/app/(app)/[workspace]/dashboard/companies/[id]/company-record";
 
-const PROSPECT_LABELS: Record<ProspectStatus, string> = {
-  identified: "Identified",
-  researching: "Researching",
-  contact_ready: "Contact Ready",
-  outreach_sent: "Outreach Sent",
-  engaged: "Engaged",
-  qualified: "Qualified",
-  customer: "Customer",
-  lost: "Lost",
-};
+/** The tabs the record offers, in order. */
+const VALID_TABS = [
+  "overview",
+  "observations",
+  "activities",
+  "leads",
+  "contacts",
+  "deals",
+  "notes",
+] as const;
 
 /**
- * Company detail (Server Component).
+ * Company record (Server Component).
+ *
+ * Reads `?tab=` (default `overview`) and `?edit=1` from the URL, fetches
+ * the company and the data for the active tab, and hands it all to the
+ * client shell.
+ *
+ * The tab lives in the URL so the view survives a refresh and can be
+ * shared; `edit=1` is the same contract the legacy app used for the bulk
+ * "Edit" button.
  */
 export default async function CompanyDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ workspace: string; id: string }>;
+  searchParams: Promise<{ tab?: string; edit?: string }>;
 }) {
   const { workspace: slug, id } = await params;
+  const sp = await searchParams;
   const active = await requireWorkspace(slug);
+
   const company = await getCompany(id, active.domain).catch(() => null);
 
   if (!company) {
@@ -42,133 +82,107 @@ export default async function CompanyDetailPage({
     );
   }
 
-  return (
-    <div className="max-w-3xl space-y-6">
-      <Link
-        href={`/${active.domain}/dashboard/companies`}
-        className="text-sm text-muted-foreground hover:underline"
-      >
-        ← Companies
-      </Link>
+  const requestedTab = (sp.tab ?? "overview").trim();
+  const activeTab = (VALID_TABS as readonly string[]).includes(requestedTab)
+    ? requestedTab
+    : "overview";
+  const editing = sp.edit === "1";
 
-      <div className="flex items-center gap-3">
-        <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-secondary text-base font-semibold uppercase">
-          {company.name[0]?.toUpperCase() ?? "?"}
-        </span>
-        <div className="min-w-0">
-          <h1 className="truncate text-xl font-semibold">{company.name}</h1>
-          <p className="text-sm text-muted-foreground">
-            {company.industry ?? "—"}
-            {company.domain ? ` · ${company.domain}` : ""}
-          </p>
-        </div>
-        <Badge
-          variant={
-            company.status === "customer"
-              ? "default"
-              : company.status === "lost"
-                ? "outline"
-                : "secondary"
-          }
-          className="ml-auto"
-        >
-          {PROSPECT_LABELS[company.status]}
-        </Badge>
-      </div>
+  // Everything the record needs is fetched in parallel, each with the
+  // workspace header so the tenant middleware resolves the right slice.
+  const [
+    countries,
+    industries,
+    tierClassifications,
+    contacts,
+    deals,
+    observations,
+    activities,
+    leads,
+    notes,
+    noteTypes,
+    relatableModels,
+    actionTypes,
+    observationCategories,
+  ] = await Promise.all([
+    listCountries(active.domain).catch(() => [] as Country[]),
+    listIndustries(active.domain).catch(() => [] as Industry[]),
+    listTierClassifications(active.domain).catch(
+      () => [] as TierClassification[],
+    ),
+    listContacts({ company: company.nanoid, workspace: active.domain }).catch(
+      () => [] as Contact[],
+    ),
+    listDeals({ workspace: active.domain }).catch(() => [] as Deal[]),
+    listObservations({ company: company.nanoid, workspace: active.domain }).catch(
+      () => [] as Observation[],
+    ),
+    listActivities({ company: company.nanoid, workspace: active.domain }).catch(
+      () => [] as Activity[],
+    ),
+    listLeads({ company: company.nanoid, workspace: active.domain }).catch(
+      () => [] as Lead[],
+    ),
+    listNotes({
+      relatable: "company",
+      object_nanoid: company.nanoid,
+      workspace: active.domain,
+    }).catch(() => [] as Note[]),
+    listNoteTypes(active.domain).catch(() => [] as NoteTypeOption[]),
+    listRelatableModels(active.domain).catch(() => [] as RelatableModel[]),
+    listActionTypes(active.domain).catch(() => [] as ActionType[]),
+    listObservationCategories(active.domain).catch(
+      () => [] as ObservationCategory[],
+    ),
+  ]);
 
-      <Card className="rounded-xl border bg-card">
-        <CardHeader>
-          <CardTitle>Profile</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <dl className="grid gap-3 text-sm sm:grid-cols-2">
-            <Field label="Industry" value={company.industry ?? ""} />
-            <Field label="Size" value={company.size ?? ""} />
-            <Field label="Country" value={company.country ?? ""} />
-            <Field label="City" value={company.city ?? ""} />
-            <Field label="Address" value={company.address ?? ""} full />
-            <Field label="Email" value={company.email ?? ""} />
-            <Field
-              label="Phone numbers"
-              value={
-                company.phone_numbers && company.phone_numbers.length > 0
-                  ? company.phone_numbers.join(", ")
-                  : ""
-              }
-              full
-            />
-            <Field
-              label="Tier"
-              value={company.tier_label ?? company.tier ?? ""}
-            />
-            <Field
-              label="Verified"
-              value={company.verified ? "Yes" : "No"}
-            />
-            <Field
-              label="Total listings"
-              value={company.total_listings?.toString() ?? ""}
-            />
-          </dl>
-        </CardContent>
-      </Card>
-
-      {company.about ? (
-        <Card className="rounded-xl border bg-card">
-          <CardHeader>
-            <CardTitle>About</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="whitespace-pre-line text-sm">{company.about}</p>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {company.social_links && company.social_links.length > 0 ? (
-        <Card className="rounded-xl border bg-card">
-          <CardHeader>
-            <CardTitle>Social</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-1 text-sm">
-              {company.social_links.map((link, i) => (
-                <li key={i} className="flex items-center gap-2">
-                  <span className="text-muted-foreground">
-                    {link.name ?? "link"}:
-                  </span>
-                  <a
-                    href={link.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="truncate text-primary hover:underline"
-                  >
-                    {link.url}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      ) : null}
-    </div>
+  // The company-scoped deal list needs a second pass: the backend's deal
+  // list endpoint has no `?company=` filter, so the records are matched
+  // client-side of the fetch.
+  const companyDeals = deals.filter(
+    (d) => d.company === company.nanoid,
   );
-}
 
-function Field({
-  label,
-  value,
-  full,
-}: {
-  label: string;
-  value: string;
-  full?: boolean;
-}) {
+  const companyRelatable =
+    relatableModels.find((m) => m.key === "company") ?? null;
+
   return (
-    <div className={full ? "sm:col-span-2" : undefined}>
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="font-medium">
-        {value || <span className="text-muted-foreground">—</span>}
-      </dd>
+    <div className="flex min-h-full flex-col">
+      <Banner
+        title={company.name}
+        description={`${company.industry || "Company"} — ${
+          company.domain || "no website"
+        }`}
+      />
+      <div className="mt-6 flex-1">
+        <CompanyRecord
+          company={company}
+          workspaceDomain={active.domain}
+          activeTab={activeTab}
+          editing={editing}
+          countries={countries}
+          industries={industries}
+          tierClassifications={tierClassifications}
+          counts={{
+            observations: observations.length,
+            activities: activities.length,
+            leads: leads.length,
+            contacts: contacts.length,
+            deals: companyDeals.length,
+            notes: notes.length,
+          }}
+          contacts={contacts}
+          deals={companyDeals}
+          observations={observations}
+          activities={activities}
+          leads={leads}
+          notes={notes}
+          noteTypes={noteTypes}
+          relatableNanoid={companyRelatable?.nanoid ?? null}
+          actionTypes={actionTypes}
+          observationCategories={observationCategories}
+        />
+      </div>
     </div>
   );
 }

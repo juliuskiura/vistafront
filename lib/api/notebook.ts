@@ -5,6 +5,7 @@ import type {
   CreateNoteTypeBody,
   Note,
   NoteAttachment,
+  NoteRelation,
   NoteTypeOption,
   Paginated,
   UpdateNoteBody,
@@ -41,6 +42,17 @@ export interface ListNotesOptions {
   ordering?: string;
   page?: number;
   page_size?: number;
+  /**
+   * The `RelatableModel.key` the note is linked to — e.g. `"company"`.
+   *
+   * Only meaningful together with `object_nanoid`: the backend resolves the
+   * key to a model, finds the target row, and filters on notes whose
+   * relation points at it. An unknown key yields an empty list, never a
+   * 404.
+   */
+  relatable?: string;
+  /** The nanoid of the record the note is linked to. */
+  object_nanoid?: string;
   workspace: string;
 }
 
@@ -99,6 +111,8 @@ async function fetchNotes(
       ordering: rest.ordering,
       page: rest.page,
       page_size: rest.page_size,
+      relatable: rest.relatable,
+      object_nanoid: rest.object_nanoid,
     })}`,
     { workspace },
   );
@@ -156,6 +170,45 @@ export function toggleNoteArchive(
     method: "PATCH",
     workspace,
   });
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Note relations
+ *
+ * A relation links a note to a record owned by another app (a CRM company,
+ * a project, a task…). The `relatable_nanoid` identifies the *kind* of
+ * record — a `RelatableModel` row — and `object_nanoid` identifies the
+ * record itself. Both are nanoids, and they are not interchangeable.
+ * ────────────────────────────────────────────────────────────────────── */
+
+export interface ConnectNoteBody {
+  /** The `RelatableModel` nanoid — e.g. the one with `key === "company"`. */
+  relatable_nanoid: string;
+  /** The nanoid of the record being linked to. */
+  object_nanoid: string;
+}
+
+export function connectNote(
+  noteNanoid: string,
+  body: ConnectNoteBody,
+  workspace: string,
+): Promise<NoteRelation> {
+  return serverFetch<NoteRelation>(
+    `/apis/notebook/notes/${noteNanoid}/relations/`,
+    { method: "POST", body, workspace },
+  );
+}
+
+/** Unlink a note from the record it points at. */
+export function disconnectNote(
+  noteNanoid: string,
+  relationNanoid: string,
+  workspace: string,
+): Promise<void> {
+  return serverFetch<void>(
+    `/apis/notebook/notes/${noteNanoid}/relations/${relationNanoid}/`,
+    { method: "DELETE", workspace },
+  );
 }
 
 /* ──────────────────────────────────────────────────────────────────────
