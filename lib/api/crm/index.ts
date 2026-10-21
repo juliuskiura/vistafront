@@ -12,16 +12,22 @@
 
 /* Companies */
 export {
+  archiveCompany,
   createCompany,
   deleteCompany,
   getCompany,
   getCompanyStatusBreakdown,
   listCompanies,
   paginatedListCompanies,
+  unarchiveCompany,
   updateCompany,
   advanceCompany,
+  type ArchiveCompanyResult,
   type ListCompaniesFilters,
 } from "./companies";
+
+/* Shared list filters */
+export { type ArchivedFilter } from "./shared";
 
 /* Contacts */
 export {

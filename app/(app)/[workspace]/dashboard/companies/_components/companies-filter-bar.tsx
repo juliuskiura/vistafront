@@ -17,6 +17,9 @@ import type {
 } from "@/lib/api";
 import { CompaniesStatusFilter } from "./companies-status-filter";
 
+/** Which archived companies the list shows. */
+export type CompanyArchiveFilter = "" | "all" | "true";
+
 /** The filters the list understands, lifted from `searchParams`. */
 export interface CompanyFilters {
   search: string;
@@ -29,6 +32,8 @@ export interface CompanyFilters {
   city: string;
   hasContacts: boolean | null;
   verified: boolean | null;
+  /** `""` = active only, `"all"` = active + archived, `"true"` = archived only. */
+  archived: CompanyArchiveFilter;
 }
 
 export interface CompanyFilterBarProps {
@@ -196,6 +201,19 @@ export function CompaniesFilterBar({
               value: t.nanoid,
               label: `${t.label} — ${t.title}`,
             })),
+          ]}
+        />
+
+        <SelectField
+          label="Filter by archive"
+          value={filters.archived}
+          onChange={(v) =>
+            onFilterChange({ archived: v as CompanyArchiveFilter })
+          }
+          options={[
+            { value: "", label: "Active only" },
+            { value: "all", label: "Include archived" },
+            { value: "true", label: "Archived only" },
           ]}
         />
       </div>

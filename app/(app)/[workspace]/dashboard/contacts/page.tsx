@@ -6,6 +6,7 @@ import {
 } from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
 import { Banner } from "@/components/banner";
+import { CrmInnerNav } from "@/components/crm";
 import { ContactsList } from "@/app/(app)/[workspace]/dashboard/contacts/contacts-list";
 
 /**
@@ -60,6 +61,7 @@ export default async function ContactsListPage({
         title="Contacts"
         description="The people you work with, and the companies they belong to."
       />
+      <CrmInnerNav workspaceDomain={active.domain} />
       <div className="mt-6 flex-1">
         <ContactsList
           contacts={contacts}

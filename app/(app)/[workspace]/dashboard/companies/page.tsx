@@ -13,13 +13,17 @@ import {
 } from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
 import { Banner } from "@/components/banner";
+import { CrmInnerNav } from "@/components/crm";
 import { CompaniesList } from "@/app/(app)/[workspace]/dashboard/companies/companies-list";
 import {
   BOARD_STATUSES,
   COMPANY_PAGE_SIZES,
   type CompanyPageSize,
 } from "@/lib/crm/constants";
-import type { CompanyFilters } from "@/app/(app)/[workspace]/dashboard/companies/_components/companies-filter-bar";
+import type {
+  CompanyArchiveFilter,
+  CompanyFilters,
+} from "@/app/(app)/[workspace]/dashboard/companies/_components/companies-filter-bar";
 
 const ALLOWED_PAGE_SIZES = [25, 50, 75, 100] as const;
 
@@ -33,6 +37,18 @@ function parseStatus(raw: string | undefined): string {
     .map((s) => s.trim())
     .filter((s) => (BOARD_STATUSES as string[]).includes(s))
     .join(",");
+}
+
+/**
+ * Parse the archive filter.
+ *
+ * `""` keeps the default (active companies only), `"all"` shows the
+ * archived ones alongside the active ones, `"true"` shows only the archived
+ * ones. Anything else falls back to the default.
+ */
+function parseArchived(raw: string | undefined): CompanyArchiveFilter {
+  const value = (raw ?? "").trim();
+  return value === "all" || value === "true" ? value : "";
 }
 
 function parseBool(raw: string | undefined): boolean | null {
@@ -82,6 +98,7 @@ export default async function CompaniesListPage({
     city?: string;
     has_contacts?: string;
     verified?: string;
+    archived?: string;
     ordering?: string;
     page?: string;
     page_size?: string;
@@ -101,6 +118,7 @@ export default async function CompaniesListPage({
     city: (sp.city ?? "").trim(),
     hasContacts: parseBool(sp.has_contacts),
     verified: parseBool(sp.verified),
+    archived: parseArchived(sp.archived),
   };
 
   const orderingStr = (sp.ordering ?? "").trim() || undefined;
@@ -117,6 +135,7 @@ export default async function CompaniesListPage({
     city: filters.city || undefined,
     has_contacts: filters.hasContacts ?? undefined,
     verified: filters.verified ?? undefined,
+    archived: filters.archived || undefined,
     ordering: orderingStr,
     page,
     page_size: pageSize,
@@ -133,6 +152,7 @@ export default async function CompaniesListPage({
     city: listFilters.city,
     has_contacts: listFilters.has_contacts,
     verified: listFilters.verified,
+    archived: listFilters.archived,
   };
 
   const [companiesPayload, breakdown, industries, tierClassifications, countries] =
@@ -168,6 +188,7 @@ export default async function CompaniesListPage({
         title="Prospecting"
         description="Every company you are working, from first identification to a closed deal."
       />
+      <CrmInnerNav workspaceDomain={active.domain} />
       <div className="mt-6 flex-1 space-y-6">
         <CompaniesList
           workspace={{

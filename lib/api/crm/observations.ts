@@ -1,6 +1,6 @@
 import { serverFetch, serverMutate } from "../server-fetch";
 import type { Observation, ObservationCategory } from "../types";
-import { fetchList, qs, wsOpts } from "./shared";
+import { fetchList, qs, wsOpts, type ArchivedFilter } from "./shared";
 
 /**
  * List observations.
@@ -9,13 +9,20 @@ import { fetchList, qs, wsOpts } from "./shared";
  * user and role. The cache is invalidated when an observation is created or
  * deleted, so a save is reflected immediately — the staleness window only
  * matters for rows created by *another* user.
+ *
+ * Archived observations (archived with their company) are left out unless
+ * `archived: "all"` asks for them.
  */
 export async function listObservations(opts: {
   company?: string;
+  archived?: ArchivedFilter;
   workspace: string;
 }): Promise<Observation[]> {
   return fetchList<Observation>(
-    `/apis/crm/observations/${qs({ company: opts.company })}`,
+    `/apis/crm/observations/${qs({
+      company: opts.company,
+      archived: opts.archived,
+    })}`,
     opts.workspace,
   );
 }

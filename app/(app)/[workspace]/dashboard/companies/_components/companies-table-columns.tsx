@@ -5,6 +5,7 @@ import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 
 import { PROSPECT_LABELS, STATUS_COLORS } from "@/lib/crm/constants";
 import { formatMediumDate } from "@/lib/dates";
+import { Archive } from "@/lib/icons";
 import type { Company, ProspectStatus, TierClassification } from "@/lib/api";
 
 /**
@@ -98,15 +99,26 @@ export function buildCompanyColumns(
     }),
     columnHelper.accessor("name", {
       header: "Name",
-      cell: (info) => (
-        <Link
-          href={`/${workspaceDomain}/dashboard/companies/${info.row.original.nanoid}`}
-          className="font-medium hover:underline"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {info.getValue()}
-        </Link>
-      ),
+      cell: (info) => {
+        const company = info.row.original;
+        return (
+          <span className="flex flex-wrap items-center gap-2">
+            <Link
+              href={`/${workspaceDomain}/dashboard/companies/${company.nanoid}`}
+              className="font-medium hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {info.getValue()}
+            </Link>
+            {company.archived ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                <Archive className="size-3" aria-hidden="true" />
+                Archived
+              </span>
+            ) : null}
+          </span>
+        );
+      },
     }),
     columnHelper.accessor("status", {
       header: "Status",

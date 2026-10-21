@@ -108,6 +108,7 @@ export function CompaniesList({
       if (merged.hasContacts === false) params.set("has_contacts", "false");
       if (merged.verified === true) params.set("verified", "true");
       if (merged.verified === false) params.set("verified", "false");
+      if (merged.archived) params.set("archived", merged.archived);
 
       const nextOrdering =
         "ordering" in next ? next.ordering : (ordering ?? undefined);
@@ -125,7 +126,8 @@ export function CompaniesList({
         "country" in next ||
         "city" in next ||
         "hasContacts" in next ||
-        "verified" in next;
+        "verified" in next ||
+        "archived" in next;
       const finalPage =
         "page" in next && next.page && !filterChanged ? next.page : 1;
       if (finalPage > 1) params.set("page", String(finalPage));
@@ -169,7 +171,8 @@ export function CompaniesList({
       filters.country ||
       filters.city ||
       filters.hasContacts !== null ||
-      filters.verified !== null,
+      filters.verified !== null ||
+      filters.archived,
   );
 
   return (

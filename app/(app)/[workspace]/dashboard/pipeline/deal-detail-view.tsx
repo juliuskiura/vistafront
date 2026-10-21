@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getDeal, getPipeline, type Pipeline } from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
 import { Banner } from "@/components/banner";
+import { CrmInnerNav } from "@/components/crm";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatMediumDate } from "@/lib/dates";
@@ -52,6 +53,7 @@ export async function DealDetailView({
         title={deal.title}
         description={`${deal.pipeline_name ?? "Pipeline"} · ${deal.stage}`}
       />
+      <CrmInnerNav workspaceDomain={active.domain} />
       <div className="mt-6 flex-1 space-y-6">
         <div className="flex flex-wrap items-center gap-3">
           <Link

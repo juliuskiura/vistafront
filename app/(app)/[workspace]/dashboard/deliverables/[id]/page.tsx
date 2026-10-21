@@ -1,48 +1,28 @@
 import Link from "next/link";
 
-import { getDeliverable, type Deliverable } from "@/lib/api";
+import {
+  getDeliverable,
+  listComments,
+  listDeliverables,
+  listWorkspaceMembers,
+  type Comment,
+  type Deliverable,
+  type DeliverableSummary,
+  type WorkspaceMember,
+} from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
 import { requireFeature } from "@/lib/features/guard";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-
-const DELIVERABLE_STATUS_LABELS: Record<Deliverable["status"], string> = {
-  draft: "Draft",
-  review: "In Review",
-  revisions: "Revisions Requested",
-  approved: "Approved",
-  published: "Published",
-  cancelled: "Cancelled",
-};
-
-function formatDate(value: string | null): string {
-  if (!value) return "—";
-  try {
-    return new Date(value).toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  } catch {
-    return value;
-  }
-}
-
-function statusBadgeVariant(
-  status: Deliverable["status"],
-): "default" | "secondary" | "outline" {
-  if (status === "published" || status === "approved") return "default";
-  if (status === "cancelled") return "outline";
-  return "secondary";
-}
+import { formatMediumDate } from "@/lib/dates";
+import { Banner } from "@/components/banner";
+import { DeliverableRecord } from "./deliverable-record";
 
 /**
- * Deliverable detail (Server Component, placeholder).
+ * Deliverable record (Server Component).
  *
- * Shows the deliverable metadata plus a flat list of tasks. Review,
- * approval, and revision actions will land in a follow-up — this
- * route exists today so the "Open" links on the project page resolve
- * to a real page.
+ * The deliverable's own page lives outside the project's route tree
+ * because the backend addresses deliverables directly — the old app
+ * linked to `/dashboard/deliverables/:id` from the project record and
+ * from the task page.
  */
 export default async function DeliverableDetailPage({
   params,
@@ -56,7 +36,8 @@ export default async function DeliverableDetailPage({
   let deliverable: Deliverable;
   try {
     deliverable = await getDeliverable(id, active.domain);
-  } catch {
+  } catch (error) {
+    console.error("DeliverableDetailPage: could not load deliverable", error);
     return (
       <div className="max-w-3xl space-y-4">
         <Link
@@ -65,91 +46,59 @@ export default async function DeliverableDetailPage({
         >
           ← Back to projects
         </Link>
-        <Card className="rounded-xl border bg-card p-6 text-sm text-muted-foreground">
+        <div className="rounded-xl border bg-card p-6 text-sm text-muted-foreground">
           We couldn&apos;t load this deliverable. It may have been removed or
           you may no longer have access.
-        </Card>
+        </div>
       </div>
     );
   }
 
+  const [comments, members, deliverables] = await Promise.all([
+    listComments("deliverable", deliverable.nanoid, active.domain).catch(
+      () => [] as Comment[],
+    ),
+    listWorkspaceMembers(active.nanoid, active.domain).catch(
+      () => [] as WorkspaceMember[],
+    ),
+    listDeliverables({
+      project: deliverable.project,
+      workspace: active.domain,
+    }).catch(() => [] as DeliverableSummary[]),
+  ]);
+
   return (
-    <div className="max-w-3xl space-y-6">
-      <Link
-        href={`/${active.domain}/dashboard/projects/${deliverable.project}`}
-        className="text-xs text-muted-foreground hover:underline"
-      >
-        ← Back to {deliverable.project_name ?? "project"}
-      </Link>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">{deliverable.title}</h1>
-          <p className="text-sm text-muted-foreground">
-            {deliverable.deliverable_type ?? "Deliverable"}
-            {deliverable.due_date ? ` · due ${formatDate(deliverable.due_date)}` : ""}
-          </p>
-        </div>
-        <Badge variant={statusBadgeVariant(deliverable.status)}>
-          {DELIVERABLE_STATUS_LABELS[deliverable.status]}
-        </Badge>
+    <div className="flex min-h-full flex-col">
+      <Banner
+        title={deliverable.title}
+        description={
+          [
+            deliverable.project_name ?? "No project",
+            deliverable.due_date
+              ? `Due ${formatMediumDate(deliverable.due_date)}`
+              : null,
+          ]
+            .filter(Boolean)
+            .join(" · ")
+        }
+      />
+      <div className="mt-6 flex-1">
+        <DeliverableRecord
+          deliverable={deliverable}
+          workspaceDomain={active.domain}
+          comments={comments}
+          members={members.map((member) => ({
+            nanoid: member.user_nanoid,
+            name:
+              [member.first_name, member.last_name].filter(Boolean).join(" ") ||
+              member.email,
+          }))}
+          deliverables={deliverables.map((row) => ({
+            nanoid: row.nanoid,
+            name: row.title,
+          }))}
+        />
       </div>
-
-      <Card className="rounded-xl border bg-card p-4 text-sm">
-        <dl className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <dt className="text-xs uppercase text-muted-foreground">Assigned to</dt>
-            <dd className="mt-1 font-medium">
-              {deliverable.assigned_to_name ?? "Unassigned"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs uppercase text-muted-foreground">Reviewed by</dt>
-            <dd className="mt-1 font-medium">
-              {deliverable.reviewed_by_name ?? "—"}
-            </dd>
-          </div>
-        </dl>
-      </Card>
-
-      {deliverable.description ? (
-        <Card className="rounded-xl border bg-card p-4 text-sm">
-          <p className="whitespace-pre-wrap">{deliverable.description}</p>
-        </Card>
-      ) : null}
-
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Tasks
-        </h2>
-        {deliverable.tasks.length === 0 ? (
-          <Card className="rounded-xl border bg-card p-6 text-center text-sm text-muted-foreground">
-            No tasks on this deliverable yet.
-          </Card>
-        ) : (
-          <Card className="divide-y rounded-xl border bg-card">
-            {deliverable.tasks.map((t) => (
-              <Link
-                key={t.nanoid}
-                href={`/${active.domain}/dashboard/projects/tasks/${t.nanoid}`}
-                className="flex items-center justify-between px-4 py-3 hover:bg-muted/50"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{t.title}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {t.assignee_name ?? "Unassigned"}
-                    {t.due_date ? ` · due ${formatDate(t.due_date)}` : ""}
-                  </p>
-                </div>
-                <Badge variant="outline">{t.status}</Badge>
-              </Link>
-            ))}
-          </Card>
-        )}
-      </section>
-
-      <Card className="rounded-xl border bg-card p-4 text-xs text-muted-foreground">
-        Review, approve, and request-revision actions will land in a follow-up.
-      </Card>
     </div>
   );
 }

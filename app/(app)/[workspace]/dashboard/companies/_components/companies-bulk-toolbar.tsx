@@ -3,12 +3,16 @@
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import { Archive } from "@/lib/icons";
 
 interface Props {
   selectedCount: number;
   selectedNanoids: string[];
   workspaceDomain: string;
   pending: boolean;
+  /** Which action is running, so the right button shows its own label. */
+  pendingAction: "archive" | "delete" | null;
+  onArchive: () => void;
   onDelete: () => void;
   onClear: () => void;
 }
@@ -19,12 +23,18 @@ interface Props {
  * "Edit" opens the company record with `?edit=1`, which is what puts the
  * record into edit mode — the same URL contract the legacy app used, and
  * the reason the button is a link rather than a mutation.
+ *
+ * "Archive" is the soft alternative to "Delete": the selected companies and
+ * everything hanging off them leave the working lists but keep every field,
+ * and can be restored later.
  */
 export function CompaniesBulkToolbar({
   selectedCount,
   selectedNanoids,
   workspaceDomain,
   pending,
+  pendingAction,
+  onArchive,
   onDelete,
   onClear,
 }: Props) {
@@ -63,11 +73,20 @@ export function CompaniesBulkToolbar({
         </Button>
         <Button
           size="sm"
+          variant="outline"
+          onClick={onArchive}
+          disabled={pending}
+        >
+          <Archive className="mr-1.5 size-3.5" aria-hidden="true" />
+          {pendingAction === "archive" ? "Archiving…" : "Archive"}
+        </Button>
+        <Button
+          size="sm"
           variant="destructive"
           onClick={onDelete}
           disabled={pending}
         >
-          {pending ? "Deleting…" : "Delete"}
+          {pendingAction === "delete" ? "Deleting…" : "Delete"}
         </Button>
         <Button size="sm" variant="ghost" onClick={onClear}>
           Clear

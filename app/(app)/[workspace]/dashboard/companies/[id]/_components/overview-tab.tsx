@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { COMPANY_SIZES, COMPANY_SIZE_LABELS } from "@/lib/crm/constants";
-import { formatSocialLinks } from "@/lib/crm/social-links";
 import type {
   Company,
   Country,
@@ -221,25 +220,6 @@ export function OverviewTab({
             editing={editing}
             onSaved={refresh}
             placeholder="+44 20 7946 0000"
-          />
-        </CardContent>
-      </Card>
-
-      <Card className="rounded-xl border bg-card">
-        <CardHeader>
-          <CardTitle>Social links</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <InlineListField
-            label="One link per line (name | url), * marks the primary"
-            field="social_links"
-            display={formatSocialLinks(company.social_links)}
-            rawValue={formatSocialLinks(company.social_links)}
-            workspaceDomain={workspaceDomain}
-            companyNanoid={company.nanoid}
-            editing={editing}
-            onSaved={refresh}
-            placeholder="Facebook | https://facebook.com/example"
           />
         </CardContent>
       </Card>

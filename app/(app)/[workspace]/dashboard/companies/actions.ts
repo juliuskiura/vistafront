@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import {
+  archiveCompany,
   createCompany,
   createIndustry,
   createTierClassification,
@@ -251,6 +252,27 @@ export async function deleteTierAction(input: {
 
   revalidatePath(`/[workspace]/dashboard/companies`, "page");
   return { status: "success", message: "Tier deleted." };
+}
+
+/**
+ * Server Action: bulk-archive companies.
+ *
+ * Called from the bulk-action toolbar with the list of selected nanoids.
+ * Each company is archived with the records that hang off it. The runs are
+ * in parallel and the path is revalidated once at the end.
+ */
+export async function bulkArchiveCompaniesAction(
+  nanoids: string[],
+  workspace: string,
+): Promise<{ archived: number; failed: number }> {
+  if (!workspace || nanoids.length === 0) return { archived: 0, failed: 0 };
+  const results = await Promise.allSettled(
+    nanoids.map((nanoid) => archiveCompany(nanoid, workspace)),
+  );
+  const failed = results.filter((r) => r.status === "rejected").length;
+  const archived = results.length - failed;
+  revalidatePath(`/[workspace]/dashboard/companies`, "page");
+  return { archived, failed };
 }
 
 /**

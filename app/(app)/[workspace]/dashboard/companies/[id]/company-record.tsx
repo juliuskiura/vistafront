@@ -1,8 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-
 import type {
   Activity,
   Company,
@@ -15,6 +12,8 @@ import type {
   TierClassification,
 } from "@/lib/api";
 import type { Note } from "@/lib/api/types";
+import { formatMediumDate } from "@/lib/dates";
+import { Archive } from "@/lib/icons";
 import { RecordHeader } from "./_components/record-header";
 import { RecordTabs, type CompanyTab } from "./_components/record-tabs";
 import { ProspectFlow } from "./_components/prospect-flow";
@@ -26,7 +25,6 @@ import { NotesTab } from "./_components/notes-tab";
 import { ObservationsTab } from "./_components/observations-tab";
 import { ActivitiesTab } from "./_components/activities-tab";
 import { LeadsTab } from "./_components/leads-tab";
-import { AddContactDialog } from "./_components/add-contact-dialog";
 
 export const COMPANY_TABS: CompanyTab[] = [
   { key: "overview", label: "Overview" },
@@ -77,9 +75,10 @@ interface Props {
 /**
  * The company record shell.
  *
- * Owns the tab strip, the edit-mode toggle and the header actions. The
- * server component supplies the record and the per-tab data; this
- * component decides what to show.
+ * Owns the tab strip and the record body. The server component supplies the
+ * record and the per-tab data; this component decides what to show. The
+ * record actions (edit, add contact, archive, delete) live in the overflow
+ * menu at the end of the CRM nav strip.
  */
 export function CompanyRecord(props: Props) {
   const {
@@ -89,8 +88,6 @@ export function CompanyRecord(props: Props) {
     editing,
     counts,
   } = props;
-  const router = useRouter();
-  const [addContactOpen, setAddContactOpen] = useState(false);
 
   const tabs: CompanyTab[] = COMPANY_TABS.map((tab) => {
     const countByKey: Record<string, number> = {
@@ -106,32 +103,26 @@ export function CompanyRecord(props: Props) {
       : { ...tab, count: countByKey[tab.key] };
   });
 
-  const toggleEdit = () => {
-    const params = new URLSearchParams();
-    params.set("tab", activeTab);
-    if (editing) params.delete("edit");
-    else params.set("edit", "1");
-    router.push(
-      `/${workspaceDomain}/dashboard/companies/${company.nanoid}?${params.toString()}`,
-    );
-  };
-
   return (
     <div className="space-y-6">
-      <RecordHeader
-        company={company}
-        workspaceDomain={workspaceDomain}
-        editing={editing}
-        onToggleEdit={toggleEdit}
-        onAddContact={() => setAddContactOpen(true)}
-      />
+      <RecordHeader company={company} editing={editing} />
+
+      {company.archived ? (
+        <div className="flex items-start gap-2 rounded-xl border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+          <Archive className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          <p>
+            This company is archived
+            {company.archived_at
+              ? ` since ${formatMediumDate(company.archived_at)}`
+              : ""}
+            . It and its records are hidden from the working lists — restore it
+            from the header above to bring them back.
+          </p>
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <ProspectFlow
-          status={company.status}
-          workspaceDomain={workspaceDomain}
-          companyNanoid={company.nanoid}
-        />
+        <ProspectFlow status={company.status} />
         <StatusSelect
           status={company.status}
           workspaceDomain={workspaceDomain}
@@ -177,14 +168,6 @@ export function CompanyRecord(props: Props) {
           <NotesTab {...props} />
         ) : null}
       </div>
-
-      <AddContactDialog
-        open={addContactOpen}
-        onOpenChange={setAddContactOpen}
-        workspaceDomain={workspaceDomain}
-        companyNanoid={company.nanoid}
-        companyName={company.name}
-      />
     </div>
   );
 }

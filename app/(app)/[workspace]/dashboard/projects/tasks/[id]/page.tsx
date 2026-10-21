@@ -1,30 +1,29 @@
 import Link from "next/link";
 
-import { getTask, type Task } from "@/lib/api";
+import {
+  getTask,
+  listAttachments,
+  listComments,
+  listDeliverables,
+  listWorkspaceMembers,
+  type Attachment,
+  type Comment,
+  type DeliverableSummary,
+  type Task,
+  type WorkspaceMember,
+} from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
 import { requireFeature } from "@/lib/features/guard";
-import { Card } from "@/components/ui/card";
-
-function formatDate(value: string | null): string {
-  if (!value) return "—";
-  try {
-    return new Date(value).toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  } catch {
-    return value;
-  }
-}
+import { formatMediumDate } from "@/lib/dates";
+import { Banner } from "@/components/banner";
+import { TaskRecord } from "./task-record";
 
 /**
- * Task detail (Server Component, placeholder).
+ * Task record (Server Component).
  *
- * Fetches and renders the basic task metadata. The interactive UX for
- * editing status, assignee, and due date will land in a follow-up —
- * this route exists today so sidebar links and deep links resolve
- * cleanly.
+ * The route lives under `projects/` because that is where the old app
+ * put it (`/dashboard/projects/tasks/:id`) and where the project record
+ * links to it.
  */
 export default async function TaskDetailPage({
   params,
@@ -38,7 +37,8 @@ export default async function TaskDetailPage({
   let task: Task;
   try {
     task = await getTask(id, active.domain);
-  } catch {
+  } catch (error) {
+    console.error("TaskDetailPage: could not load task", error);
     return (
       <div className="max-w-3xl space-y-4">
         <Link
@@ -47,63 +47,64 @@ export default async function TaskDetailPage({
         >
           ← Back to projects
         </Link>
-        <Card className="rounded-xl border bg-card p-6 text-sm text-muted-foreground">
+        <div className="rounded-xl border bg-card p-6 text-sm text-muted-foreground">
           We couldn&apos;t load this task. It may have been removed or you may
           no longer have access.
-        </Card>
+        </div>
       </div>
     );
   }
 
-  const backHref = task.project
-    ? `/${active.domain}/dashboard/projects/${task.project}`
-    : `/${active.domain}/dashboard/projects`;
+  const [comments, attachments, members, deliverables] = await Promise.all([
+    listComments("task", task.nanoid, active.domain).catch(
+      () => [] as Comment[],
+    ),
+    listAttachments("task", task.nanoid, active.domain).catch(
+      () => [] as Attachment[],
+    ),
+    listWorkspaceMembers(active.nanoid, active.domain).catch(
+      () => [] as WorkspaceMember[],
+    ),
+    task.project
+      ? listDeliverables({
+          project: task.project,
+          workspace: active.domain,
+        }).catch(() => [] as DeliverableSummary[])
+      : Promise.resolve([] as DeliverableSummary[]),
+  ]);
 
   return (
-    <div className="max-w-3xl space-y-6">
-      <Link
-        href={backHref}
-        className="text-xs text-muted-foreground hover:underline"
-      >
-        ← Back
-      </Link>
-      <div>
-        <h1 className="text-xl font-semibold">{task.title}</h1>
-        <p className="text-sm text-muted-foreground">
-          {task.project_name ? `Part of ${task.project_name}` : "Task"}
-        </p>
+    <div className="flex min-h-full flex-col">
+      <Banner
+        title={task.title}
+        description={
+          [
+            task.project_name ?? "No project",
+            task.deliverable_title,
+            task.due_date ? `Due ${formatMediumDate(task.due_date)}` : null,
+          ]
+            .filter(Boolean)
+            .join(" · ")
+        }
+      />
+      <div className="mt-6 flex-1">
+        <TaskRecord
+          task={task}
+          workspaceDomain={active.domain}
+          comments={comments}
+          attachments={attachments}
+          members={members.map((member) => ({
+            nanoid: member.user_nanoid,
+            name:
+              [member.first_name, member.last_name].filter(Boolean).join(" ") ||
+              member.email,
+          }))}
+          deliverables={deliverables.map((deliverable) => ({
+            nanoid: deliverable.nanoid,
+            name: deliverable.title,
+          }))}
+        />
       </div>
-
-      <Card className="rounded-xl border bg-card p-4 text-sm">
-        <dl className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <dt className="text-xs uppercase text-muted-foreground">Status</dt>
-            <dd className="mt-1 font-medium">{task.status}</dd>
-          </div>
-          <div>
-            <dt className="text-xs uppercase text-muted-foreground">Priority</dt>
-            <dd className="mt-1 font-medium">{task.priority}</dd>
-          </div>
-          <div>
-            <dt className="text-xs uppercase text-muted-foreground">Assignee</dt>
-            <dd className="mt-1 font-medium">{task.assignee_name ?? "Unassigned"}</dd>
-          </div>
-          <div>
-            <dt className="text-xs uppercase text-muted-foreground">Due</dt>
-            <dd className="mt-1 font-medium">{formatDate(task.due_date)}</dd>
-          </div>
-        </dl>
-      </Card>
-
-      {task.description ? (
-        <Card className="rounded-xl border bg-card p-4 text-sm">
-          <p className="whitespace-pre-wrap">{task.description}</p>
-        </Card>
-      ) : null}
-
-      <Card className="rounded-xl border bg-card p-4 text-xs text-muted-foreground">
-        Task editing and comments will land in a follow-up.
-      </Card>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { serverFetch, serverMutate } from "../server-fetch";
 import type { Contact } from "../types";
-import { fetchList, qs, wsOpts } from "./shared";
+import { fetchList, qs, wsOpts, type ArchivedFilter } from "./shared";
 
 /**
  * List contacts.
@@ -8,13 +8,20 @@ import { fetchList, qs, wsOpts } from "./shared";
  * The backend has no `?search=` for contacts — only `?company=`. A search
  * therefore has to happen in memory over the whole set, which is why the
  * contacts page caps what it fetches.
+ *
+ * Archived contacts (archived with their company) are left out unless
+ * `archived: "all"` asks for them.
  */
 export async function listContacts(opts: {
   company?: string;
+  archived?: ArchivedFilter;
   workspace: string;
 }): Promise<Contact[]> {
   return fetchList<Contact>(
-    `/apis/crm/contacts/${qs({ company: opts.company })}`,
+    `/apis/crm/contacts/${qs({
+      company: opts.company,
+      archived: opts.archived,
+    })}`,
     opts.workspace,
   );
 }

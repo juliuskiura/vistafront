@@ -719,6 +719,10 @@ export interface Company {
   verified?: boolean;
   contact_count?: number;
   deal_count?: number;
+  /** Archived companies are hidden from the lists until asked for. */
+  archived?: boolean;
+  /** When the company was archived. */
+  archived_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -743,6 +747,8 @@ export interface Contact {
   status: "active" | "inactive" | "lead";
   social_links?: CompanySocialLink[];
   deal_count?: number;
+  /** Set when the contact's company was archived. */
+  archived?: boolean;
   created_at: string;
   updated_at?: string;
 }
@@ -804,6 +810,8 @@ export interface Deal {
   status: "open" | "won" | "lost";
   expected_close_date: string | null;
   notes?: string;
+  /** Set when the deal's company was archived. */
+  archived?: boolean;
   created_at: string;
   updated_at?: string;
 }
@@ -890,6 +898,8 @@ export interface Observation {
   content?: Record<string, unknown>;
   severity: number;
   opportunity?: string;
+  /** Set when the observation's company was archived. */
+  archived?: boolean;
   created_at: string;
   updated_at?: string;
 }
@@ -927,6 +937,8 @@ export interface Activity {
   due_at: string | null;
   completed_at: string | null;
   content?: Record<string, unknown>;
+  /** Set when the activity's company was archived. */
+  archived?: boolean;
   created_at: string;
   updated_at?: string;
 }
@@ -942,6 +954,8 @@ export interface Lead {
   source: string;
   status: string;
   notes?: string;
+  /** Set when the lead's company was archived. */
+  archived?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -1263,6 +1277,116 @@ export interface CreateProjectBody {
   priority?: ProjectPriority;
   start_date?: string | null;
   deadline?: string | null;
+}
+
+/**
+ * The fields a project PATCH accepts.
+ *
+ * `company` is a company nanoid, `client` a contact nanoid and `category` a
+ * category **key** — the backend reads the category by key, not by nanoid.
+ */
+export interface UpdateProjectBody {
+  name?: string;
+  description?: string;
+  company?: string;
+  client?: string | null;
+  category?: string | null;
+  status?: ProjectStatus;
+  priority?: ProjectPriority;
+  start_date?: string | null;
+  deadline?: string | null;
+}
+
+/**
+ * The fields a task PATCH accepts.
+ *
+ * There is no `project`: the backend derives a task's project from its
+ * deliverable, so a task hangs off a project through the deliverable alone.
+ */
+export interface UpdateTaskBody {
+  title?: string;
+  description?: string;
+  deliverable?: string | null;
+  assignee?: string | null;
+  status?: TaskStatus;
+  priority?: TaskPriority;
+  due_date?: string | null;
+}
+
+export interface CreateTaskBody {
+  title: string;
+  description?: string;
+  deliverable?: string | null;
+  assignee?: string | null;
+  status?: TaskStatus;
+  priority?: TaskPriority;
+  due_date?: string | null;
+}
+
+/** The fields a deliverable PATCH accepts. */
+export interface UpdateDeliverableBody {
+  title?: string;
+  description?: string;
+  deliverable_type?: string | null;
+  status?: DeliverableStatus;
+  due_date?: string | null;
+  assigned_to?: string | null;
+  metadata?: Record<string, unknown>;
+}
+
+export interface CreateDeliverableBody {
+  project: string;
+  title: string;
+  description?: string;
+  deliverable_type?: string | null;
+  status?: DeliverableStatus;
+  due_date?: string | null;
+  assigned_to?: string | null;
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * What the AI merge-suggestion endpoints return.
+ *
+ * The service returns `null` (and the endpoint answers `502`) when the AI
+ * model is not configured, so both fields are optional.
+ */
+export interface MergeSuggestion {
+  title?: string;
+  description?: string;
+}
+
+/**
+ * A comment on any record, via the generic comments API.
+ *
+ * `target_type` is the backend's short model name — `project`,
+ * `deliverable` or `task`.
+ */
+export interface Comment {
+  nanoid: string;
+  text: string;
+  author_name: string | null;
+  created_at: string;
+  target_type: string;
+  target_nanoid: string | null;
+}
+
+/**
+ * A file attached to any record, via the generic attachments API.
+ *
+ * `file` is the backend's path to the stored file (relative to its media
+ * root), not an absolute URL — the app serves it through its own route
+ * handler so the session cookie travels with the request.
+ */
+export interface Attachment {
+  nanoid: string;
+  original_name: string;
+  size: number | null;
+  file: string;
+  uploaded_by_name: string | null;
+  created_at: string;
+  target_type: string;
+  target_nanoid: string | null;
 }
 
 /* ──────────────────────────────────────────────────────────────────────

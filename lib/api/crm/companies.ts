@@ -5,7 +5,7 @@ import type {
   CreateCompanyBody,
   Paginated,
 } from "../types";
-import { fetchList, qs, wsOpts } from "./shared";
+import { fetchList, qs, wsOpts, type ArchivedFilter } from "./shared";
 
 export interface ListCompaniesFilters {
   search?: string;
@@ -24,6 +24,11 @@ export interface ListCompaniesFilters {
   country?: string;
   /** Substring match. */
   city?: string;
+  /**
+   * Which companies to show. The backend hides archived companies by
+   * default; `"all"` brings them back, `"true"` shows only archived ones.
+   */
+  archived?: ArchivedFilter;
   ordering?: string;
   page?: number;
   page_size?: number;
@@ -40,6 +45,7 @@ function companyListQuery(f: ListCompaniesFilters): string {
     verified: typeof f.verified === "boolean" ? String(f.verified) : undefined,
     country: f.country,
     city: f.city,
+    archived: f.archived,
     ordering: f.ordering,
     page: f.page,
     page_size: f.page_size,
@@ -166,8 +172,55 @@ export async function getCompanyStatusBreakdown(opts: {
         typeof f.verified === "boolean" ? String(f.verified) : undefined,
       country: f.country,
       city: f.city,
+      archived: f.archived,
     })}`,
     wsOpts(opts.workspace),
   );
   return { total: payload?.total ?? 0, counts: payload?.counts ?? {} };
+}
+
+/**
+ * The answer to an archive / unarchive call.
+ *
+ * `related` counts the records that were archived (or restored) with the
+ * company, per record type — contacts, observations, activities, leads and
+ * deals.
+ */
+export interface ArchiveCompanyResult {
+  company: Company;
+  related: Record<string, number>;
+}
+
+/**
+ * Archive the company together with every record that hangs off it.
+ *
+ * Nothing is deleted: the company and its contacts, observations, activities,
+ * leads and deals are flagged as archived and leave the working lists. The
+ * endpoint answers `400` with `{ detail: "This company is already archived." }`
+ * when the company is already in the archive.
+ */
+export function archiveCompany(
+  nanoid: string,
+  workspace: string,
+): Promise<ArchiveCompanyResult> {
+  return serverMutate<ArchiveCompanyResult>(
+    `/apis/crm/companies/${nanoid}/archive/`,
+    { method: "POST", body: {}, workspace },
+  );
+}
+
+/**
+ * Restore the company and the records that were archived with it.
+ *
+ * Answers `400` with `{ detail: "This company is not archived." }` when the
+ * company is not in the archive.
+ */
+export function unarchiveCompany(
+  nanoid: string,
+  workspace: string,
+): Promise<ArchiveCompanyResult> {
+  return serverMutate<ArchiveCompanyResult>(
+    `/apis/crm/companies/${nanoid}/unarchive/`,
+    { method: "POST", body: {}, workspace },
+  );
 }

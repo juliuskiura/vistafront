@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   useReactTable,
@@ -11,11 +11,8 @@ import {
 } from "@tanstack/react-table";
 
 import { Card } from "@/components/ui/card";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ArrowDown, ArrowUp, ChevronDown, ChevronUp } from "@/lib/icons";
 import type { Company, TierClassification } from "@/lib/api";
-import { bulkDeleteCompaniesAction } from "@/app/(app)/[workspace]/dashboard/companies/actions";
-import { useToast } from "@/lib/context";
 import {
   buildCompanyColumns,
   DEFAULT_VISIBLE_COLUMN_IDS,
@@ -24,6 +21,8 @@ import {
 } from "./_components/companies-table-columns";
 import { CompaniesTableToolbar } from "./_components/companies-table-toolbar";
 import { CompaniesBulkToolbar } from "./_components/companies-bulk-toolbar";
+import { CompaniesBulkDialogs } from "./_components/companies-bulk-dialogs";
+import { useBulkCompanyActions } from "./_components/use-bulk-company-actions";
 
 interface Props {
   companies: Company[];
@@ -71,13 +70,10 @@ export function CompaniesTable({
   onOrderingChange,
 }: Props) {
   const router = useRouter();
-  const toast = useToast();
-  const [pending, startTransition] = useTransition();
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
     DEFAULT_VISIBLE,
   );
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
     setColumnVisibility(readStoredVisibility());
@@ -127,6 +123,13 @@ export function CompaniesTable({
   const table = useReactTable({
     data: companies,
     columns,
+    // Row selection keys must be the company nanoid: the archive / delete
+    // Server Actions send them straight to `/apis/crm/companies/<nanoid>/…`.
+    // Without this TanStack Table falls back to the row index, which produced
+    // 404s like `POST /apis/crm/companies/9/archive/`.
+    // `getRowId` receives the row's original data, not a `Row` wrapper, so
+    // the id is read straight off the company.
+    getRowId: (row) => row.nanoid,
     state: { rowSelection, columnVisibility },
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
@@ -134,23 +137,11 @@ export function CompaniesTable({
     getCoreRowModel: getCoreRowModel(),
   });
 
-  const confirmBulkDelete = () => {
-    startTransition(async () => {
-      const { deleted, failed } = await bulkDeleteCompaniesAction(
-        selectedNanoids,
-        workspaceNanoid,
-      );
-      toast.push({
-        variant: failed === 0 ? "success" : "error",
-        message:
-          failed === 0
-            ? `Deleted ${deleted} compan${deleted === 1 ? "y" : "ies"}.`
-            : `Deleted ${deleted}; ${failed} failed.`,
-      });
-      setRowSelection({});
-      setDeleteDialogOpen(false);
-    });
-  };
+  const bulk = useBulkCompanyActions({
+    selectedNanoids,
+    workspaceNanoid,
+    onSettled: () => setRowSelection({}),
+  });
 
   return (
     <div className="space-y-3">
@@ -161,8 +152,10 @@ export function CompaniesTable({
           selectedCount={selectedCount}
           selectedNanoids={selectedNanoids}
           workspaceDomain={workspaceDomain}
-          pending={pending}
-          onDelete={() => setDeleteDialogOpen(true)}
+          pending={bulk.pending}
+          pendingAction={bulk.pendingAction}
+          onArchive={bulk.openArchive}
+          onDelete={bulk.openDelete}
           onClear={() => setRowSelection({})}
         />
       ) : null}
@@ -253,7 +246,9 @@ export function CompaniesTable({
                         `/${workspaceDomain}/dashboard/companies/${row.original.nanoid}`,
                       )
                     }
-                    className="cursor-pointer border-b last:border-0 hover:bg-muted/50"
+                    className={`cursor-pointer border-b last:border-0 hover:bg-muted/50${
+                      row.original.archived ? " bg-muted/30 opacity-70" : ""
+                    }`}
                   >
                     {row.getVisibleCells().map((cell) => (
                       <td
@@ -276,15 +271,15 @@ export function CompaniesTable({
         </div>
       </Card>
 
-      <ConfirmDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        title="Delete companies?"
-        description={`This will permanently delete ${selectedCount} compan${selectedCount === 1 ? "y" : "ies"}. This action cannot be undone.`}
-        confirmLabel="Delete"
-        variant="destructive"
-        onConfirm={confirmBulkDelete}
-        confirming={pending}
+      <CompaniesBulkDialogs
+        selectedCount={selectedCount}
+        pending={bulk.pending}
+        deleteOpen={bulk.deleteOpen}
+        archiveOpen={bulk.archiveOpen}
+        onDeleteOpenChange={bulk.closeDelete}
+        onArchiveOpenChange={bulk.closeArchive}
+        onConfirmDelete={bulk.confirmDelete}
+        onConfirmArchive={bulk.confirmArchive}
       />
     </div>
   );

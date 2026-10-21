@@ -1,6 +1,6 @@
 import { serverFetch, serverMutate } from "../server-fetch";
 import type { Deal, Pipeline, PipelineStage } from "../types";
-import { fetchList, qs, wsOpts } from "./shared";
+import { fetchList, qs, wsOpts, type ArchivedFilter } from "./shared";
 
 /* ──────────────────────────────────────────────────────────────────────
  * Pipelines
@@ -135,14 +135,22 @@ export function deletePipelineStage(
  * The list serializer is reduced: it omits `pipeline`, `pipeline_name`,
  * `notes` and `updated_at`. Pass `pipeline` when the caller needs the
  * pipeline on every row — the board always does.
+ *
+ * Archived deals (archived with their company) are left out unless
+ * `archived: "all"` asks for them.
  */
 export async function listDeals(opts: {
   pipeline?: string;
   stage?: string;
+  archived?: ArchivedFilter;
   workspace: string;
 }): Promise<Deal[]> {
   return fetchList<Deal>(
-    `/apis/crm/deals/${qs({ pipeline: opts.pipeline, stage: opts.stage })}`,
+    `/apis/crm/deals/${qs({
+      pipeline: opts.pipeline,
+      stage: opts.stage,
+      archived: opts.archived,
+    })}`,
     opts.workspace,
   );
 }

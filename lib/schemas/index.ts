@@ -36,33 +36,6 @@ export function fieldErrorsFromZod(
 }
 
 /* ──────────────────────────────────────────────────────────────────────
- * New project
- * ────────────────────────────────────────────────────────────────────── */
-
-export const ProjectPrioritySchema = z.enum(["low", "medium", "high", "urgent"]);
-export const ProjectStatusSchema = z.enum([
-  "planning",
-  "in_progress",
-  "on_hold",
-  "completed",
-  "cancelled",
-]);
-
-export const NewProjectSchema = z.object({
-  workspace_domain: z.string().min(1, "Missing workspace."),
-  name: z.string().min(1, "Project name is required.").max(200),
-  company: z.string().min(1, "Company is required."),
-  client: z.string().optional(),
-  category: z.string().optional(),
-  status: ProjectStatusSchema.default("planning"),
-  priority: ProjectPrioritySchema.default("medium"),
-  start_date: z.string().optional(),
-  deadline: z.string().optional(),
-  description: z.string().max(5000).optional(),
-});
-export type NewProjectInput = z.infer<typeof NewProjectSchema>;
-
-/* ──────────────────────────────────────────────────────────────────────
  * Note (Notebook)
  * ────────────────────────────────────────────────────────────────────── */
 
@@ -101,6 +74,7 @@ export {
   SocialLinkSchema,
   UpdateActivitySchema,
   UpdateCompanyFieldSchema,
+  UpdateCompanySocialLinksSchema,
   UpdateContactSchema,
   UpdateDealSchema,
   UpdateTierClassificationSchema,
@@ -120,7 +94,54 @@ export {
   type SocialLinkInput,
   type UpdateActivityInput,
   type UpdateCompanyFieldInput,
+  type UpdateCompanySocialLinksInput,
   type UpdateContactInput,
   type UpdateDealInput,
   type UpdateTierClassificationInput,
 } from "./crm";
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Project manager
+ *
+ * The project / task / deliverable validation contracts live in their own
+ * module — `projects.ts` — so the file stays readable. They are re-exported
+ * here so `@/lib/schemas` remains the single import path for every schema
+ * in the app.
+ * ────────────────────────────────────────────────────────────────────── */
+
+export {
+  CreateCommentSchema,
+  CreateDeliverableSchema,
+  CreateProjectSchema,
+  CreateTaskSchema,
+  DeliverableStatusSchema,
+  MergeDeliverablesSchema,
+  MergeTasksSchema,
+  ProjectPrioritySchema,
+  ProjectStatusSchema,
+  RequestRevisionsSchema,
+  ReviewSchema,
+  TaskStatusSchema,
+  UpdateDeliverableSchema,
+  UpdateProjectSchema,
+  UpdateProjectStatusSchema,
+  UpdateTaskSchema,
+  UpdateTaskStatusSchema,
+  type CreateCommentInput,
+  type CreateDeliverableInput,
+  type CreateProjectInput,
+  type CreateTaskInput,
+  type DeliverableStatusInput,
+  type MergeDeliverablesInput,
+  type MergeTasksInput,
+  type ProjectPriorityInput,
+  type ProjectStatusInput,
+  type RequestRevisionsInput,
+  type ReviewInput,
+  type TaskStatusInput,
+  type UpdateDeliverableInput,
+  type UpdateProjectInput,
+  type UpdateProjectStatusInput,
+  type UpdateTaskInput,
+  type UpdateTaskStatusInput,
+} from "./projects";

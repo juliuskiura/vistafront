@@ -95,6 +95,7 @@ export {
 
 export {
   advanceCompany,
+  archiveCompany,
   createActivity,
   createCompany,
   createContact,
@@ -133,6 +134,7 @@ export {
   listActivities,
   moveDeal,
   paginatedListCompanies,
+  unarchiveCompany,
   updateActivity,
   updateCompany,
   updateContact,
@@ -140,6 +142,8 @@ export {
   updateLead,
   updateObservation,
   updateTierClassification,
+  type ArchiveCompanyResult,
+  type ArchivedFilter,
   type ListCompaniesFilters,
 } from "./crm";
 
@@ -167,15 +171,48 @@ export {
 export { getSchedule, getTodaySummary } from "./schedules";
 
 export {
+  approveDeliverable,
+  completeDeliverable,
   completeProject,
+  completeTask,
+  createDeliverable,
   createProject,
+  createTask,
+  deleteDeliverable,
+  deleteProject,
+  deleteTask,
   getDeliverable,
   getProject,
   getTask,
+  listAllProjects,
   listDeliverables,
   listProjects,
   listTasks,
-} from "./projects";
+  mergeDeliverables,
+  mergeTasks,
+  paginatedListProjects,
+  publishDeliverable,
+  requestRevisions,
+  submitReview,
+  suggestDeliverableMerge,
+  suggestTaskMerge,
+  updateDeliverable,
+  updateProject,
+  updateTask,
+} from "./projectmanager";
+
+export {
+  createComment,
+  deleteComment,
+  listComments,
+  type CommentTargetType,
+} from "./comments";
+
+export {
+  deleteAttachment,
+  listAttachments,
+  type AttachmentTargetType,
+} from "./attachments";
 
 export {
   cancelPost,

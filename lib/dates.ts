@@ -22,7 +22,6 @@ export function formatMediumDate(
 
 /**
  * Medium date *and* time, e.g. "Sep 20, 2026, 3:07 PM".
- *
  * The same medium format as `formatMediumDate`, with the clock appended for the
  * places where "when" is the point rather than "which day": a comment thread, a
  * chat transcript, an activity feed. Date-only is wrong there — "an hour ago"
@@ -47,5 +46,25 @@ export function formatMediumDateTime(
     year: "numeric",
     hour: "numeric",
     minute: "2-digit",
+  }).format(d);
+}
+
+/**
+ * A month, e.g. "October 2026".
+ *
+ * For the headings that group a list by month — the deliverable card grid
+ * groups by the month a deliverable is due in. The full date format is
+ * wrong there: every row in the group shares the month, so repeating the
+ * day on each heading is noise.
+ */
+export function formatMonth(value: string | null | undefined): string {
+  if (!value) return "—";
+  const d = RE_DATE_ONLY.test(value)
+    ? new Date(`${value}T12:00:00`)
+    : new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    year: "numeric",
   }).format(d);
 }

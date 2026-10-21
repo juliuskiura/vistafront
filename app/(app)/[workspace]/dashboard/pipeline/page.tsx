@@ -10,6 +10,7 @@ import {
 } from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
 import { Banner } from "@/components/banner";
+import { CrmInnerNav } from "@/components/crm";
 import { Card } from "@/components/ui/card";
 import { PipelineBoard } from "@/app/(app)/[workspace]/dashboard/pipeline/pipeline-board";
 
@@ -50,6 +51,7 @@ export default async function PipelinePage({
           title="Pipeline"
           description="Track the deals you are working, stage by stage."
         />
+        <CrmInnerNav workspaceDomain={active.domain} />
         <div className="mt-6 flex-1">
           <Card className="rounded-xl border bg-card p-6 text-center text-sm text-muted-foreground">
             No pipelines yet. Create one to start tracking deals.
@@ -72,6 +74,7 @@ export default async function PipelinePage({
         title="Pipeline"
         description="Track the deals you are working, stage by stage."
       />
+      <CrmInnerNav workspaceDomain={active.domain} />
       <div className="mt-6 flex-1">
         <PipelineBoard
           pipeline={activePipeline}

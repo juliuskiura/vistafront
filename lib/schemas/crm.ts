@@ -75,6 +75,22 @@ export const UpdateCompanyFieldSchema = z.object({
 });
 export type UpdateCompanyFieldInput = z.infer<typeof UpdateCompanyFieldSchema>;
 
+/**
+ * The company's social channels, saved as a whole list.
+ *
+ * The inline channel editor on the record sends the complete list — one
+ * entry per channel — because the backend keeps the channels in a single
+ * JSON column. The company is addressed by its nanoid.
+ */
+export const UpdateCompanySocialLinksSchema = z.object({
+  workspace_domain: z.string().min(1, "Missing workspace."),
+  nanoid: z.string().min(1, "Missing company."),
+  links: z.array(SocialLinkSchema).max(50, "Too many channels."),
+});
+export type UpdateCompanySocialLinksInput = z.infer<
+  typeof UpdateCompanySocialLinksSchema
+>;
+
 export const NewCompanySchema = z.object({
   workspace_domain: z.string().min(1, "Missing workspace."),
   name: z.string().min(1, "Company name is required.").max(200),

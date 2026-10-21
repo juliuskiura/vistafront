@@ -1,22 +1,27 @@
 import { serverFetch, serverMutate } from "../server-fetch";
 import type { ActionType, Activity } from "../types";
-import { fetchList, qs, wsOpts } from "./shared";
+import { fetchList, qs, wsOpts, type ArchivedFilter } from "./shared";
 
 /**
  * List activities.
  *
  * `?company=` and `?contact=` are the only filters the backend supports.
  * The list serializer omits `company_name` and `updated_at`.
+ *
+ * Archived activities (archived with their company) are left out unless
+ * `archived: "all"` asks for them.
  */
 export async function listActivities(opts: {
   company?: string;
   contact?: string;
+  archived?: ArchivedFilter;
   workspace: string;
 }): Promise<Activity[]> {
   return fetchList<Activity>(
     `/apis/crm/activities/${qs({
       company: opts.company,
       contact: opts.contact,
+      archived: opts.archived,
     })}`,
     opts.workspace,
   );

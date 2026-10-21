@@ -3,6 +3,7 @@ import Link from "next/link";
 import { listLeads } from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
 import { Banner } from "@/components/banner";
+import { CrmInnerNav } from "@/components/crm";
 import { Card } from "@/components/ui/card";
 import { formatMediumDate } from "@/lib/dates";
 
@@ -28,6 +29,7 @@ export default async function LeadsListPage({
         title="Leads"
         description="Every qualified lead across the workspace."
       />
+      <CrmInnerNav workspaceDomain={active.domain} />
       <div className="mt-6 flex-1 space-y-4">
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">

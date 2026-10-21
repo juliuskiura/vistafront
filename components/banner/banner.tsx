@@ -38,6 +38,13 @@ export type BannerAction =
 
 interface BannerProps {
   title: string;
+  /**
+   * Rendered next to the title, on the same line.
+   *
+   * A stage pill, a status chip — anything that says what kind of record
+   * this is, right where the name is.
+   */
+  titleExtra?: React.ReactNode;
   description?: string;
   actions?: BannerAction[];
   className?: string;
@@ -64,6 +71,7 @@ function BannerGlowOrbs() {
 
 export function Banner({
   title,
+  titleExtra,
   description,
   actions,
   className,
@@ -84,7 +92,10 @@ export function Banner({
         </div>
       )}
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">{title}</h2>
+        <div className="flex flex-wrap items-center gap-3">
+          <h2 className="text-2xl font-bold tracking-tight">{title}</h2>
+          {titleExtra}
+        </div>
         {description && (
           <p
             className={cn(

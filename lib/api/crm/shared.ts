@@ -3,6 +3,15 @@ import type { RequestOptions } from "../server-fetch-types";
 import type { Paginated } from "../types";
 
 /**
+ * Which archived records a list should show.
+ *
+ * The backend hides archived records by default — the working lists only
+ * show what is live. `"all"` shows both, `"true"` shows only the archived
+ * ones, `"false"` is the same as leaving the filter out.
+ */
+export type ArchivedFilter = "true" | "false" | "all";
+
+/**
  * Build the per-call options for `serverFetch` so the active workspace is
  * forwarded as the `X-Workspace` header. Centralized here so every CRM call
  * forwards the header in the same shape. The CRM endpoints are tenant-scoped,

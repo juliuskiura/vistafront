@@ -10,6 +10,7 @@ import {
 } from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
 import { Banner } from "@/components/banner";
+import { CrmInnerNav } from "@/components/crm";
 import { ContactRecord } from "@/app/(app)/[workspace]/dashboard/contacts/[id]/contact-record";
 
 /**
@@ -43,12 +44,17 @@ export default async function ContactDetailPage({
     );
   }
 
+  // An archived contact keeps its activities and deals — they are only
+  // hidden from the working lists — so the record asks for them explicitly.
+  const archived = contact.archived ? "all" : undefined;
+
   const [activities, allDeals] = await Promise.all([
     listActivities({
       contact: contact.nanoid,
+      archived,
       workspace: active.domain,
     }).catch(() => [] as Activity[]),
-    listDeals({ workspace: active.domain }).catch(() => [] as Deal[]),
+    listDeals({ archived, workspace: active.domain }).catch(() => [] as Deal[]),
   ]);
 
   // The deal list endpoint has no `?contact=` filter, so the matching is
@@ -67,6 +73,7 @@ export default async function ContactDetailPage({
             : contact.company_name
         }
       />
+      <CrmInnerNav workspaceDomain={active.domain} />
       <div className="mt-6 flex-1">
         <ContactRecord
           contact={contact}

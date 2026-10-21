@@ -3,6 +3,7 @@ import Link from "next/link";
 import { listObservations } from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
 import { Banner } from "@/components/banner";
+import { CrmInnerNav } from "@/components/crm";
 import { Card } from "@/components/ui/card";
 import { formatMediumDate } from "@/lib/dates";
 
@@ -32,6 +33,7 @@ export default async function ObservationsListPage({
         title="Observations"
         description="Everything you have noticed, across every company in the workspace."
       />
+      <CrmInnerNav workspaceDomain={active.domain} />
       <div className="mt-6 flex-1 space-y-4">
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">

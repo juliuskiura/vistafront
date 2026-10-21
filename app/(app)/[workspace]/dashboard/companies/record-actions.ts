@@ -4,15 +4,19 @@ import { revalidatePath } from "next/cache";
 
 import {
   advanceCompany,
+  archiveCompany,
   deleteCompany,
+  unarchiveCompany,
   updateCompany,
 } from "@/lib/api";
 import {
   ProspectStatusSchema,
   UpdateCompanyFieldSchema,
+  UpdateCompanySocialLinksSchema,
   fieldErrorsFromZod,
 } from "@/lib/schemas";
 import { parseSocialLinks } from "@/lib/crm/social-links";
+import type { CompanySocialLink } from "@/lib/api";
 import { type CrmActionState } from "./action-state";
 import { backendMessage } from "./_actions-helpers";
 
@@ -94,6 +98,54 @@ export async function updateCompanyFieldAction(
 }
 
 /**
+ * Server Action: save the company's social channels.
+ *
+ * The inline channel editor on the record sends the whole list — one entry
+ * per channel — because the backend keeps the channels in a single JSON
+ * column. The company is addressed by its **nanoid**, never by its numeric
+ * id, and the same nanoid is what the archive endpoints use.
+ */
+export async function updateCompanySocialLinksAction(input: {
+  workspaceDomain: string;
+  nanoid: string;
+  links: CompanySocialLink[];
+}): Promise<CrmActionState> {
+  const parsed = UpdateCompanySocialLinksSchema.safeParse({
+    workspace_domain: input.workspaceDomain,
+    nanoid: input.nanoid,
+    links: input.links,
+  });
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: "That channel list cannot be saved.",
+      fieldErrors: fieldErrorsFromZod(parsed.error),
+    };
+  }
+
+  try {
+    await updateCompany(
+      parsed.data.nanoid,
+      { social_links: parsed.data.links },
+      parsed.data.workspace_domain,
+    );
+  } catch (error) {
+    console.error("updateCompanySocialLinksAction failed:", error);
+    return {
+      status: "error",
+      message: backendMessage(error, "Could not save that change."),
+    };
+  }
+
+  revalidatePath(
+    `/[workspace]/dashboard/companies/${parsed.data.nanoid}`,
+    "page",
+  );
+  revalidatePath(`/[workspace]/dashboard/companies`, "page");
+  return { status: "success", message: "Channels saved." };
+}
+
+/**
  * Server Action: advance the company one stage along the prospecting flow.
  *
  * The endpoint takes no body and answers `400` with
@@ -154,5 +206,78 @@ export async function deleteCompanyAction(
   revalidatePath(`/[workspace]/dashboard/companies`, "page");
   revalidatePath(`/[workspace]/dashboard/companies/${nanoid}`, "page");
   return { status: "success", message: "Company deleted." };
+}
+
+/**
+ * Server Action: archive a company.
+ *
+ * The company and every record that hangs off it (contacts, observations,
+ * activities, leads, deals) are flagged as archived — nothing is deleted,
+ * and `unarchiveCompanyAction` brings the whole bundle back.
+ */
+export async function archiveCompanyAction(
+  nanoid: string,
+  workspace: string,
+): Promise<CrmActionState> {
+  if (!nanoid || !workspace) {
+    return { status: "error", message: "Missing company." };
+  }
+  try {
+    const result = await archiveCompany(nanoid, workspace);
+    const related = result.related ?? {};
+    const count = Object.values(related).reduce((sum, n) => sum + n, 0);
+    return {
+      status: "success",
+      message: count
+        ? `Company archived together with ${count} related record${
+            count === 1 ? "" : "s"
+          }.`
+        : "Company archived.",
+    };
+  } catch (error) {
+    console.error("archiveCompanyAction failed:", error);
+    return {
+      status: "error",
+      message: backendMessage(error, "Could not archive the company."),
+    };
+  } finally {
+    revalidatePath(`/[workspace]/dashboard/companies`, "page");
+    revalidatePath(`/[workspace]/dashboard/companies/${nanoid}`, "page");
+  }
+}
+
+/**
+ * Server Action: restore a company from the archive.
+ *
+ * The mirror image of {@link archiveCompanyAction}: the company and the
+ * records archived with it come back to the working lists.
+ */
+export async function unarchiveCompanyAction(
+  nanoid: string,
+  workspace: string,
+): Promise<CrmActionState> {
+  if (!nanoid || !workspace) {
+    return { status: "error", message: "Missing company." };
+  }
+  try {
+    const result = await unarchiveCompany(nanoid, workspace);
+    const related = result.related ?? {};
+    const count = Object.values(related).reduce((sum, n) => sum + n, 0);
+    return {
+      status: "success",
+      message: count
+        ? `Company restored with ${count} related record${count === 1 ? "" : "s"}.`
+        : "Company restored.",
+    };
+  } catch (error) {
+    console.error("unarchiveCompanyAction failed:", error);
+    return {
+      status: "error",
+      message: backendMessage(error, "Could not restore the company."),
+    };
+  } finally {
+    revalidatePath(`/[workspace]/dashboard/companies`, "page");
+    revalidatePath(`/[workspace]/dashboard/companies/${nanoid}`, "page");
+  }
 }
 
