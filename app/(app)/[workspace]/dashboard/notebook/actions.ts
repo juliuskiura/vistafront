@@ -8,6 +8,7 @@ import {
   createNote,
   createNoteType,
   deleteNote,
+  ServerFetchError,
   toggleNoteArchive,
   toggleNoteFavorite,
   updateNote,
@@ -15,7 +16,7 @@ import {
 } from "@/lib/api";
 
 import {
-  colorClassSchema,
+  colorHexSchema,
   CreateNoteSchema,
   CreateNoteTypeSchema,
   DeleteNoteSchema,
@@ -239,28 +240,45 @@ export async function createNoteTypeAction(
   const parsed = CreateNoteTypeSchema.safeParse(toPayload(formData));
   if (!parsed.success) return invalid(parsed.error);
 
-  const { workspace_domain, name, key, order, color_bg, color_text } =
-    parsed.data;
+  const { workspace_domain, name, color_bg, color_text } = parsed.data;
 
-  // `color_code` classes are rendered into `className`. The schema caps the
-  // length and character set; this second check rejects anything the regex
-  // let through but the palette does not cover, so a workspace admin cannot
-  // inject arbitrary classes into another member's rendered page.
+  // `color_code` colours are stored as hex and rendered inline as CSS colour
+  // values. Validate against the hex schema before they reach the backend so
+  // a workspace admin cannot inject arbitrary strings into rendered markup.
   const colorCode: { text?: string; bg?: string } = {};
-  const bg = colorClassSchema.safeParse(color_bg ?? "");
-  const text = colorClassSchema.safeParse(color_text ?? "");
+  const bg = colorHexSchema.safeParse(color_bg ?? "");
+  const text = colorHexSchema.safeParse(color_text ?? "");
   if (!bg.success || !text.success) {
-    return fail("Enter plain Tailwind class names for the badge colours.", {
-      color_bg: ["Invalid background class."],
-      color_text: ["Invalid text class."],
+    return fail("Enter a hex colour like #000000 for the badge colours.", {
+      color_bg: ["Invalid background colour."],
+      color_text: ["Invalid text colour."],
     });
   }
   if (bg.data) colorCode.bg = bg.data;
   if (text.data) colorCode.text = text.data;
 
   try {
-    await createNoteType({ name, key, order, color_code: colorCode }, workspace_domain);
+    await createNoteType({ name, color_code: colorCode }, workspace_domain);
   } catch (error) {
+    if (error instanceof ServerFetchError) {
+      try {
+        const body = JSON.parse(error.body);
+        if (body.name) {
+          return fail(
+            body.name[0] ?? "A note type with that name already exists.",
+            { name: Array.isArray(body.name) ? body.name : [body.name] },
+          );
+        }
+        if (body.non_field_errors) {
+          return fail(
+            body.non_field_errors[0] ??
+              "A note type with that name already exists in this workspace.",
+          );
+        }
+      } catch {
+        // Not JSON — fall through to generic message.
+      }
+    }
     console.error("createNoteTypeAction failed:", error);
     return { status: "error", message: "We could not create the note type." };
   }

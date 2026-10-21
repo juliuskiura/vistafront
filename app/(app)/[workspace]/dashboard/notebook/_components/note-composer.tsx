@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Fab } from "@/components/ui/fab";
 import {
   Dialog,
   DialogContent,
@@ -114,22 +115,28 @@ export function NoteComposer({
                 <label htmlFor="nb-type" className="text-xs font-medium">
                   Type
                 </label>
-                <select
-                  id="nb-type"
-                  name="note_type"
-                  defaultValue={noteTypes[0]?.key ?? "general"}
-                  className={INPUT_CLASS}
-                >
-                  {noteTypes.length === 0 ? (
-                    <option value="general">General</option>
-                  ) : (
-                    noteTypes.map((t) => (
+                <div className="flex items-end gap-2">
+                  <select
+                    id="nb-type"
+                    name="note_type"
+                    defaultValue={noteTypes[0]?.key ?? "general"}
+                    className={`${INPUT_CLASS} flex-1`}
+                  >
+                    {noteTypes.map((t) => (
                       <option key={t.nanoid} value={String(t.key)}>
                         {t.name}
                       </option>
-                    ))
-                  )}
-                </select>
+                    ))}
+                  </select>
+                  <Fab
+                    size="sm"
+                    variant="outline-primary"
+                    onClick={() => setTypeDialogOpen(true)}
+                    aria-label="Create new note type"
+                  >
+                    <Plus size={16} />
+                  </Fab>
+                </div>
               </div>
 
               <div className="space-y-1.5">
@@ -183,7 +190,6 @@ export function NoteComposer({
         open={typeDialogOpen}
         onOpenChange={setTypeDialogOpen}
         workspaceDomain={workspaceDomain}
-        suggestedOrder={noteTypes.length + 1}
       />
     </>
   );

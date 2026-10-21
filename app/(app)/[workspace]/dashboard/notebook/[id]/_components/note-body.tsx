@@ -2,7 +2,7 @@
 
 import type { Note, NoteTypeOption } from "@/lib/api";
 
-import { resolveTone, toneColor } from "../../_components/type-swatch";
+import { resolveTypeColor } from "../../_components/type-swatch";
 
 import { NoteContentEditor } from "./note-content-editor";
 import { NoteReader } from "./note-reader";
@@ -36,7 +36,7 @@ export function NoteBody({
 }) {
   // The note type's colour, resolved to a validated hex rather than passed
   // through as a backend class string. See `type-swatch.tsx` for why.
-  const accent = toneColor(resolveTone(type));
+  const accent = resolveTypeColor(type);
 
   if (editing) {
     return (

@@ -143,22 +143,18 @@ export const DeleteNoteSchema = NoteActionSchema;
  * ────────────────────────────────────────────────────────────────────── */
 
 /**
- * `color_code` is a `{ text, bg }` pair of Tailwind class strings rendered as
- * a badge on a note card. The backend stores raw class strings, so they are
- * validated against a strict allowlist here: an arbitrary class string from a
- * workspace admin would otherwise become an injection vector into
- * `className`.
- *
- * Only full literal class names from the palette are accepted. Anything with
- * a bracket, parenthesis, or quote is rejected.
+ * `color_code` is a `{ text, bg }` pair of hex colour strings (e.g. `#000000`,
+ * `#e5e7eb`) stored on the type and rendered inline as CSS colour values.
+ * Validated against a strict hex pattern so a workspace admin cannot inject
+ * arbitrary values into rendered markup.
  */
-const colorClassSchema = z
+const colorHexSchema = z
   .string()
   .trim()
-  .max(64, "Color class is too long.")
+  .max(7, "Color must be a hex code like #000000.")
   .regex(
-    /^[a-z0-9:\/\[\]%-]*$/i,
-    "Color must be a plain Tailwind class name (e.g. bg-emerald-500).",
+    /^#[0-9a-fA-F]{6}$/,
+    "Color must be a hex code like #000000.",
   );
 
 export const CreateNoteTypeSchema = z.object({
@@ -168,19 +164,12 @@ export const CreateNoteTypeSchema = z.object({
     .trim()
     .min(1, "Name is required.")
     .max(80, "Name must be 80 characters or fewer."),
-  key: noteTypeKeySchema,
-  order: z.coerce
-    .number()
-    .int("Order must be a whole number.")
-    .min(0, "Order cannot be negative.")
-    .max(999, "Order is too large.")
-    .default(0),
-  color_bg: z.string().trim().max(64).optional().default(""),
-  color_text: z.string().trim().max(64).optional().default(""),
+  color_bg: colorHexSchema.default("#e5e7eb"),
+  color_text: colorHexSchema.default("#000000"),
 });
 export type CreateNoteTypeInput = z.infer<typeof CreateNoteTypeSchema>;
 
-export { colorClassSchema };
+export { colorHexSchema };
 
 /* ──────────────────────────────────────────────────────────────────────
  * Action state

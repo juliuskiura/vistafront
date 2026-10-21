@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import type { Note, NoteTypeOption } from "@/lib/api";
 
 import { NoteCardActions } from "./note-card-actions";
-import { TypeSwatch, resolveTone, toneColor } from "./type-swatch";
+import { TypeSwatch, resolveTypeColor } from "./type-swatch";
 import type { NoteView } from "../action-state";
 
 interface NoteCardProps {
@@ -37,7 +37,7 @@ export function NoteCard({
   index,
 }: NoteCardProps) {
   const href = `/${workspaceDomain}/dashboard/notebook/${note.nanoid}`;
-  const tone = resolveTone(type);
+  const accent = resolveTypeColor(type);
   const isRows = view === "rows";
 
   return (
@@ -65,7 +65,7 @@ export function NoteCard({
           // full width.
           isRows ? "px-1 py-3.5 pl-5" : "px-1 pb-5 pl-5 pt-4",
         )}
-        style={{ ["--nb-accent" as string]: toneColor(tone) }}
+        style={{ ["--nb-accent" as string]: accent }}
       >
         {/* ── Header ────────────────────────────────────────────── */}
         {/*

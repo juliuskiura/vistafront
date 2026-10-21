@@ -891,8 +891,8 @@ export interface UpdateNoteBody {
 
 export interface CreateNoteTypeBody {
   name: string;
-  key: string;
-  order: number;
+  key?: string;
+  order?: number;
   color_code?: { text?: string; bg?: string };
 }
 

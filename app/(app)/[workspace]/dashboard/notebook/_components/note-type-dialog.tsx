@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { HueColorPicker } from "@/components/editor/_components/editor-color-palette";
 
 import { createNoteTypeAction } from "../actions";
 import {
@@ -23,24 +24,20 @@ interface NoteTypeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   workspaceDomain: string;
-  suggestedOrder: number;
 }
 
 /**
  * Creates a workspace note type.
  *
- * Colours are entered as Tailwind class names (`bg-emerald-500`,
- * `text-emerald-700`) and stored on the type's `color_code`. They are
- * validated in the Server Action against an allowlist, and `TypeSwatch`
- * resolves them through a fixed palette rather than passing the string into
- * `className` — so a workspace admin cannot inject arbitrary classes into
- * another member's rendered cards.
+ * Colours are picked as hex values (`#e5e7eb`, `#000000`) and stored on the
+ * type's `color_code`. They are validated in the Server Action against a hex
+ * pattern, and `TypeSwatch` renders them inline as CSS colours — so a
+ * workspace admin cannot inject arbitrary values into rendered cards.
  */
 export function NoteTypeDialog({
   open,
   onOpenChange,
   workspaceDomain,
-  suggestedOrder,
 }: NoteTypeDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -53,16 +50,15 @@ export function NoteTypeDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Mounted only while open, so the fields, the derived key, and the
-            action state all start fresh on each open. Keeping it mounted and
-            clearing fields in an effect would write state on every close and
-            cost an extra render pass. */}
+        {/* Mounted only while open, so the fields and the action state all
+            start fresh on each open. */}
         {open ? (
-          <NoteTypeForm
-            workspaceDomain={workspaceDomain}
-            suggestedOrder={suggestedOrder}
-            onDone={() => onOpenChange(false)}
-          />
+          <div className="overflow-y-auto space-y-4">
+            <NoteTypeForm
+              workspaceDomain={workspaceDomain}
+              onDone={() => onOpenChange(false)}
+            />
+          </div>
         ) : null}
       </DialogContent>
     </Dialog>
@@ -71,11 +67,9 @@ export function NoteTypeDialog({
 
 function NoteTypeForm({
   workspaceDomain,
-  suggestedOrder,
   onDone,
 }: {
   workspaceDomain: string;
-  suggestedOrder: number;
   onDone: () => void;
 }) {
   const [state, formAction, pending] = useActionState<NoteActionState, FormData>(
@@ -83,26 +77,24 @@ function NoteTypeForm({
     initialNoteActionState,
   );
 
-  // Derived from the name until the user edits the key directly, so the
-  // stored slug is right without typing it.
   const [name, setName] = useState("");
-  const [key, setKey] = useState("");
-  const [keyTouched, setKeyTouched] = useState(false);
+  const [colorCode, setColorCode] = useState({
+    bg: "#e5e7eb",
+    text: "#000000",
+  });
 
-  const effectiveKey = keyTouched
-    ? key
-    : name
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "_")
-        .replace(/^_+|_+$/g, "")
-        .slice(0, 64);
+  // Auto-close the dialog once the Server Action reports success.
+  useEffect(() => {
+    if (state.status === "success") {
+      onDone();
+    }
+  }, [state.status, onDone]);
 
   return (
-    <form action={formAction} className="space-y-4" noValidate>
+    <form action={formAction} className="space-y-3" noValidate>
       <input type="hidden" name="workspace_domain" value={workspaceDomain} />
 
-      <div className="space-y-1.5">
+      <div className="space-y-1">
         <label htmlFor="nt-name" className="text-xs font-medium">
           Name
         </label>
@@ -120,90 +112,42 @@ function NoteTypeForm({
         <FieldError errors={state.fieldErrors?.name} />
       </div>
 
-      <div className="space-y-1.5">
-        <label htmlFor="nt-key" className="text-xs font-medium">
-          Key
-        </label>
-        <input
-          id="nt-key"
-          name="key"
-          required
-          value={effectiveKey}
-          onChange={(e) => {
-            setKeyTouched(true);
-            setKey(e.target.value);
+      <div className="space-y-1">
+        <span className="text-xs font-medium">Preview</span>
+        <div className="flex h-8 items-center">
+          <TypeSwatch
+            type={{
+              nanoid: "preview",
+              id: -1,
+              key: name || "preview",
+              name: name || "Preview",
+              order: 0,
+              color_code: colorCode,
+            }}
+            fallback="Preview"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <HueColorPicker
+          label="Text Background"
+          value={colorCode.bg}
+          onChange={(color) => {
+            setColorCode((prev) => ({ ...prev, bg: color }));
           }}
-          placeholder="meeting"
-          aria-invalid={!!state.fieldErrors?.key}
-          className={`${INPUT_CLASS} font-mono`}
         />
-        <p className="text-xs text-muted-foreground">
-          The stored value the API filter matches on.
-        </p>
-        <FieldError errors={state.fieldErrors?.key} />
+        <HueColorPicker
+          label="Text Color"
+          value={colorCode.text}
+          onChange={(color) => {
+            setColorCode((prev) => ({ ...prev, text: color }));
+          }}
+        />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <label htmlFor="nt-order" className="text-xs font-medium">
-            Order
-          </label>
-          <input
-            id="nt-order"
-            name="order"
-            type="number"
-            defaultValue={suggestedOrder}
-            className={INPUT_CLASS}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <span className="text-xs font-medium">Preview</span>
-          <div className="flex h-9 items-center">
-            <TypeSwatch
-              type={{
-                nanoid: "preview",
-                id: -1,
-                key: effectiveKey || "preview",
-                name: name || "Preview",
-                order: 0,
-                color_code: {},
-              }}
-              fallback="Preview"
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <label htmlFor="nt-bg" className="text-xs font-medium">
-            Accent
-          </label>
-          <input
-            id="nt-bg"
-            name="color_bg"
-            defaultValue="bg-emerald-500"
-            placeholder="bg-emerald-500"
-            aria-invalid={!!state.fieldErrors?.color_bg}
-            className={`${INPUT_CLASS} font-mono text-xs`}
-          />
-          <FieldError errors={state.fieldErrors?.color_bg} />
-        </div>
-        <div className="space-y-1.5">
-          <label htmlFor="nt-text" className="text-xs font-medium">
-            Label
-          </label>
-          <input
-            id="nt-text"
-            name="color_text"
-            defaultValue="text-emerald-700"
-            placeholder="text-emerald-700"
-            aria-invalid={!!state.fieldErrors?.color_text}
-            className={`${INPUT_CLASS} font-mono text-xs`}
-          />
-          <FieldError errors={state.fieldErrors?.color_text} />
-        </div>
-      </div>
+      <input type="hidden" name="color_bg" value={colorCode.bg} />
+      <input type="hidden" name="color_text" value={colorCode.text} />
 
       {state.status === "error" && !state.fieldErrors ? (
         <p
