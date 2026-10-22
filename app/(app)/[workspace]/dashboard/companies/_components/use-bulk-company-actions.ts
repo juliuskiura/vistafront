@@ -38,40 +38,62 @@ export function useBulkCompanyActions({
   const confirmDelete = () => {
     setPendingAction("delete");
     startTransition(async () => {
-      const { deleted, failed } = await bulkDeleteCompaniesAction(
-        selectedNanoids,
-        workspaceNanoid,
-      );
-      toast.push({
-        variant: failed === 0 ? "success" : "error",
-        message:
-          failed === 0
-            ? `Deleted ${deleted} compan${deleted === 1 ? "y" : "ies"}.`
-            : `Deleted ${deleted}; ${failed} failed.`,
-      });
-      onSettled();
-      setDeleteOpen(false);
-      setPendingAction(null);
+      try {
+        const result = await bulkDeleteCompaniesAction({
+          nanoids: selectedNanoids,
+          workspace: workspaceNanoid,
+        });
+        const blocked = result.blocked?.length ?? 0;
+        toast.push({
+          variant: blocked === 0 ? "success" : "error",
+          message:
+            blocked === 0
+              ? `Deleted ${result.affected} compan${result.affected === 1 ? "y" : "ies"}.`
+              : `Deleted ${result.affected}; ${blocked} could not be deleted.`,
+        });
+        onSettled();
+        setDeleteOpen(false);
+      } catch (error) {
+        console.error("bulk delete failed:", error);
+        toast.push({
+          variant: "error",
+          message: "Could not delete the selection. Nothing was changed.",
+        });
+      } finally {
+        setPendingAction(null);
+      }
     });
   };
 
   const confirmArchive = () => {
     setPendingAction("archive");
     startTransition(async () => {
-      const { archived, failed } = await bulkArchiveCompaniesAction(
-        selectedNanoids,
-        workspaceNanoid,
-      );
-      toast.push({
-        variant: failed === 0 ? "success" : "error",
-        message:
-          failed === 0
-            ? `Archived ${archived} compan${archived === 1 ? "y" : "ies"}.`
-            : `Archived ${archived}; ${failed} failed.`,
-      });
-      onSettled();
-      setArchiveOpen(false);
-      setPendingAction(null);
+      try {
+        const result = await bulkArchiveCompaniesAction({
+          nanoids: selectedNanoids,
+          workspace: workspaceNanoid,
+        });
+        const related = Object.values(result.related ?? {}).reduce(
+          (sum, count) => sum + Number(count ?? 0),
+          0,
+        );
+        toast.push({
+          variant: "success",
+          message: related
+            ? `Archived ${result.affected} compan${result.affected === 1 ? "y" : "ies"} and ${related} related record${related === 1 ? "" : "s"}.`
+            : `Archived ${result.affected} compan${result.affected === 1 ? "y" : "ies"}.`,
+        });
+        onSettled();
+        setArchiveOpen(false);
+      } catch (error) {
+        console.error("bulk archive failed:", error);
+        toast.push({
+          variant: "error",
+          message: "Could not archive the selection. Nothing was changed.",
+        });
+      } finally {
+        setPendingAction(null);
+      }
     });
   };
 

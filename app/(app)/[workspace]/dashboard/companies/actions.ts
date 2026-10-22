@@ -3,20 +3,22 @@
 import { revalidatePath } from "next/cache";
 
 import {
-  archiveCompany,
+  bulkCompanyAction,
   createCompany,
   createIndustry,
   createTierClassification,
-  deleteCompany,
   deleteTierClassification,
   updateTierClassification,
+  type BulkCompanyResult,
 } from "@/lib/api";
 import {
+  BulkCompanyActionSchema,
   CreateTierClassificationSchema,
   NewCompanySchema,
   ProspectStatusSchema,
   UpdateTierClassificationSchema,
   fieldErrorsFromZod,
+  type BulkCompanyActionInput,
   type NewCompanyInput,
 } from "@/lib/schemas";
 import {
@@ -257,40 +259,62 @@ export async function deleteTierAction(input: {
 /**
  * Server Action: bulk-archive companies.
  *
- * Called from the bulk-action toolbar with the list of selected nanoids.
- * Each company is archived with the records that hang off it. The runs are
- * in parallel and the path is revalidated once at the end.
+ * Called from the bulk-action toolbar with the list of selected nanoids. One
+ * request goes out for the whole selection — the backend does the set in a
+ * single transaction, so there is no per-company fan-out to reconcile here.
  */
 export async function bulkArchiveCompaniesAction(
-  nanoids: string[],
-  workspace: string,
-): Promise<{ archived: number; failed: number }> {
-  if (!workspace || nanoids.length === 0) return { archived: 0, failed: 0 };
-  const results = await Promise.allSettled(
-    nanoids.map((nanoid) => archiveCompany(nanoid, workspace)),
+  input: BulkCompanyActionInput,
+): Promise<BulkCompanyResult> {
+  const parsed = BulkCompanyActionSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      requested: 0,
+      affected: 0,
+      skipped: 0,
+      not_found: 0,
+      blocked: [],
+      related: {},
+    };
+  }
+
+  const result = await bulkCompanyAction(
+    "archive",
+    parsed.data.nanoids,
+    parsed.data.workspace,
   );
-  const failed = results.filter((r) => r.status === "rejected").length;
-  const archived = results.length - failed;
   revalidatePath(`/[workspace]/dashboard/companies`, "page");
-  return { archived, failed };
+  return result;
 }
 
 /**
  * Server Action: bulk-delete companies.
  *
- * Called from the bulk-action toolbar with the list of selected nanoids.
- * Runs the deletes in parallel and `revalidatePath`s once at the end.
+ * Called from the bulk-action toolbar with the list of selected nanoids. One
+ * request goes out for the whole selection. Companies that still have
+ * records pointing at them cannot be deleted; the backend leaves those out
+ * and reports them in `blocked`.
  */
 export async function bulkDeleteCompaniesAction(
-  nanoids: string[],
-  workspace: string,
-): Promise<{ deleted: number; failed: number }> {
-  if (!workspace || nanoids.length === 0) return { deleted: 0, failed: 0 };
-  const results = await Promise.allSettled(
-    nanoids.map((nanoid) => deleteCompany(nanoid, workspace)),
+  input: BulkCompanyActionInput,
+): Promise<BulkCompanyResult> {
+  const parsed = BulkCompanyActionSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      requested: 0,
+      affected: 0,
+      skipped: 0,
+      not_found: 0,
+      blocked: [],
+      related: {},
+    };
+  }
+
+  const result = await bulkCompanyAction(
+    "delete",
+    parsed.data.nanoids,
+    parsed.data.workspace,
   );
-  const failed = results.filter((r) => r.status === "rejected").length;
-  const deleted = results.length - failed;
   revalidatePath(`/[workspace]/dashboard/companies`, "page");
-  return { deleted, failed };
+  return result;
 }

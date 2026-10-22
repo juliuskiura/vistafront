@@ -299,6 +299,19 @@ export const MoveDealSchema = z.object({
 export type MoveDealInput = z.infer<typeof MoveDealSchema>;
 
 /* ──────────────────────────────────────────────────────────────────────
+ * Bulk company action
+ * ────────────────────────────────────────────────────────────────────── */
+
+export const BulkCompanyActionSchema = z.object({
+  workspace: z.string().min(1, "Missing workspace."),
+  nanoids: z
+    .array(z.string().min(1, "Missing company."))
+    .min(1, "Select at least one company.")
+    .max(1000, "At most 1000 companies can be handled in one request."),
+});
+export type BulkCompanyActionInput = z.infer<typeof BulkCompanyActionSchema>;
+
+/* ──────────────────────────────────────────────────────────────────────
  * Note relation
  * ────────────────────────────────────────────────────────────────────── */
 

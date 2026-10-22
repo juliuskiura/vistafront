@@ -13,6 +13,7 @@
 /* Companies */
 export {
   archiveCompany,
+  bulkCompanyAction,
   createCompany,
   deleteCompany,
   getCompany,
@@ -23,6 +24,8 @@ export {
   updateCompany,
   advanceCompany,
   type ArchiveCompanyResult,
+  type BulkCompanyAction,
+  type BulkCompanyResult,
   type ListCompaniesFilters,
 } from "./companies";
 

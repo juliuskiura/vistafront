@@ -224,3 +224,44 @@ export function unarchiveCompany(
     { method: "POST", body: {}, workspace },
   );
 }
+
+/**
+ * The bulk operations the backend understands.
+ */
+export type BulkCompanyAction = "archive" | "unarchive" | "delete";
+
+/**
+ * The answer to a bulk call.
+ *
+ * `affected` counts the companies that changed; `skipped` counts the ones
+ * that were already in the requested state (or that could not be deleted);
+ * `not_found` counts the ids that name no company in this workspace;
+ * `blocked` lists the ids that could not be deleted because something still
+ * points at them; `related` counts the records changed per record type.
+ */
+export interface BulkCompanyResult {
+  requested: number;
+  affected: number;
+  skipped: number;
+  not_found: number;
+  blocked: string[];
+  related: Record<string, number>;
+}
+
+/**
+ * Run one bulk operation over a set of companies.
+ *
+ * One request for the whole selection — the backend does the set in a
+ * single transaction, so the outcome is all-or-nothing. A company that
+ * belongs to another workspace is not found and is never touched.
+ */
+export function bulkCompanyAction(
+  action: BulkCompanyAction,
+  nanoids: string[],
+  workspace: string,
+): Promise<BulkCompanyResult> {
+  return serverMutate<BulkCompanyResult>(
+    "/apis/crm/companies/bulk_action/",
+    { method: "POST", body: { action, nanoids }, workspace },
+  );
+}

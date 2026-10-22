@@ -96,6 +96,7 @@ export {
 export {
   advanceCompany,
   archiveCompany,
+  bulkCompanyAction,
   createActivity,
   createCompany,
   createContact,
@@ -144,6 +145,8 @@ export {
   updateTierClassification,
   type ArchiveCompanyResult,
   type ArchivedFilter,
+  type BulkCompanyAction,
+  type BulkCompanyResult,
   type ListCompaniesFilters,
 } from "./crm";
 
