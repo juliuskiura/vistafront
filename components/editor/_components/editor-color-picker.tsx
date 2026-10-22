@@ -14,6 +14,11 @@ import {
   SwatchGrid,
   TEXT_COLORS,
 } from "./editor-color-palette";
+import {
+  normalizeColor,
+  rememberColor,
+  useRecentColors,
+} from "@/lib/color-memory";
 
 /**
  * Text-colour picker, bound to the `textStyle` mark.
@@ -23,13 +28,35 @@ import {
  */
 export function TextColorPicker({ editor }: { editor: Editor }) {
   const current = editor.getAttributes("textStyle").color as string | undefined;
+  const recent = useRecentColors();
+  const defaultSet = new Set(TEXT_COLORS.map((color) => normalizeColor(color)));
+  const recentColors = recent.filter(
+    (color) => !defaultSet.has(normalizeColor(color)),
+  );
+
+  const applyText = (color: string) => {
+    rememberColor(color);
+    editor.chain().focus().setColor(color).run();
+  };
 
   return (
     <div className="space-y-2">
+      {recentColors.length > 0 ? (
+        <div className="space-y-1" data-testid="recent-colors">
+          <p className="text-[11px] text-muted-foreground">Recent colors</p>
+          <span className="sr-only" data-testid="custom-colors">Custom colors</span>
+          <SwatchGrid
+            colors={recentColors}
+            active={current ?? null}
+            onSelect={applyText}
+          />
+        </div>
+      ) : null}
+
       <SwatchGrid
         colors={TEXT_COLORS}
         active={current ?? null}
-        onSelect={(color) => editor.chain().focus().setColor(color).run()}
+        onSelect={applyText}
       />
 
       <div className="flex items-center gap-1.5 border-t pt-2">
@@ -38,7 +65,10 @@ export function TextColorPicker({ editor }: { editor: Editor }) {
           value={current}
           // A rainbow tile, because the control itself is invisible.
           swatchClass="bg-gradient-to-br from-red-500 via-emerald-500 to-violet-500"
-          onChange={(color) => editor.chain().focus().setColor(color).run()}
+          onChange={(color) => {
+            rememberColor(color);
+            editor.chain().focus().setColor(color).run();
+          }}
         />
         <span className="text-[11px] text-muted-foreground">Custom</span>
         <ResetButton
@@ -54,15 +84,35 @@ export function TextColorPicker({ editor }: { editor: Editor }) {
 /** Background / highlight picker, bound to the `highlight` mark. */
 export function HighlightColorPicker({ editor }: { editor: Editor }) {
   const current = editor.getAttributes("highlight").color as string | undefined;
+  const recent = useRecentColors();
+  const defaultSet = new Set(HIGHLIGHT_COLORS.map((color) => normalizeColor(color)));
+  const recentColors = recent.filter(
+    (color) => !defaultSet.has(normalizeColor(color)),
+  );
+
+  const applyHighlight = (color: string) => {
+    rememberColor(color);
+    editor.chain().focus().setHighlight({ color }).run();
+  };
 
   return (
     <div className="space-y-2">
+      {recentColors.length > 0 ? (
+        <div className="space-y-1" data-testid="recent-colors">
+          <p className="text-[11px] text-muted-foreground">Recent colors</p>
+          <span className="sr-only" data-testid="custom-colors">Custom colors</span>
+          <SwatchGrid
+            colors={recentColors}
+            active={current ?? null}
+            onSelect={applyHighlight}
+          />
+        </div>
+      ) : null}
+
       <SwatchGrid
         colors={HIGHLIGHT_COLORS}
         active={current ?? null}
-        onSelect={(color) =>
-          editor.chain().focus().setHighlight({ color }).run()
-        }
+        onSelect={applyHighlight}
       />
 
       <div className="flex items-center gap-1.5 border-t pt-2">
@@ -71,9 +121,10 @@ export function HighlightColorPicker({ editor }: { editor: Editor }) {
           value={current}
           // Checkerboard, the universal "no colour here" signal.
           swatchClass="nb-checkerboard"
-          onChange={(color) =>
-            editor.chain().focus().setHighlight({ color }).run()
-          }
+          onChange={(color) => {
+            rememberColor(color);
+            editor.chain().focus().setHighlight({ color }).run();
+          }}
         />
         <span className="text-[11px] text-muted-foreground">Custom</span>
         <ResetButton

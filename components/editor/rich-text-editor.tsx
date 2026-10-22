@@ -11,6 +11,7 @@ import type { Slice } from "@tiptap/pm/model";
 import type { EditorView } from "@tiptap/pm/view";
 
 import { sanitizeNoteHtml } from "@/lib/api/sanitize-note-html";
+import { rememberColorsFromHtml } from "@/lib/color-memory";
 import { cn } from "@/lib/utils";
 
 import { EditorToolbar } from "./_components/editor-toolbar";
@@ -255,12 +256,18 @@ export function RichTextEditor({
       const text = instance.getText();
       const words = text.trim() ? text.trim().split(/\s+/).length : 0;
       setCounts({ characters: text.length, words });
+      rememberColorsFromHtml(html);
 
       setStatus("saving");
       if (saveTimer.current) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(() => setStatus("saved"), 700);
     },
   });
+
+  useEffect(() => {
+    if (!editor) return;
+    rememberColorsFromHtml(editor.getHTML());
+  }, [editor]);
 
   // Adopt an externally-changed value (switching notes, or a failed save
   // re-rendering with the server's copy) but never echo our own output back
@@ -273,6 +280,7 @@ export function RichTextEditor({
 
     editor.commands.setContent(value, { emitUpdate: false });
     lastEmitted.current = value;
+    rememberColorsFromHtml(value);
   }, [value, editor]);
 
   useEffect(() => {
