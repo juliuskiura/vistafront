@@ -21,6 +21,7 @@ import {
 
 import { HighlightColorButton, TextColorButton } from "./editor-color-picker";
 import { HeadingSelect } from "./editor-heading-select";
+import { ImageButton } from "./editor-image-button";
 import {
   ToolbarButton,
   ToolbarDivider,
@@ -76,6 +77,7 @@ export function EditorToolbar({
     <div
       role="toolbar"
       aria-label="Text formatting"
+      style={{ position: "sticky", top: "3rem", zIndex: 20 }}
       className={cn("flex flex-wrap items-center gap-0.5", className)}
     >
       {mode === "bar" ? (
@@ -143,6 +145,7 @@ export function EditorToolbar({
             <Eraser size={15} />
           </ToolbarButton>
         ) : null}
+        <ImageButton editor={editor} />
         {mode === "bubble" ? <TextColorButton editor={editor} /> : null}
         {mode === "bubble" ? <HighlightColorButton editor={editor} /> : null}
         {mode === "bubble" ? (

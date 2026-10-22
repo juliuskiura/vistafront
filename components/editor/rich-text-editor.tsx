@@ -311,7 +311,7 @@ export function RichTextEditor({
       {editor ? (
         <EditorToolbar
           editor={editor}
-          className="nb-inset-x border-b py-1"
+          className="nb-inset-x border-b py-1 sticky top-0 z-10"
         />
       ) : null}
 
