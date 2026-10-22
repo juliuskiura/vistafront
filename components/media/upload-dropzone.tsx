@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { ReactNode, DragEvent, ChangeEvent, RefObject } from "react";
 import { cn } from "@/lib/utils";
-import { UploadCloud } from "lucide-react";
+import { UploadCloud } from "@/lib/icons";
 
 export interface UploadDropzoneProps {
   onFilesSelected: (files: File[]) => void;

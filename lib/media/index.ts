@@ -2,6 +2,8 @@ export { formatTime, formatTimecode, formatBitrate, formatFileSize, formatVideoS
 export type { VideoView } from "./video-utils";
 export { isHlsAsset, isHlsSupported, attachHls } from "./hls";
 export type { HlsHandle } from "./hls";
+export { resolvePlaybackSource, resolveHlsManifest, withFreshPlaybackUrl, assetOriginalFileUrl } from "./playback-source";
+export type { PlaybackKind, PlaybackSource, PlaybackSourceInput } from "./playback-source";
 export { readMarkers, findMarkersMeta, VIDEO_MARKERS_KEY, isCuePoint } from "./video-markers";
 export type { VideoCuePoint, VideoPlayerState } from "@/lib/apptypes/media_libary";
 export { probeVideoFile } from "./video-probe";

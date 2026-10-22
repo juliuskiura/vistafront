@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Trash2, Heart, RefreshCw, Archive } from "lucide-react";
+import { Trash2, Heart, RefreshCw, Archive } from "@/lib/icons";
 import type { Asset } from "@/lib/api";
 import {
   deleteAssetAction,

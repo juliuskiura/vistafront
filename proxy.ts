@@ -133,14 +133,27 @@ function rewriteToAuthCheck(
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const isDjangoApiPath = pathname === "/apis" || pathname.startsWith("/apis/");
+  const isAsset = isAssetPath(pathname);
 
-  if (pathname !== "/" && pathname.endsWith("/") && !isDjangoApiPath) {
+  // Canonicalise a trailing slash by REWRITING to the slash-less path.
+  //
+  // A redirect is not usable here. Next re-parses the middleware's `Location`
+  // and answers the redirect with the ORIGINAL request path, so the browser is
+  // sent back to the very URL it asked for and loops until it gives up
+  // (ERR_TOO_MANY_REDIRECTS on every trailing-slash URL). A rewrite routes the
+  // request to the canonical page with no round trip, and the address bar keeps
+  // the URL the user typed.
+  if (
+    pathname !== "/" &&
+    pathname.endsWith("/") &&
+    !isDjangoApiPath &&
+    !isAsset
+  ) {
     const canonicalUrl = request.nextUrl.clone();
     canonicalUrl.pathname = pathname.slice(0, -1);
-    return NextResponse.redirect(canonicalUrl, 308);
+    return NextResponse.rewrite(canonicalUrl);
   }
 
-  const isAsset = isAssetPath(pathname);
   const isPublic = isPublicPath(pathname);
   const access = request.cookies.get("access")?.value;
   const refresh = request.cookies.get("refresh")?.value;

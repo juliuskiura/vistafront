@@ -9,7 +9,7 @@ import {
   Card,
   CardContent,
 } from "@/components/ui/card";
-import { Grid3x3, List, Search, Upload, FolderPlus, Play } from "lucide-react";
+import { Grid3x3, List, Search, Upload, FolderPlus, Play } from "@/lib/icons";
 import type { Asset, PaginatedAssets, ViewMode, SortKey, SortDir } from "@/lib/api";
 import { AssetSelectionToolbar } from "@/components/media/asset-selection-toolbar";
 

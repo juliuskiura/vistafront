@@ -1,4 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
+import type { AssetMeta } from "@/lib/api";
 
 /**
  * Same-origin API path. The browser never addresses Django directly: nginx
@@ -29,6 +30,22 @@ function mediaHeaders(workspace?: string): HeadersInit {
   return headers;
 }
 
+/**
+ * Unwrap a paginated Django list payload.
+ *
+ * `/apis/media/asset-meta/` answers `{count, next, previous, results}`, not a
+ * bare array. Handing that object to a consumer that expects a list is what
+ * produced `TypeError: e.find is not a function` in the player: the crash
+ * happened inside a `useEffect` during the asset detail render, so the whole
+ * authenticated segment fell over to the error boundary and the video never
+ * got a chance to play.
+ */
+function toResults<T>(payload: unknown): T[] {
+  if (Array.isArray(payload)) return payload as T[];
+  const results = (payload as { results?: unknown })?.results;
+  return Array.isArray(results) ? (results as T[]) : [];
+}
+
 export function useGetAssetMetasQuery(nanoid: string, workspace?: string) {
   return useQuery({
     queryKey: ["asset-metas", nanoid],
@@ -37,7 +54,7 @@ export function useGetAssetMetasQuery(nanoid: string, workspace?: string) {
         credentials: "include",
         headers: mediaHeaders(workspace),
       });
-      return res.json();
+      return toResults<AssetMeta>(await res.json());
     },
   });
 }

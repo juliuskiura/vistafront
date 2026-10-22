@@ -1,9 +1,10 @@
 import { requireWorkspace } from "@/lib/auth/server";
 import { requireFeature } from "@/lib/features/guard";
 import { getCollections } from "@/lib/api";
+import { formatMediumDate } from "@/lib/dates";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FolderOpen, Plus, MoreHorizontal } from "lucide-react";
+import { FolderOpen, Plus, MoreHorizontal } from "@/lib/icons";
 
 export default async function MediaCollectionsPage({
   params,
@@ -56,7 +57,7 @@ export default async function MediaCollectionsPage({
               </CardHeader>
               <CardContent>
                 <p className="text-xs text-muted-foreground">
-                  Created {new Date(col.created_at).toLocaleDateString()}
+                  Created {formatMediumDate(col.created_at)}
                 </p>
               </CardContent>
             </Card>

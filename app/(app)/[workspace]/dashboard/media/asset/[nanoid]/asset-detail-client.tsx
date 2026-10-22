@@ -27,16 +27,17 @@ import {
   Download,
   Share2,
   Edit3,
-  Archive,
   RotateCcw,
   FileText,
   Image as ImageIcon,
   Video as VideoIcon,
   Music as AudioIcon,
   FileArchive as ArchiveIcon,
-} from "lucide-react";
+} from "@/lib/icons";
 import { useToast } from "@/lib/context";
 import { VideoStudio } from "@/components/media/video/VideoStudio";
+import { formatMediumDate } from "@/lib/dates";
+import { assetOriginalFileUrl } from "@/lib/media/playback-source";
 import { AssetMetadataInspector } from "@/components/media/asset-metadata-inspector";
 import {
   deleteAssetAction,
@@ -141,6 +142,22 @@ export function AssetDetailClient({ workspaceDomain, asset: initialAsset, versio
     });
   };
 
+  const handleShare = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast.push({
+        title: "Link copied",
+        message: "The asset link is on your clipboard.",
+      });
+    } catch {
+      toast.push({
+        title: "Could not copy the link",
+        message: "Copy the address from the browser instead.",
+        variant: "error",
+      });
+    }
+  };
+
   const icon = ASSET_TYPE_ICONS[asset.asset_type] || <FileText className="h-5 w-5" />;
 
   return (
@@ -197,10 +214,17 @@ export function AssetDetailClient({ workspaceDomain, asset: initialAsset, versio
             </Button>
           ) : (
             <>
-              <Button variant="ghost" size="icon" onClick={() => {}}>
+              <a
+                href={assetOriginalFileUrl(asset) ?? undefined}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                title="Open the original file in a new tab"
+                aria-label="Open the original file in a new tab"
+              >
                 <Download className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon" onClick={() => {}}>
+              </a>
+              <Button variant="ghost" size="icon" onClick={handleShare} title="Copy link">
                 <Share2 className="h-4 w-4" />
               </Button>
               <Button variant="ghost" size="icon" onClick={handleTrash}>
@@ -255,7 +279,7 @@ export function AssetDetailClient({ workspaceDomain, asset: initialAsset, versio
                     <span className="text-muted-foreground ml-2">{v.note || "No note"}</span>
                   </div>
                   <span className="text-xs text-muted-foreground">
-                    {new Date(v.created_at).toLocaleDateString()}
+                    {formatMediumDate(v.created_at)}
                   </span>
                 </div>
               ))}

@@ -14,7 +14,7 @@ import {
   Loader2,
   PauseCircle,
   Trash2,
-} from "lucide-react";
+} from "@/lib/icons";
 import type { UploadItem, UploadItemStatus, UploadSegment } from "@/lib/media/upload-utils";
 import { formatBytes, getFileTypeCategory, getFileIcon } from "@/lib/media/upload-utils";
 

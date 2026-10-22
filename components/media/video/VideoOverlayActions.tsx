@@ -1,15 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import {
-  Camera,
-  BookmarkPlus,
-  Repeat,
-  Sparkles,
-  Info,
-  X,
-  Check,
-} from "lucide-react";
+import { BookmarkPlus, Camera, Check, Info, Repeat, Sparkles, X } from "@/lib/icons";
 import { formatTime, formatTimecode } from "@/lib/media/video-utils";
 import type { VideoCuePoint } from "@/lib/apptypes/media_libary";
 
@@ -123,7 +115,10 @@ export const VideoOverlayActions: React.FC<VideoOverlayActionsProps> = ({
 
   return (
     <>
-      <div className="absolute top-5 right-5 z-20 flex items-center gap-2">
+      <div
+        className="absolute top-5 right-5 z-20 flex items-center gap-2"
+        onClick={(e) => e.stopPropagation()}
+      >
         <button onClick={handleCaptureFrame} className="w-8 h-8 bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center rounded hover:bg-black/60 text-white/70 hover:text-white transition-colors" title="Capture frame snapshot" aria-label="Capture snapshot">
           <Camera className="w-4 h-4" />
         </button>
@@ -157,7 +152,10 @@ export const VideoOverlayActions: React.FC<VideoOverlayActionsProps> = ({
       </div>
 
       {isSettingLoop && (
-        <div className="absolute top-16 right-5 z-20 flex items-center gap-2 rounded border border-warning/40 bg-popover/95 px-3 py-1.5 text-xs text-foreground shadow-xl backdrop-blur-md font-mono animate-in slide-in-from-top-2">
+        <div
+          className="absolute top-16 right-5 z-20 flex items-center gap-2 rounded border border-warning/40 bg-popover/95 px-3 py-1.5 text-xs text-foreground shadow-xl backdrop-blur-md font-mono animate-in slide-in-from-top-2"
+          onClick={(e) => e.stopPropagation()}
+        >
           <Repeat className="h-3.5 w-3.5 text-warning animate-spin" />
           <span className="text-[11px]">{loopStart === null ? '1. Seek to start time & click' : `Start: ${formatTime(loopStart)} → Seek to end`}</span>
           <button onClick={handleSetLoopPoint} className="ml-2 rounded bg-warning px-2 py-0.5 text-[10px] font-bold text-black hover:bg-warning/90 uppercase font-mono">{loopStart === null ? 'Set Point A' : 'Set Point B & Loop'}</button>
@@ -166,7 +164,10 @@ export const VideoOverlayActions: React.FC<VideoOverlayActionsProps> = ({
       )}
 
       {isAddingNote && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 animate-in fade-in">
+        <div
+          className="absolute inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 animate-in fade-in"
+          onClick={(e) => e.stopPropagation()}
+        >
           <form onSubmit={handleSaveMarker} className="w-full max-w-md rounded border border-border bg-popover p-5 text-foreground shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between pb-2.5 border-b border-border">
               <div className="flex items-center gap-2"><BookmarkPlus className="h-4 w-4 text-primary" /><h3 className="font-semibold text-xs uppercase font-mono tracking-wider">Add Marker at Timestamp</h3></div>
@@ -203,7 +204,10 @@ export const VideoOverlayActions: React.FC<VideoOverlayActionsProps> = ({
       )}
 
       {capturedImage && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 animate-in fade-in">
+        <div
+          className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 animate-in fade-in"
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="w-full max-w-lg rounded border border-border bg-popover p-4 text-foreground shadow-2xl">
             <div className="flex items-center justify-between pb-2.5 border-b border-border">
               <div className="flex items-center gap-2"><Camera className="h-4 w-4 text-primary" /><h3 className="font-semibold text-xs font-mono uppercase tracking-wider">Snapshot Frame ({formatTime(currentTime)})</h3></div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Check, FileText, Plus, X } from "lucide-react";
+import { Check, FileText, Plus, X } from "@/lib/icons";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { updateAssetAction } from "@/app/(app)/[workspace]/dashboard/media/actions";
+import { formatMediumDateTime } from "@/lib/dates";
 import { useToast } from "@/lib/context";
 import type { Asset } from "@/lib/api";
 
@@ -184,8 +185,8 @@ export function AssetMetadataInspector({ asset, workspaceDomain, onAssetUpdated 
             { label: "Size", value: formatSize(asset.size) },
             { label: "Format", value: asset.format || asset.mime_type || "—" },
             { label: "Extension", value: asset.extension ? `.${asset.extension}` : "—" },
-            { label: "Uploaded", value: new Date(asset.created_at).toLocaleString() },
-            { label: "Modified", value: new Date(asset.updated_at).toLocaleString() },
+            { label: "Uploaded", value: formatMediumDateTime(asset.created_at) },
+            { label: "Modified", value: formatMediumDateTime(asset.updated_at) },
           ].map(({ label, value }) => (
             <div key={label} className="flex flex-col gap-0.5 rounded-lg bg-muted px-3 py-2">
               <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</span>

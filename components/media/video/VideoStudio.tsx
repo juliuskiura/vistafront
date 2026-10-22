@@ -66,18 +66,14 @@ export function VideoStudio({
     }
   }, [cuePoints, metas, asset, toast, createAssetMetaMutation, updateAssetMetaMutation]);
 
-  const handleSourceExpired = useCallback(() => {
-    // Source re-initialization relies on useEffect dependencies on asset.original_file and asset.stream_url
-  }, []);
-
   return (
     <div className="space-y-4">
       <VideoPlayer
         asset={asset}
+        workspaceDomain={workspaceDomain}
         cuePoints={cuePoints}
         onCuePointAdd={handleAddCuePoint}
         onLoadedMetadata={handleLoadedMetadata}
-        onSourceExpired={handleSourceExpired}
       />
       <VideoSpecsPanel asset={asset} compact />
       {cuePoints.length > 0 && (

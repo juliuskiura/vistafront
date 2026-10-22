@@ -15,7 +15,7 @@ import {
   XCircle,
   Clock,
   Trash2,
-} from "lucide-react";
+} from "@/lib/icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatBytes } from "@/lib/media/upload-utils";

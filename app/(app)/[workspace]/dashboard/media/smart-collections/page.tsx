@@ -3,7 +3,7 @@ import { requireFeature } from "@/lib/features/guard";
 import { getSmartCollections } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Sparkles, Plus } from "lucide-react";
+import { Sparkles, Plus } from "@/lib/icons";
 
 export default async function MediaSmartCollectionsPage({
   params,

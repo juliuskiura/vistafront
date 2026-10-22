@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, X, Upload } from "lucide-react";
+import { Search, X, Upload } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Play } from "lucide-react";
+import { Check, Play } from "@/lib/icons";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import type { Asset } from "@/lib/api/types";

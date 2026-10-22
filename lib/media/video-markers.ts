@@ -8,7 +8,7 @@ export function isCuePoint(v: any): v is VideoCuePoint {
 }
 
 export function readMarkers(metas: AssetMeta[] | undefined): VideoCuePoint[] {
-  if (!metas || metas.length === 0) return [];
+  if (!Array.isArray(metas) || metas.length === 0) return [];
   const markersMeta = metas.find((m) => m.key === VIDEO_MARKERS_KEY);
   if (!markersMeta?.value) return [];
   try {
@@ -22,5 +22,6 @@ export function readMarkers(metas: AssetMeta[] | undefined): VideoCuePoint[] {
 }
 
 export function findMarkersMeta(metas: AssetMeta[] | undefined): AssetMeta | undefined {
-  return metas?.find((m) => m.key === VIDEO_MARKERS_KEY);
+  if (!Array.isArray(metas)) return undefined;
+  return metas.find((m) => m.key === VIDEO_MARKERS_KEY);
 }

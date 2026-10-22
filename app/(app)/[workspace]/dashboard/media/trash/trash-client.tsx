@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Play } from "lucide-react";
+import { Play } from "@/lib/icons";
 import { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { AssetSelectionToolbar } from "@/components/media/asset-selection-toolbar";

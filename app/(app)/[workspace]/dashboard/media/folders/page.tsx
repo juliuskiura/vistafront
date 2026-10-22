@@ -3,7 +3,7 @@ import { requireFeature } from "@/lib/features/guard";
 import { getFolders } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FolderOpen, Plus } from "lucide-react";
+import { FolderOpen, Plus } from "@/lib/icons";
 
 export default async function MediaFoldersPage({
   params,
