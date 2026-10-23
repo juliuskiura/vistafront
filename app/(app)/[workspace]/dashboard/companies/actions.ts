@@ -76,9 +76,15 @@ export async function createCompanyAction(
     city: String(formData.get("city") ?? "").trim() || undefined,
     address: String(formData.get("address") ?? "").trim() || undefined,
     about: String(formData.get("about") ?? "").trim() || undefined,
-    status: ProspectStatusSchema.parse(
-      String(formData.get("status") ?? "").trim() || "identified",
-    ),
+    status: (() => {
+      try {
+        return ProspectStatusSchema.parse(
+          String(formData.get("status") ?? "").trim() || "identified",
+        );
+      } catch {
+        return "identified" as const;
+      }
+    })(),
     verified: formData.get("verified") === "on" || formData.get("verified") === "true",
     total_listings:
       String(formData.get("total_listings") ?? "").trim() === ""

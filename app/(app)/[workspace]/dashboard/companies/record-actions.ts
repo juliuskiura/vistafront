@@ -54,35 +54,35 @@ export async function updateCompanyFieldAction(
   // The value arrives as a string and has to be cast to the type the
   // serializer expects for this particular column.
   let body: Record<string, unknown>;
-  switch (field) {
-    case "verified":
-      body = { verified: value === "true" };
-      break;
-    case "total_listings":
-      body = { total_listings: value === "" ? null : Number(value) };
-      break;
-    case "status":
-      body = { status: ProspectStatusSchema.parse(value) };
-      break;
-    case "tier":
-      body = { tier: value === "" ? null : value };
-      break;
-    case "phone_numbers":
-      body = {
-        phone_numbers: value
-          .split("\n")
-          .map((v) => v.trim())
-          .filter(Boolean),
-      };
-      break;
-    case "social_links":
-      body = { social_links: parseSocialLinks(value) };
-      break;
-    default:
-      body = { [field]: value };
-  }
-
   try {
+    switch (field) {
+      case "verified":
+        body = { verified: value === "true" };
+        break;
+      case "total_listings":
+        body = { total_listings: value === "" ? null : Number(value) };
+        break;
+      case "status":
+        body = { status: ProspectStatusSchema.parse(value) };
+        break;
+      case "tier":
+        body = { tier: value === "" ? null : value };
+        break;
+      case "phone_numbers":
+        body = {
+          phone_numbers: value
+            .split("\n")
+            .map((v) => v.trim())
+            .filter(Boolean),
+        };
+        break;
+      case "social_links":
+        body = { social_links: parseSocialLinks(value) };
+        break;
+      default:
+        body = { [field]: value };
+    }
+
     await updateCompany(nanoid, body, workspace_domain);
   } catch (error) {
     console.error("updateCompanyFieldAction failed:", error);
