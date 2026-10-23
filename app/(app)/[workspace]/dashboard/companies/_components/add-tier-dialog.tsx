@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -38,11 +38,16 @@ export function AddTierDialog({ open, onOpenChange, workspace }: Props) {
     CreateTierClassificationActionState,
     FormData
   >(createTierClassificationAction, initialCreateTierClassificationState);
+  const handledState = useRef<CreateTierClassificationActionState>(
+    initialCreateTierClassificationState,
+  );
   const [title, setTitle] = useState("");
   const [label, setLabel] = useState("");
   const [description, setDescription] = useState("");
 
   useEffect(() => {
+    if (handledState.current === state) return;
+    handledState.current = state;
     if (state.status === "success") {
       toast.push({
         variant: "success",

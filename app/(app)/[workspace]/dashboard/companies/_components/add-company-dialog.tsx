@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -63,12 +63,15 @@ export function AddCompanyDialog({
     CreateCompanyActionState,
     FormData
   >(createCompanyAction, initialCreateCompanyState);
+  const handledState = useRef<CreateCompanyActionState>(initialCreateCompanyState);
   const [phoneEntries, setPhoneEntries] = useState<string[]>([""]);
   const [socialEntries, setSocialEntries] = useState<
     { url: string; name: string }[]
   >([{ url: "", name: "" }]);
 
   useEffect(() => {
+    if (handledState.current === state) return;
+    handledState.current = state;
     if (state.status === "success") {
       toast.push({
         variant: "success",
