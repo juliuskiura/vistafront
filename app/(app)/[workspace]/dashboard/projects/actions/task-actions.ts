@@ -149,8 +149,7 @@ export async function updateTaskAction(
  * Server Action: change a task's status from a row.
  *
  * The backend has no `complete` action on the task viewset, so completion
- * is a plain status PATCH — which also makes the viewset recompute the
- * parent deliverable, publishing it once its last task is done.
+ * is a plain status PATCH.
  */
 export async function updateTaskStatusAction(input: {
   workspaceDomain: string;

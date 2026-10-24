@@ -11,10 +11,10 @@ import type { Comment, Paginated } from "./types";
  * a numeric id — it always addresses the target by nanoid.
  *
  * `target_type` is the backend's short model name, not an app-qualified
- * label: `project`, `deliverable` or `task`
+ * label: `project` or `task`
  * (`projectmanager/generic_targets.py::TARGET_MODEL_MAP`).
  */
-export type CommentTargetType = "project" | "deliverable" | "task";
+export type CommentTargetType = "project" | "task";
 
 function unwrap<T>(payload: T[] | Paginated<T>): T[] {
   if (Array.isArray(payload)) return payload;

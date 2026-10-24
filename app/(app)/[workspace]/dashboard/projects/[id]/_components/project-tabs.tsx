@@ -6,13 +6,11 @@ interface Props {
   projectNanoid: string;
   workspaceDomain: string;
   activeTab: string;
-  deliverableCount: number;
   taskCount: number;
 }
 
 const TABS = [
   { key: "overview", label: "Overview" },
-  { key: "deliverables", label: "Deliverables" },
   { key: "tasks", label: "Tasks" },
 ] as const;
 
@@ -27,11 +25,9 @@ export function ProjectTabs({
   projectNanoid,
   workspaceDomain,
   activeTab,
-  deliverableCount,
   taskCount,
 }: Props) {
   const counts: Record<string, number> = {
-    deliverables: deliverableCount,
     tasks: taskCount,
   };
 

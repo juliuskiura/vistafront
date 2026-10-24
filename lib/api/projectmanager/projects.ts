@@ -167,7 +167,7 @@ export async function updateProject(
 /**
  * Delete a project.
  *
- * The backend cascades: a project's deliverables and tasks go with it.
+ * The backend cascades: a project's tasks go with it.
  */
 export async function deleteProject(
   nanoid: string,
@@ -181,8 +181,8 @@ export async function deleteProject(
 }
 
 /**
- * Mark a project as completed. The backend cascades through deliverables
- * and tasks; we expose this as a convenience for future UX work.
+ * Mark a project as completed. The backend cascades through tasks; we
+ * expose this as a convenience for future UX work.
  */
 export async function completeProject(
   nanoid: string,

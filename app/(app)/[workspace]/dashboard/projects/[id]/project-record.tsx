@@ -4,18 +4,13 @@ import type { Project, Task } from "@/lib/api";
 import { ProjectHeader } from "./_components/project-header";
 import { ProjectTabs } from "./_components/project-tabs";
 import { OverviewTab } from "./_components/overview-tab";
-import { DeliverablesTab } from "./_components/deliverables-tab";
 import { TasksTab } from "./_components/tasks-tab";
-import type { DeliverableRow } from "../record-types";
 import type { PickerOption } from "../forms/project-form";
 
 interface Props {
   project: Project;
   workspaceDomain: string;
   activeTab: string;
-  deliverables: DeliverableRow[];
-  /** Every deliverable in the project, whether or not its detail was loaded. */
-  deliverableCount: number;
   tasks: Task[];
   members: PickerOption[];
   companies: PickerOption[];
@@ -34,8 +29,6 @@ export function ProjectRecord({
   project,
   workspaceDomain,
   activeTab,
-  deliverables,
-  deliverableCount,
   tasks,
   members,
   companies,
@@ -55,23 +48,11 @@ export function ProjectRecord({
         projectNanoid={project.nanoid}
         workspaceDomain={workspaceDomain}
         activeTab={activeTab}
-        deliverableCount={deliverableCount}
         taskCount={tasks.length}
       />
 
       {activeTab === "overview" ? (
         <OverviewTab project={project} />
-      ) : null}
-
-      {activeTab === "deliverables" ? (
-        <DeliverablesTab
-          project={project}
-          workspaceDomain={workspaceDomain}
-          deliverables={deliverables}
-          tasks={tasks}
-          members={members}
-          projectOptions={projectOptions}
-        />
       ) : null}
 
       {activeTab === "tasks" ? (

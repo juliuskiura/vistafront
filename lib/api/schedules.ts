@@ -49,8 +49,8 @@ export function getSchedule({
  * Today summary
  *
  * Backed by `/apis/schedules/today/`. Returns overdue tasks, tasks due
- * today, deliverables awaiting review, and upcoming project deadlines —
- * the four buckets the Today page renders. Tenant-scoped; pass
+ * today, and upcoming project deadlines — the buckets the Today page
+ * renders. Tenant-scoped; pass
  * `workspace` (the active workspace slug from ``requireWorkspace``).
  * ────────────────────────────────────────────────────────────────────── */
 

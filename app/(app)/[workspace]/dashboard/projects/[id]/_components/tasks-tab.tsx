@@ -466,7 +466,6 @@ export function TasksTab({
       <MergeDialog
         open={mergeOpen}
         onOpenChange={setMergeOpen}
-        kind="task"
         workspaceDomain={workspaceDomain}
         selected={selectedTasks.map((task) => ({
           nanoid: task.nanoid,

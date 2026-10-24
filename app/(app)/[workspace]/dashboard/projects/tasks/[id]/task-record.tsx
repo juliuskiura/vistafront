@@ -38,13 +38,6 @@ interface Props {
   projects: PickerOption[];
 }
 
-/**
- * The task record.
- *
- * Everything about one task: its fields, the conversation about it, and
- * the files attached to it. The old app had comments and attachments on
- * this page; they are back.
- */
 export function TaskRecord({
   task,
   workspaceDomain,
@@ -59,58 +52,109 @@ export function TaskRecord({
   const [error, setError] = useState<string | null>(null);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <h2 className="sr-only">{task.title}</h2>
+    <div className="space-y-6">
+      <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
+        <div className="p-6 space-y-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="space-y-2 max-w-3xl">
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <Link
+                  href={`/${workspaceDomain}/dashboard/projects`}
+                  className="text-slate-500 hover:underline"
+                >
+                  Projects
+                </Link>
+                {task.project ? (
+                  <>
+                    <span className="text-slate-300">/</span>
+                    <Link
+                      href={`/${workspaceDomain}/dashboard/projects/${task.project}?tab=tasks`}
+                      className="text-slate-500 hover:underline"
+                    >
+                      {task.project_name}
+                    </Link>
+                  </>
+                ) : null}
 
-        <Link
-          href={`/${workspaceDomain}/dashboard/projects`}
-          className="text-sm text-muted-foreground hover:underline"
-        >
-          ← Projects
-        </Link>
-        {task.project ? (
-          <>
-            <span className="text-muted-foreground/50" aria-hidden="true">
-              /
-            </span>
-            <Link
-              href={`/${workspaceDomain}/dashboard/projects/${task.project}?tab=tasks`}
-              className="text-sm text-muted-foreground hover:underline"
-            >
-              {task.project_name}
-            </Link>
-          </>
-        ) : null}
+                <span
+                  className={`px-2 py-0.5 rounded font-mono text-[10px] uppercase font-bold border ${statusBadgeClass(
+                    task.status,
+                  )}`}
+                >
+                  {TASK_STATUS_LABELS[task.status]}
+                </span>
+                <span
+                  className={`px-2 py-0.5 rounded font-mono text-[10px] uppercase font-bold border ${priorityBadgeClass(
+                    task.priority,
+                  )}`}
+                >
+                  Priority: {PROJECT_PRIORITY_LABELS[task.priority]}
+                </span>
+                <span className="font-mono text-[11px] text-slate-400">
+                  nanoid: {task.nanoid}
+                </span>
+              </div>
 
-        <span
-          className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${
-            statusBadgeClass(task.status)
-          }`}
-        >
-          {TASK_STATUS_LABELS[task.status]}
-        </span>
-        <span
-          className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${
-            priorityBadgeClass(task.priority)
-          }`}
-        >
-          {PROJECT_PRIORITY_LABELS[task.priority]}
-        </span>
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight leading-tight">
+                {task.title}
+              </h1>
 
-        <div className="ml-auto flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-            <Edit3 className="size-4" aria-hidden="true" />
-            Edit
-          </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => setDeleteOpen(true)}
-          >
-            <Trash2 className="size-4" aria-hidden="true" />
-            Delete
-          </Button>
+              {task.description ? (
+                <p className="text-xs text-slate-600 leading-relaxed max-w-2xl">
+                  {task.description}
+                </p>
+              ) : null}
+
+              <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 pt-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-400">Project:</span>
+                  {task.project ? (
+                    <Link
+                      href={`/${workspaceDomain}/dashboard/projects/${task.project}`}
+                      className="font-semibold text-slate-800 hover:underline"
+                    >
+                      {task.project_name ?? "Open project"}
+                    </Link>
+                  ) : (
+                    <span className="text-slate-800">No project</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-400">Assignee:</span>
+                  <span className="text-slate-800 font-medium">
+                    {task.assignee_name ?? "Unassigned"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 font-mono tabular-nums">
+                  <span className="text-slate-400">Due:</span>
+                  <span className="text-slate-700 font-medium">
+                    {formatMediumDate(task.due_date)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={() => setEditOpen(true)}
+              >
+                <Edit3 className="size-3.5" aria-hidden="true" />
+                Edit
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={() => setDeleteOpen(true)}
+              >
+                <Trash2 className="size-3.5" aria-hidden="true" />
+                Delete
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -120,50 +164,14 @@ export function TaskRecord({
         </p>
       ) : null}
 
-      <div className="grid gap-4 rounded-xl border bg-card p-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div>
-          <p className="text-xs uppercase text-muted-foreground">Project</p>
-          {task.project ? (
-            <Link
-              href={`/${workspaceDomain}/dashboard/projects/${task.project}`}
-              className="mt-1 block text-sm font-medium hover:underline"
-            >
-              {task.project_name ?? "Open project"}
-            </Link>
-          ) : (
-            <p className="mt-1 text-sm font-medium">No project</p>
-          )}
-        </div>
-        <div>
-          <p className="text-xs uppercase text-muted-foreground">Assignee</p>
-          <p className="mt-1 text-sm font-medium">
-            {task.assignee_name ?? "Unassigned"}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs uppercase text-muted-foreground">Due date</p>
-          <p className="mt-1 text-sm font-medium">
-            {formatMediumDate(task.due_date)}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs uppercase text-muted-foreground">Created</p>
-          <p className="mt-1 text-sm font-medium">
-            {formatMediumDate(task.created_at)}
-          </p>
-        </div>
-      </div>
-
-      <div className="rounded-xl border bg-card p-4">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+      <div className="rounded-xl border bg-white p-4 shadow-sm">
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
           Description
         </h3>
         {task.description ? (
           <RichText html={task.description} className="mt-3" />
         ) : (
-          <p className="mt-3 text-sm text-muted-foreground">
-            No description yet.
-          </p>
+          <p className="mt-3 text-sm text-slate-500">No description yet.</p>
         )}
       </div>
 
@@ -200,7 +208,7 @@ export function TaskRecord({
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
         title="Delete this task?"
-        description={`“${task.title}” will be deleted. This cannot be undone.`}
+        description="This task will be deleted. This cannot be undone."
         confirmLabel="Delete task"
         variant="destructive"
         onConfirm={async () => {
@@ -210,13 +218,9 @@ export function TaskRecord({
           });
           if (result.status === "error") {
             setError(result.message ?? "The task could not be deleted.");
-            return;
+          } else {
+            router.push(`/${workspaceDomain}/dashboard/projects`);
           }
-          router.push(
-            task.project
-              ? `/${workspaceDomain}/dashboard/projects/${task.project}?tab=tasks`
-              : `/${workspaceDomain}/dashboard/projects`,
-          );
         }}
       />
     </div>

@@ -5,7 +5,7 @@ import { ServerFetchError } from "@/lib/api/server-fetch-types";
  *
  * The projectmanager endpoints answer a few business rejections with a body
  * Django serialises as `{ detail }` or `{ error }` — "Tasks must belong to
- * same project", "Need at least 2 deliverables", "AI suggestion failed".
+ * same project", "AI suggestion failed".
  * Each of those carries the one sentence that tells the user what to do, so
  * it is shown verbatim rather than replaced with a generic apology.
  */

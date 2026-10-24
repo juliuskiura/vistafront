@@ -64,11 +64,6 @@ export const featureRoutes = {
     path: "/dashboard/projects/tasks/[id]",
     feature: "projectmanager.tasks",
   },
-  projectDeliverables: {
-    id: "projects",
-    path: "/dashboard/deliverables/[id]",
-    feature: "projectmanager.deliverables",
-  },
   members: {
     id: "members",
     path: "/dashboard/members",

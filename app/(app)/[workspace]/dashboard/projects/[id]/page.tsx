@@ -1,17 +1,13 @@
 import Link from "next/link";
 
 import {
-  getDeliverable,
   getProject,
   listCompanies,
   listContacts,
-  listDeliverables,
   listTasks,
   listWorkspaceMembers,
   type Company,
   type Contact,
-  type Deliverable,
-  type DeliverableSummary,
   type Project,
   type Task,
   type WorkspaceMember,
@@ -23,7 +19,7 @@ import { Banner } from "@/components/banner";
 import { ProjectRecord } from "./project-record";
 
 /** The tabs the record offers, in order. */
-const VALID_TABS = ["overview", "deliverables", "tasks"] as const;
+const VALID_TABS = ["overview", "tasks"] as const;
 
 type ProjectTab = (typeof VALID_TABS)[number];
 
@@ -75,45 +71,21 @@ export default async function ProjectDetailPage({
     : "overview";
 
   // The picker data every tab can need: the members who can be assigned a
-  // task or a deliverable, the companies and contacts the project form
-  // offers, and the project's own deliverables and tasks.
-  const [members, companies, contacts, deliverableSummaries, tasks] =
-    await Promise.all([
-      listWorkspaceMembers(active.nanoid, active.domain).catch(
-        () => [] as WorkspaceMember[],
-      ),
-      listCompanies({
-        filters: { page_size: 100 },
-        workspace: active.domain,
-      }).catch(() => [] as Company[]),
-      listContacts({ workspace: active.domain }).catch(() => [] as Contact[]),
-      listDeliverables({ project: project.nanoid, workspace: active.domain }).catch(
-        () => [] as DeliverableSummary[],
-      ),
-      listTasks({ project: project.nanoid, workspace: active.domain }).catch(
-        () => [] as Task[],
-      ),
-    ]);
-
-  // The list endpoint returns slimmer rows than the detail endpoint: no
-  // assignee, no review notes, and no nested tasks. The deliverables tab
-  // shows all three, so the details are fetched for that tab only — the
-  // other tabs read the summary plus the project's task list.
-  const deliverableRows: Array<{
-    summary: DeliverableSummary;
-    detail: Deliverable | null;
-  }> = await Promise.all(
-    activeTab === "deliverables"
-      ? deliverableSummaries.map(async (summary) => {
-          try {
-            const detail = await getDeliverable(summary.nanoid, active.domain);
-            return { summary, detail };
-          } catch {
-            return { summary, detail: null };
-          }
-        })
-      : [],
-  );
+  // task, the companies and contacts the project form offers, and the
+  // project's own tasks.
+  const [members, companies, contacts, tasks] = await Promise.all([
+    listWorkspaceMembers(active.nanoid, active.domain).catch(
+      () => [] as WorkspaceMember[],
+    ),
+    listCompanies({
+      filters: { page_size: 100 },
+      workspace: active.domain,
+    }).catch(() => [] as Company[]),
+    listContacts({ workspace: active.domain }).catch(() => [] as Contact[]),
+    listTasks({ project: project.nanoid, workspace: active.domain }).catch(
+      () => [] as Task[],
+    ),
+  ]);
 
   const memberOptions = members.map((member) => ({
     nanoid: member.user_nanoid,
@@ -136,33 +108,17 @@ export default async function ProjectDetailPage({
   ];
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Banner
-        title={project.name}
-        description={
-          [
-            project.company_name ?? "No company",
-            project.client_name,
-            project.deadline ? `Due ${formatMediumDate(project.deadline)}` : null,
-          ]
-            .filter(Boolean)
-            .join(" · ") || `Project in ${active.name}`
-        }
+    <div className="flex-1">
+      <ProjectRecord
+        project={project}
+        workspaceDomain={active.domain}
+        activeTab={activeTab}
+        tasks={tasks}
+        members={memberOptions}
+        companies={companyOptions}
+        clients={clientOptions}
+        projectOptions={projectOptions}
       />
-      <div className="mt-6 flex-1">
-        <ProjectRecord
-          project={project}
-          workspaceDomain={active.domain}
-          activeTab={activeTab}
-          deliverables={deliverableRows}
-          deliverableCount={deliverableSummaries.length}
-          tasks={tasks}
-          members={memberOptions}
-          companies={companyOptions}
-          clients={clientOptions}
-          projectOptions={projectOptions}
-        />
-      </div>
     </div>
   );
 }

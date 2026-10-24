@@ -15,7 +15,7 @@ import { initialProjectActionState } from "../action-state";
 
 interface Props {
   /** The backend's short model name for the record the files hang off. */
-  targetType: "project" | "deliverable" | "task";
+  targetType: "project" | "task";
   targetNanoid: string;
   attachments: Attachment[];
   workspaceDomain: string;

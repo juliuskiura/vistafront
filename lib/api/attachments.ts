@@ -10,11 +10,10 @@ import type { Attachment, Paginated } from "./types";
  * `serverMutateFormData`. Reading and deleting are plain JSON calls and
  * live here.
  *
- * `target_type` is the backend's short model name — `project`,
- * `deliverable` or `task`
+ * `target_type` is the backend's short model name — `project` or `task`
  * (`projectmanager/generic_targets.py::TARGET_MODEL_MAP`).
  */
-export type AttachmentTargetType = "project" | "deliverable" | "task";
+export type AttachmentTargetType = "project" | "task";
 
 function unwrap<T>(payload: T[] | Paginated<T>): T[] {
   if (Array.isArray(payload)) return payload;

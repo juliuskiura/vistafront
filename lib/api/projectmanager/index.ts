@@ -50,17 +50,4 @@ export {
   deleteProjectCategory,
 } from "./project-categories";
 
-export {
-  approveDeliverable,
-  completeDeliverable,
-  createDeliverable,
-  deleteDeliverable,
-  getDeliverable,
-  listDeliverables,
-  mergeDeliverables,
-  publishDeliverable,
-  requestRevisions,
-  submitReview,
-  suggestDeliverableMerge,
-  updateDeliverable,
-} from "./deliverables";
+

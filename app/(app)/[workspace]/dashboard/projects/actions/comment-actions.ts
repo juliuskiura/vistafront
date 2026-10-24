@@ -12,7 +12,7 @@ import { backendMessage, pick } from "../_actions-helpers";
  *
  * Comments are a generic feature: the backend stores them against any
  * record through a content type plus a nanoid, so the same two actions
- * serve the task page and the deliverable page.
+ * serve the project page and the task page.
  */
 
 /** Server Action: post a comment on a record. */

@@ -35,9 +35,7 @@ interface Props {
  *
  * The status control steps `todo → in progress → done` and back, which is
  * what the old app's status select did. Completing a task is a plain
- * status PATCH — the backend has no `complete` action on the task viewset
- * — and it makes the viewset recompute the parent deliverable, so a
- * deliverable whose last task is done publishes itself.
+ * status PATCH — the backend has no `complete` action on the task viewset.
  */
 export function TaskRow({
   task,

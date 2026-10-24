@@ -84,7 +84,6 @@ export const FEATURES_STYLES: Record<string, CapabilityGlyph> = {
   // projectmanager
   "projectmanager.projects": { icon: FolderKanban, tone: "amber" },
   "projectmanager.tasks": { icon: ListChecks, tone: "amber" },
-  "projectmanager.deliverables": { icon: PackageCheck, tone: "emerald" },
 
   // aimodels
   "aimodels.system": { icon: Sparkles, tone: "sky" },

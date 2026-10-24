@@ -16,7 +16,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Sparkles } from "@/lib/icons";
 import {
-  mergeDeliverablesAction,
   mergeTasksAction,
   suggestMergeAction,
 } from "../actions/merge-actions";
@@ -29,8 +28,6 @@ export interface MergeCandidate {
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Which endpoints the merge uses. */
-  kind: "task" | "deliverable";
   /** The records being merged — listed in the dialog and in the confirm. */
   selected: MergeCandidate[];
   workspaceDomain: string;
@@ -53,7 +50,6 @@ interface Props {
 export function MergeDialog({
   open,
   onOpenChange,
-  kind,
   selected,
   workspaceDomain,
   onMerged,
@@ -86,7 +82,6 @@ export function MergeDialog({
     setSuggestError(null);
     const result = await suggestMergeAction({
       workspaceDomain,
-      kind,
       ids: selected.map((item) => item.nanoid),
     });
     setSuggesting(false);
@@ -103,20 +98,12 @@ export function MergeDialog({
     setMerging(true);
     setMergeError(null);
 
-    const result =
-      kind === "task"
-        ? await mergeTasksAction({
-            workspaceDomain,
-            taskIds: selected.map((item) => item.nanoid),
-            title: title.trim(),
-            description,
-          })
-        : await mergeDeliverablesAction({
-            workspaceDomain,
-            deliverableIds: selected.map((item) => item.nanoid),
-            title: title.trim(),
-            description,
-          });
+    const result = await mergeTasksAction({
+      workspaceDomain,
+      taskIds: selected.map((item) => item.nanoid),
+      title: title.trim(),
+      description,
+    });
 
     setMerging(false);
 
@@ -129,7 +116,7 @@ export function MergeDialog({
     onOpenChange(false);
   }
 
-  const noun = kind === "task" ? "task" : "deliverable";
+  const noun = "task";
 
   return (
     <>
@@ -141,9 +128,8 @@ export function MergeDialog({
               {selected.length === 1 ? "" : "s"}
             </DialogTitle>
             <DialogDescription>
-              {kind === "task"
-                ? "Combine the selected tasks into one. The tasks that go in are deleted."
-                : "Combine the selected deliverables and their tasks into one. The deliverables that go in are deleted and their tasks move to the new one."}
+              Combine the selected tasks into one. The tasks that go in are
+              deleted.
             </DialogDescription>
           </DialogHeader>
 

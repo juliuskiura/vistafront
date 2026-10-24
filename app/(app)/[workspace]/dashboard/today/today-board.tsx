@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 
 import type {
-  ScheduleDeliverableSummary,
   ScheduleProjectSummary,
   ScheduleTaskSummary,
   TodaySummary,
@@ -40,19 +39,9 @@ const PRIORITY_COLORS: Record<string, string> = {
   urgent: "bg-red-100 text-red-800",
 };
 
-const DELIVERABLE_STATUS_COLORS: Record<string, string> = {
-  draft: "bg-gray-100 text-gray-700",
-  review: "bg-amber-100 text-amber-800",
-  revisions: "bg-orange-100 text-orange-800",
-  approved: "bg-emerald-100 text-emerald-800",
-  published: "bg-blue-100 text-blue-800",
-  cancelled: "bg-red-100 text-red-800",
-};
-
 const EMPTY: TodaySummary = {
   overdue_tasks: [],
   today_tasks: [],
-  needs_review: [],
   upcoming_projects: [],
 };
 
@@ -97,34 +86,6 @@ function TaskRow({
       </span>
       <p className="w-full text-xs text-muted-foreground">
         {task.project_name} · Due {fmtDate(task.due_date)}
-      </p>
-    </Link>
-  );
-}
-
-function DeliverableRow({
-  deliverable,
-  activeDomain,
-}: {
-  deliverable: ScheduleDeliverableSummary;
-  activeDomain: string;
-}) {
-  const href = `/${activeDomain}/dashboard/deliverables/${deliverable.nanoid}`;
-  return (
-    <Link
-      href={href}
-      className="flex items-start justify-between gap-2 rounded-lg border border-blue-200 bg-blue-50/50 p-3 text-sm hover:bg-blue-50/80"
-    >
-      <p className="min-w-0 flex-1 truncate font-medium">{deliverable.title}</p>
-      <span
-        className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium capitalize ${
-          DELIVERABLE_STATUS_COLORS[deliverable.status] ?? ""
-        }`}
-      >
-        {deliverable.status.replace(/_/g, " ")}
-      </span>
-      <p className="w-full truncate text-xs text-muted-foreground">
-        {deliverable.project_name}
       </p>
     </Link>
   );
@@ -179,9 +140,8 @@ export function TodayBoard({ workspace }: { workspace: string }) {
 
   const overdue = data.overdue_tasks;
   const todayTasks = data.today_tasks;
-  const review = data.needs_review;
   const upcoming = data.upcoming_projects;
-  const total = overdue.length + todayTasks.length + review.length + upcoming.length;
+  const total = overdue.length + todayTasks.length + upcoming.length;
 
   return (
     <div className="space-y-6">
@@ -234,25 +194,6 @@ export function TodayBoard({ workspace }: { workspace: string }) {
           </Card>
         ) : null}
 
-        {review.length > 0 ? (
-          <Card className="rounded-xl border bg-card">
-            <CardHeader>
-              <CardTitle className="text-sm font-semibold text-blue-700">
-                {review.length} Needs Review
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {review.map((d) => (
-                <DeliverableRow
-                  key={d.nanoid}
-                  deliverable={d}
-                  activeDomain={workspace}
-                />
-              ))}
-            </CardContent>
-          </Card>
-        ) : null}
-
         {upcoming.length > 0 ? (
           <Card className="rounded-xl border bg-card">
             <CardHeader>
@@ -275,8 +216,8 @@ export function TodayBoard({ workspace }: { workspace: string }) {
         {total === 0 ? (
           <Card className="rounded-xl border bg-card lg:col-span-2">
             <CardContent className="p-12 text-center text-sm text-muted-foreground">
-              No overdue tasks, no tasks due today, nothing in review, no
-              upcoming deadlines. Everything is on track.
+              No overdue tasks, no tasks due today, no upcoming deadlines.
+              Everything is on track.
             </CardContent>
           </Card>
         ) : null}

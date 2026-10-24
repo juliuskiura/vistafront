@@ -10,7 +10,7 @@ interface Props {
 /**
  * A read-only rendering of a rich-text body.
  *
- * Project, task and deliverable descriptions are stored as HTML — the
+ * Project and task descriptions are stored as HTML — the
  * legacy app wrote them through a rich-text editor, so a textarea over
  * them would destroy the formatting on the first save. The markup is
  * sanitised before it reaches `dangerouslySetInnerHTML`: the description is

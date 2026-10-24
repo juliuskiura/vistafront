@@ -10,9 +10,9 @@ interface Props {
 /**
  * A labelled progress bar.
  *
- * The backend counts a project's finished tasks and published
- * deliverables, so the bar is a straight ratio of two numbers the API
- * already returns — no client-side tally that could drift.
+ * The backend counts a project's finished tasks, so the bar is a straight
+ * ratio of two numbers the API already returns — no client-side tally that
+ * could drift.
  */
 export function ProgressMeter({ label, done, total, className }: Props) {
   const percentage = total > 0 ? Math.round((done / total) * 100) : 0;

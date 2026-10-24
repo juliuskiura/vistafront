@@ -66,33 +66,20 @@ export default async function TaskDetailPage({
   ]);
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Banner
-        title={task.title}
-        description={
-          [
-            task.project_name ?? "No project",
-            task.due_date ? `Due ${formatMediumDate(task.due_date)}` : null,
-          ]
-            .filter(Boolean)
-            .join(" · ")
-        }
+    <div className="flex-1">
+      <TaskRecord
+        task={task}
+        workspaceDomain={active.domain}
+        comments={comments}
+        attachments={attachments}
+        members={members.map((member) => ({
+          nanoid: member.user_nanoid,
+          name:
+            [member.first_name, member.last_name].filter(Boolean).join(" ") ||
+            member.email,
+        }))}
+        projects={[{ nanoid: task.project ?? "", name: task.project_name ?? "Untitled project" }]}
       />
-      <div className="mt-6 flex-1">
-        <TaskRecord
-          task={task}
-          workspaceDomain={active.domain}
-          comments={comments}
-          attachments={attachments}
-          members={members.map((member) => ({
-            nanoid: member.user_nanoid,
-            name:
-              [member.first_name, member.last_name].filter(Boolean).join(" ") ||
-              member.email,
-          }))}
-          projects={[{ nanoid: task.project ?? "", name: task.project_name ?? "Untitled project" }]}
-        />
-      </div>
     </div>
   );
 }

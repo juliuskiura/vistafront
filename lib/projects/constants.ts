@@ -1,5 +1,4 @@
 import type {
-  DeliverableStatus,
   ProjectPriority,
   ProjectStatus,
   TaskStatus,
@@ -8,15 +7,13 @@ import type {
 /**
  * The project manager's vocabulary, in one place.
  *
- * Every label, colour and option list for projects, tasks and deliverables
- * used to be duplicated across the four `formatDate`-style helpers that
- * lived inside the feature's pages. They are collected here so a status
- * reads the same in the list, the record header, the tree view and the
- * review panel.
+ * Every label, colour and option list for projects and tasks used to be
+ * duplicated across the four `formatDate`-style helpers that lived inside
+ * the feature's pages. They are collected here so a status reads the same
+ * in the list and the record header.
  *
- * The category and deliverable-type tables are static because the backend
- * exposes no endpoint that lists `ProjectCategory` / `DeliverableType`
- * rows — they are seeded by
+ * The category table is static because the backend exposes no endpoint
+ * that lists `ProjectCategory` rows — they are seeded by
  * `projectmanager/migrations/0013_generalize_project_schema.py` and read
  * by key. The values below mirror that seed; a workspace that defines its
  * own category would not appear here.
@@ -48,15 +45,6 @@ export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   done: "Done",
 };
 
-export const DELIVERABLE_STATUS_LABELS: Record<DeliverableStatus, string> = {
-  draft: "Draft",
-  review: "In Review",
-  revisions: "Revisions Requested",
-  approved: "Approved",
-  published: "Published",
-  cancelled: "Cancelled",
-};
-
 /* ──────────────────────────────────────────────────────────────────────
  * Option lists (for <select> elements)
  * ────────────────────────────────────────────────────────────────────── */
@@ -73,15 +61,11 @@ export const TASK_STATUS_OPTIONS = (
   Object.keys(TASK_STATUS_LABELS) as TaskStatus[]
 ).map((value) => ({ value, label: TASK_STATUS_LABELS[value] }));
 
-export const DELIVERABLE_STATUS_OPTIONS = (
-  Object.keys(DELIVERABLE_STATUS_LABELS) as DeliverableStatus[]
-).map((value) => ({ value, label: DELIVERABLE_STATUS_LABELS[value] }));
-
 /* ──────────────────────────────────────────────────────────────────────
- * Category / type tables
+ * Category table
  *
- * The backend reads both of these by `key`, so the *key* is what goes on
- * the wire — never the label.
+ * The backend reads this by `key`, so the *key* is what goes on the wire —
+ * never the label.
  * ────────────────────────────────────────────────────────────────────── */
 
 export const PROJECT_CATEGORY_OPTIONS = [
@@ -93,35 +77,14 @@ export const PROJECT_CATEGORY_OPTIONS = [
   { value: "other", label: "Other" },
 ];
 
-export const DELIVERABLE_TYPE_OPTIONS = [
-  { value: "blog_post", label: "Blog Post" },
-  { value: "social_post", label: "Social Post" },
-  { value: "email_campaign", label: "Email Campaign" },
-  { value: "ad_creative", label: "Ad Creative" },
-  { value: "landing_page", label: "Landing Page" },
-  { value: "cold_email", label: "Cold Email" },
-  { value: "social_strategy", label: "Social Strategy" },
-  { value: "other", label: "Other" },
-];
-
 const CATEGORY_LABELS = new Map(
   PROJECT_CATEGORY_OPTIONS.map((o) => [o.value, o.label]),
-);
-
-const DELIVERABLE_TYPE_LABELS = new Map(
-  DELIVERABLE_TYPE_OPTIONS.map((o) => [o.value, o.label]),
 );
 
 /** The human label for a stored category key, falling back to the key. */
 export function projectCategoryLabel(key: string | null): string {
   if (!key) return "—";
   return CATEGORY_LABELS.get(key) ?? key;
-}
-
-/** The human label for a stored deliverable-type key, falling back to the key. */
-export function deliverableTypeLabel(key: string | null): string {
-  if (!key) return "—";
-  return DELIVERABLE_TYPE_LABELS.get(key) ?? key;
 }
 
 /* ──────────────────────────────────────────────────────────────────────
@@ -172,64 +135,6 @@ export function priorityBadgeClass(priority: string): string {
       return DESTRUCTIVE_BADGE;
     default:
       return NEUTRAL_BADGE;
-  }
-}
-
-/**
- * Badge classes for a deliverable status.
- *
- * A deliverable has its own scale: `approved` is green but `published` is
- * blue, so the two "finished" states read differently from a project or a
- * task, where `done` and `published` share a tone.
- */
-export function deliverableStatusBadgeClass(status: DeliverableStatus): string {
-  switch (status) {
-    case "review":
-    case "revisions":
-      return WARNING_BADGE;
-    case "approved":
-      return SUCCESS_BADGE;
-    case "published":
-      return INFO_BADGE;
-    case "cancelled":
-      return DESTRUCTIVE_BADGE;
-    default:
-      return NEUTRAL_BADGE;
-  }
-}
-
-/* ──────────────────────────────────────────────────────────────────────
- * Workflow
- * ────────────────────────────────────────────────────────────────────── */
-
-/**
- * The publish workflow, step by step.
- *
- * The backend's actions are one-way: `submit_review` → `review`,
- * `approve` → `approved`, `request_revisions` → `revisions`,
- * `publish` → `published`. The button set a deliverable offers therefore
- * follows from its current status and nothing else.
- */
-export type DeliverableWorkflowAction =
-  | "submit_review"
-  | "approve"
-  | "request_revisions"
-  | "publish";
-
-export function deliverableWorkflowActions(
-  status: DeliverableStatus,
-): DeliverableWorkflowAction[] {
-  switch (status) {
-    case "draft":
-      return ["submit_review"];
-    case "review":
-      return ["approve", "request_revisions"];
-    case "revisions":
-      return ["submit_review"];
-    case "approved":
-      return ["publish"];
-    default:
-      return [];
   }
 }
 

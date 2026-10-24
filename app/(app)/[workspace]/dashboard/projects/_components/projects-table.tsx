@@ -25,9 +25,8 @@ interface Props {
 /**
  * The project list table.
  *
- * Each row carries both progress bars — the backend counts a project's
- * finished tasks and published deliverables, so the numbers need no
- * client-side tally.
+ * Each row carries a progress bar — the backend counts a project's
+ * finished tasks, so the number needs no client-side tally.
  */
 export function ProjectsTable({ projects, workspaceDomain }: Props) {
   const [deleteTarget, setDeleteTarget] = useState<ProjectSummary | null>(
@@ -113,11 +112,6 @@ export function ProjectsTable({ projects, workspaceDomain }: Props) {
                   done={project.completed_tasks ?? 0}
                   total={project.task_count ?? 0}
                 />
-                <ProgressMeter
-                  label="Deliverables"
-                  done={project.completed_deliverables ?? 0}
-                  total={project.deliverable_count ?? 0}
-                />
               </div>
 
               <div className="flex justify-end">
@@ -144,8 +138,7 @@ export function ProjectsTable({ projects, workspaceDomain }: Props) {
           <div className="space-y-1">
             <p>“{deleteTarget?.name}” will be deleted.</p>
             <p className="text-xs text-muted-foreground">
-              Its deliverables and their tasks go with it. This cannot be
-              undone.
+              Its tasks go with it. This cannot be undone.
             </p>
           </div>
         }

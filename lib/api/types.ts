@@ -1065,7 +1065,6 @@ export interface CreateNoteTypeBody {
 
 export type ScheduleItemType =
   | "task"
-  | "deliverable"
   | "project_deadline"
   | "activity"
   | "post";
@@ -1084,7 +1083,6 @@ export interface ScheduleItem {
   project_id?: string;
   priority?: string;
   status?: string;
-  deliverable_type?: string;
   action_type?: string;
   contact_name?: string;
   company_id?: string;
@@ -1118,15 +1116,6 @@ export interface ScheduleTaskSummary {
   project_name: string;
 }
 
-export interface ScheduleDeliverableSummary {
-  nanoid: string;
-  title: string;
-  status: string;
-  deliverable_type: string;
-  project_name: string;
-  project_id: string;
-}
-
 export interface ScheduleProjectSummary {
   nanoid: string;
   name: string;
@@ -1137,7 +1126,6 @@ export interface ScheduleProjectSummary {
 export interface TodaySummary {
   overdue_tasks: ScheduleTaskSummary[];
   today_tasks: ScheduleTaskSummary[];
-  needs_review: ScheduleDeliverableSummary[];
   upcoming_projects: ScheduleProjectSummary[];
 }
 
@@ -1145,8 +1133,7 @@ export interface TodaySummary {
  * Project Manager types
  *
  * Mirrors the Django serializers in the `projectmanager` app. Field names
- * match `ProjectSerializer` / `ProjectListSerializer` /
- * `TaskSerializer` / `DeliverableSerializer`.
+ * match `ProjectSerializer` / `ProjectListSerializer` / `TaskSerializer`.
  * ────────────────────────────────────────────────────────────────────── */
 
 export type ProjectStatus =
@@ -1174,8 +1161,6 @@ export interface Project {
   deadline: string | null;
   task_count: number;
   completed_tasks: number;
-  deliverable_count: number;
-  completed_deliverables: number;
   created_at: string;
   updated_at: string;
 }
@@ -1194,8 +1179,6 @@ export interface ProjectSummary {
   deadline: string | null;
   task_count: number;
   completed_tasks: number;
-  deliverable_count: number;
-  completed_deliverables: number;
   created_at: string;
 }
 
@@ -1312,51 +1295,6 @@ export interface UpdateProjectCategoryBody {
   position?: number;
 }
 
-export type DeliverableStatus =
-  | "draft"
-  | "review"
-  | "revisions"
-  | "approved"
-  | "published"
-  | "cancelled";
-
-export interface Deliverable {
-  id: number;
-  nanoid: string;
-  project: string;
-  project_name: string | null;
-  tasks: Task[];
-  project_tasks: Task[];
-  deliverable_type: string | null;
-  title: string;
-  description: string;
-  status: DeliverableStatus;
-  metadata: Record<string, unknown>;
-  due_date: string | null;
-  assigned_to: string | null;
-  assigned_to_name: string | null;
-  reviewed_by: string | null;
-  reviewed_by_name: string | null;
-  review_notes: string;
-  order: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface DeliverableSummary {
-  id: number;
-  nanoid: string;
-  project: string;
-  project_name: string | null;
-  deliverable_type: string | null;
-  title: string;
-  status: DeliverableStatus;
-  metadata: Record<string, unknown>;
-  due_date: string | null;
-  order: number;
-  created_at: string;
-}
-
 export interface CreateProjectBody {
   name: string;
   description?: string;
@@ -1417,28 +1355,6 @@ export interface CreateTaskBody {
   metadata?: Record<string, unknown>;
 }
 
-/** The fields a deliverable PATCH accepts. */
-export interface UpdateDeliverableBody {
-  title?: string;
-  description?: string;
-  deliverable_type?: string | null;
-  status?: DeliverableStatus;
-  due_date?: string | null;
-  assigned_to?: string | null;
-  metadata?: Record<string, unknown>;
-}
-
-export interface CreateDeliverableBody {
-  project: string;
-  title: string;
-  description?: string;
-  deliverable_type?: string | null;
-  status?: DeliverableStatus;
-  due_date?: string | null;
-  assigned_to?: string | null;
-  metadata?: Record<string, unknown>;
-}
-
 /**
  * What the AI merge-suggestion endpoints return.
  *
@@ -1453,8 +1369,7 @@ export interface MergeSuggestion {
 /**
  * A comment on any record, via the generic comments API.
  *
- * `target_type` is the backend's short model name — `project`,
- * `deliverable` or `task`.
+ * `target_type` is the backend's short model name — `project` or `task`.
  */
 export interface Comment {
   nanoid: string;
