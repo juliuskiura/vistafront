@@ -35,7 +35,7 @@ interface Props {
   comments: Comment[];
   attachments: Attachment[];
   members: PickerOption[];
-  deliverables: PickerOption[];
+  projects: PickerOption[];
 }
 
 /**
@@ -51,7 +51,7 @@ export function TaskRecord({
   comments,
   attachments,
   members,
-  deliverables,
+  projects,
 }: Props) {
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
@@ -122,16 +122,16 @@ export function TaskRecord({
 
       <div className="grid gap-4 rounded-xl border bg-card p-4 sm:grid-cols-2 lg:grid-cols-4">
         <div>
-          <p className="text-xs uppercase text-muted-foreground">Deliverable</p>
-          {task.deliverable ? (
+          <p className="text-xs uppercase text-muted-foreground">Project</p>
+          {task.project ? (
             <Link
-              href={`/${workspaceDomain}/dashboard/deliverables/${task.deliverable}`}
+              href={`/${workspaceDomain}/dashboard/projects/${task.project}`}
               className="mt-1 block text-sm font-medium hover:underline"
             >
-              {task.deliverable_title ?? "Open deliverable"}
+              {task.project_name ?? "Open project"}
             </Link>
           ) : (
-            <p className="mt-1 text-sm font-medium">No deliverable</p>
+            <p className="mt-1 text-sm font-medium">No project</p>
           )}
         </div>
         <div>
@@ -188,7 +188,7 @@ export function TaskRecord({
           <TaskForm
             workspaceDomain={workspaceDomain}
             task={task}
-            deliverables={deliverables}
+            projects={projects}
             members={members}
             submitLabel="Save changes"
             onSuccess={() => setEditOpen(false)}

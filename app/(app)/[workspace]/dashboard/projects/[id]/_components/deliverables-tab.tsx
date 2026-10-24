@@ -16,7 +16,7 @@ interface Props {
   deliverables: DeliverableRow[];
   tasks: Task[];
   members: PickerOption[];
-  deliverableOptions: PickerOption[];
+  projectOptions: PickerOption[];
 }
 
 /**
@@ -32,7 +32,7 @@ export function DeliverablesTab({
   deliverables,
   tasks,
   members,
-  deliverableOptions,
+  projectOptions,
 }: Props) {
   const [viewMode, setViewMode] = useState<"tree" | "cards">("tree");
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -115,7 +115,7 @@ export function DeliverablesTab({
         project={project}
         workspaceDomain={workspaceDomain}
         members={members}
-        deliverableOptions={deliverableOptions}
+        projectOptions={projectOptions}
         addOpen={addOpen}
         onAddOpenChange={setAddOpen}
         editTarget={editTarget}

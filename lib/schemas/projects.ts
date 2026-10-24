@@ -34,7 +34,7 @@ export const ProjectPrioritySchema = z.enum([
 ]);
 export type ProjectPriorityInput = z.infer<typeof ProjectPrioritySchema>;
 
-export const TaskStatusSchema = z.enum(["todo", "in_progress", "done"]);
+export const TaskStatusSchema = z.enum(["todo", "in_progress", "review", "done"]);
 export type TaskStatusInput = z.infer<typeof TaskStatusSchema>;
 
 export const DeliverableStatusSchema = z.enum([
@@ -144,15 +144,15 @@ export type UpdateProjectStatusInput = z.infer<typeof UpdateProjectStatusSchema>
 /**
  * Creating a task.
  *
- * There is no `project` field: the backend derives a task's project from
- * its **deliverable** (`Task.project` is a read-only serializer method), so
- * a task belongs to a project only through the deliverable it hangs off.
+ * A task belongs to a project directly via its `project` FK (and may have a
+ * parent task via `parent`).
  */
 export const CreateTaskSchema = z.object({
   workspace_domain: z.string().min(1, "Missing workspace."),
   title: z.string().trim().min(1, "Title is required.").max(255),
   description: optionalLongText(),
-  deliverable: optionalText(),
+  project: z.string().min(1, "Project is required."),
+  parent: optionalText(),
   assignee: optionalText(),
   status: TaskStatusSchema.default("todo"),
   priority: ProjectPrioritySchema.default("medium"),
@@ -165,7 +165,8 @@ export const UpdateTaskSchema = z.object({
   nanoid: z.string().min(1, "Missing task."),
   title: z.string().trim().min(1, "Title is required.").max(255),
   description: optionalLongText(),
-  deliverable: optionalText(),
+  project: optionalText(),
+  parent: optionalText(),
   assignee: optionalText(),
   status: TaskStatusSchema.default("todo"),
   priority: ProjectPrioritySchema.default("medium"),

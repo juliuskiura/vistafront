@@ -15,16 +15,14 @@ import { backendMessage, orNull, pick } from "../_actions-helpers";
 /**
  * Server Actions for tasks.
  *
- * A task has no `project` of its own: the backend derives it from the
- * task's **deliverable**, so the form's "deliverable" field is what places
- * a task inside a project.
+ * A task belongs to a project directly via its `project` FK, and may have a
+ * parent task via `parent`.
  */
 
 /**
  * Server Action: create a task.
  *
- * Bound to the "Add task" dialog on the project record and to the inline
- * task form on a deliverable.
+ * Bound to the "Add task" dialog on the project record.
  */
 export async function createTaskAction(
   _prev: ProjectActionState,
@@ -34,7 +32,8 @@ export async function createTaskAction(
     workspace_domain: pick(formData, "workspace_domain"),
     title: pick(formData, "title"),
     description: pick(formData, "description"),
-    deliverable: pick(formData, "deliverable"),
+    project: pick(formData, "project"),
+    parent: pick(formData, "parent"),
     assignee: pick(formData, "assignee"),
     status: pick(formData, "status") || "todo",
     priority: pick(formData, "priority") || "medium",
@@ -56,7 +55,8 @@ export async function createTaskAction(
       {
         title: data.title,
         description: data.description,
-        deliverable: orNull(data.deliverable),
+        project: data.project,
+        parent: orNull(data.parent),
         assignee: orNull(data.assignee),
         status: data.status,
         priority: data.priority,
@@ -94,7 +94,8 @@ export async function updateTaskAction(
     nanoid: pick(formData, "nanoid"),
     title: pick(formData, "title"),
     description: pick(formData, "description"),
-    deliverable: pick(formData, "deliverable"),
+    project: pick(formData, "project"),
+    parent: pick(formData, "parent"),
     assignee: pick(formData, "assignee"),
     status: pick(formData, "status") || "todo",
     priority: pick(formData, "priority") || "medium",
@@ -117,7 +118,8 @@ export async function updateTaskAction(
       {
         title: data.title,
         description: data.description,
-        deliverable: orNull(data.deliverable),
+        project: orNull(data.project),
+        parent: orNull(data.parent),
         assignee: orNull(data.assignee),
         status: data.status,
         priority: data.priority,

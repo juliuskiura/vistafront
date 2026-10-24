@@ -131,10 +131,9 @@ export default async function ProjectDetailPage({
     name: `${contact.first_name} ${contact.last_name}`.trim(),
   }));
 
-  const deliverableOptions = deliverableSummaries.map((deliverable) => ({
-    nanoid: deliverable.nanoid,
-    name: deliverable.title,
-  }));
+  const projectOptions = [
+    { nanoid: project.nanoid, name: project.name },
+  ];
 
   return (
     <div className="flex min-h-full flex-col">
@@ -161,7 +160,7 @@ export default async function ProjectDetailPage({
           members={memberOptions}
           companies={companyOptions}
           clients={clientOptions}
-          deliverableOptions={deliverableOptions}
+          projectOptions={projectOptions}
         />
       </div>
     </div>

@@ -95,7 +95,7 @@ export function TaskRow({
               {task.title}
             </Link>
             <p className="mt-0.5 truncate text-xs text-muted-foreground">
-              {task.deliverable_title ?? "No deliverable"}
+              {task.project_name ?? "No project"}
               {task.assignee_name ? ` · ${task.assignee_name}` : " · Unassigned"}
               {task.due_date ? ` · due ${formatMediumDate(task.due_date)}` : ""}
             </p>

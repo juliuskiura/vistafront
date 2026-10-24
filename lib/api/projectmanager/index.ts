@@ -29,6 +29,28 @@ export {
 } from "./tasks";
 
 export {
+  listRequiredTools,
+  getRequiredTool,
+  createRequiredTool,
+  updateRequiredTool,
+  deleteRequiredTool,
+} from "./required-tools";
+
+export {
+  listActivityEvents,
+  getActivityEvent,
+  createActivityEvent,
+} from "./activity-events";
+
+export {
+  listProjectCategories,
+  getProjectCategory,
+  createProjectCategory,
+  updateProjectCategory,
+  deleteProjectCategory,
+} from "./project-categories";
+
+export {
   approveDeliverable,
   completeDeliverable,
   createDeliverable,

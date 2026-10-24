@@ -145,9 +145,9 @@ export function DeliverableTasks({
           </DialogHeader>
           <TaskForm
             workspaceDomain={workspaceDomain}
-            deliverables={deliverables}
+            projects={deliverables}
             members={members}
-            defaultDeliverable={deliverable.nanoid}
+            defaultProject={deliverable.nanoid}
             submitLabel="Add task"
             onSuccess={() => setAddOpen(false)}
           />
@@ -167,7 +167,7 @@ export function DeliverableTasks({
             <TaskForm
               workspaceDomain={workspaceDomain}
               task={editTarget}
-              deliverables={deliverables}
+              projects={deliverables}
               members={members}
               submitLabel="Save changes"
               onSuccess={() => setEditTarget(null)}

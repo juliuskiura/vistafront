@@ -72,7 +72,7 @@ export function DeliverableCards({
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {group.rows.map((row) => {
               const deliverableTasks = tasks.filter(
-                (task) => task.deliverable === row.summary.nanoid,
+                (task) => task.project === row.summary.nanoid,
               );
               const done = deliverableTasks.filter(
                 (task) => task.status === "done",

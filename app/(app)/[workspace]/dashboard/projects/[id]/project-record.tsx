@@ -20,7 +20,8 @@ interface Props {
   members: PickerOption[];
   companies: PickerOption[];
   clients: PickerOption[];
-  deliverableOptions: PickerOption[];
+  /** The current project, as a single-option picker for the task form. */
+  projectOptions: PickerOption[];
 }
 
 /**
@@ -39,7 +40,7 @@ export function ProjectRecord({
   members,
   companies,
   clients,
-  deliverableOptions,
+  projectOptions,
 }: Props) {
   return (
     <div className="space-y-6">
@@ -69,7 +70,7 @@ export function ProjectRecord({
           deliverables={deliverables}
           tasks={tasks}
           members={members}
-          deliverableOptions={deliverableOptions}
+          projectOptions={projectOptions}
         />
       ) : null}
 
@@ -78,7 +79,7 @@ export function ProjectRecord({
           workspaceDomain={workspaceDomain}
           tasks={tasks}
           members={members}
-          deliverableOptions={deliverableOptions}
+          projectOptions={projectOptions}
         />
       ) : null}
     </div>

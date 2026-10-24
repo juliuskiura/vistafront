@@ -23,7 +23,7 @@ interface Props {
   project: Project;
   workspaceDomain: string;
   members: PickerOption[];
-  deliverableOptions: PickerOption[];
+  projectOptions: PickerOption[];
   addOpen: boolean;
   onAddOpenChange: (open: boolean) => void;
   editTarget: DeliverableRow | null;
@@ -52,7 +52,7 @@ export function DeliverableDialogs({
   project,
   workspaceDomain,
   members,
-  deliverableOptions,
+  projectOptions,
   addOpen,
   onAddOpenChange,
   editTarget,
@@ -132,9 +132,9 @@ export function DeliverableDialogs({
           </DialogHeader>
           <TaskForm
             workspaceDomain={workspaceDomain}
-            deliverables={deliverableOptions}
+            projects={projectOptions}
             members={members}
-            defaultDeliverable={taskTarget?.summary.nanoid}
+            defaultProject={taskTarget?.summary.nanoid}
             submitLabel="Add task"
             onSuccess={() => onTaskTargetChange(null)}
           />

@@ -4,11 +4,9 @@ import {
   getTask,
   listAttachments,
   listComments,
-  listDeliverables,
   listWorkspaceMembers,
   type Attachment,
   type Comment,
-  type DeliverableSummary,
   type Task,
   type WorkspaceMember,
 } from "@/lib/api";
@@ -55,7 +53,7 @@ export default async function TaskDetailPage({
     );
   }
 
-  const [comments, attachments, members, deliverables] = await Promise.all([
+  const [comments, attachments, members] = await Promise.all([
     listComments("task", task.nanoid, active.domain).catch(
       () => [] as Comment[],
     ),
@@ -65,12 +63,6 @@ export default async function TaskDetailPage({
     listWorkspaceMembers(active.nanoid, active.domain).catch(
       () => [] as WorkspaceMember[],
     ),
-    task.project
-      ? listDeliverables({
-          project: task.project,
-          workspace: active.domain,
-        }).catch(() => [] as DeliverableSummary[])
-      : Promise.resolve([] as DeliverableSummary[]),
   ]);
 
   return (
@@ -80,7 +72,6 @@ export default async function TaskDetailPage({
         description={
           [
             task.project_name ?? "No project",
-            task.deliverable_title,
             task.due_date ? `Due ${formatMediumDate(task.due_date)}` : null,
           ]
             .filter(Boolean)
@@ -99,10 +90,7 @@ export default async function TaskDetailPage({
               [member.first_name, member.last_name].filter(Boolean).join(" ") ||
               member.email,
           }))}
-          deliverables={deliverables.map((deliverable) => ({
-            nanoid: deliverable.nanoid,
-            name: deliverable.title,
-          }))}
+          projects={[{ nanoid: task.project ?? "", name: task.project_name ?? "Untitled project" }]}
         />
       </div>
     </div>

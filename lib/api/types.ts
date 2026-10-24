@@ -1199,7 +1199,7 @@ export interface ProjectSummary {
   created_at: string;
 }
 
-export type TaskStatus = "todo" | "in_progress" | "done";
+export type TaskStatus = "todo" | "in_progress" | "review" | "done";
 export type TaskPriority = ProjectPriority;
 
 export interface Task {
@@ -1209,17 +1209,107 @@ export interface Task {
   description: string;
   project: string | null;
   project_name: string | null;
+  parent: string | null;
+  parent_title: string | null;
   assignee: string | null;
   assignee_name: string | null;
   assignees: Array<{ nanoid: string; name: string }>;
-  deliverable: string | null;
-  deliverable_title: string | null;
+  required_tools: RequiredTool[];
   status: TaskStatus;
   priority: TaskPriority;
   due_date: string | null;
+  metadata: Record<string, unknown>;
   order: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface RequiredTool {
+  nanoid: string;
+  task: string;
+  name: string;
+  category: string;
+  url?: string;
+  access_status: 'Connected' | 'Credentials Stored' | 'Direct Login' | 'Pending Invite';
+  account_identifier?: string;
+  description?: string;
+  position: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ActivityEvent {
+  nanoid: string;
+  user: string | null;
+  user_name: string | null;
+  action: string;
+  target_name: string;
+  target_type: string;
+  target_nanoid: string | null;
+  detail?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateRequiredToolBody {
+  task: string;
+  name: string;
+  category?: string;
+  url?: string;
+  access_status?: 'Connected' | 'Credentials Stored' | 'Direct Login' | 'Pending Invite';
+  account_identifier?: string;
+  description?: string;
+  position?: number;
+}
+
+export interface UpdateRequiredToolBody {
+  name?: string;
+  category?: string;
+  url?: string;
+  access_status?: 'Connected' | 'Credentials Stored' | 'Direct Login' | 'Pending Invite';
+  account_identifier?: string;
+  description?: string;
+  position?: number;
+}
+
+export interface CreateActivityEventBody {
+  user?: string | null;
+  action: string;
+  target_name: string;
+  target_type: string;
+  target_nanoid?: string | null;
+  detail?: string;
+}
+
+export interface ProjectCategory {
+  nanoid: string;
+  workspace: string | null;
+  name: string;
+  key: string;
+  description: string;
+  color: string;
+  is_active: boolean;
+  position: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateProjectCategoryBody {
+  name: string;
+  key?: string;
+  description?: string;
+  color?: string;
+  is_active?: boolean;
+  position?: number;
+}
+
+export interface UpdateProjectCategoryBody {
+  name?: string;
+  key?: string;
+  description?: string;
+  color?: string;
+  is_active?: boolean;
+  position?: number;
 }
 
 export type DeliverableStatus =
@@ -1300,27 +1390,31 @@ export interface UpdateProjectBody {
 /**
  * The fields a task PATCH accepts.
  *
- * There is no `project`: the backend derives a task's project from its
- * deliverable, so a task hangs off a project through the deliverable alone.
+ * A task belongs to a project directly via its `project` FK (and may have a
+ * parent task via `parent`).
  */
 export interface UpdateTaskBody {
   title?: string;
   description?: string;
-  deliverable?: string | null;
+  project?: string | null;
+  parent?: string | null;
   assignee?: string | null;
   status?: TaskStatus;
   priority?: TaskPriority;
   due_date?: string | null;
+  metadata?: Record<string, unknown>;
 }
 
 export interface CreateTaskBody {
   title: string;
   description?: string;
-  deliverable?: string | null;
+  project: string;
+  parent?: string | null;
   assignee?: string | null;
   status?: TaskStatus;
   priority?: TaskPriority;
   due_date?: string | null;
+  metadata?: Record<string, unknown>;
 }
 
 /** The fields a deliverable PATCH accepts. */

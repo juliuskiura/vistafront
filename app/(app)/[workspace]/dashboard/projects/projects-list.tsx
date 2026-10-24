@@ -3,14 +3,16 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 
-import type { ProjectSummary } from "@/lib/api";
+import type { ProjectSummary, Task } from "@/lib/api";
 import { Plus } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { ProjectsFilterBar } from "./_components/projects-filter-bar";
 import { ProjectsTable } from "./_components/projects-table";
+import { KanbanBoard } from "./_components/kanban-board";
 
 interface Props {
   projects: ProjectSummary[];
+  tasks: Task[];
   workspaceDomain: string;
   /** How many projects the workspace really has. */
   total: number;
@@ -24,9 +26,12 @@ interface Props {
  * The search and the two dropdowns filter in the browser, over the whole
  * set the server sent — the backend's project endpoint applies no
  * filtering of its own.
+ *
+ * A toggle switches between a project table and a task kanban board.
  */
 export function ProjectsList({
   projects,
+  tasks,
   workspaceDomain,
   total,
   truncated,
@@ -34,6 +39,7 @@ export function ProjectsList({
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [priority, setPriority] = useState("");
+  const [view, setView] = useState<"table" | "kanban">("table");
 
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -60,12 +66,28 @@ export function ProjectsList({
           resultCount={filtered.length}
           totalCount={total}
         />
-        <Button asChild size="sm">
-          <Link href={`/${workspaceDomain}/dashboard/projects/new`}>
-            <Plus className="size-4" aria-hidden="true" />
-            New project
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant={view === "table" ? "default" : "outline"}
+            onClick={() => setView("table")}
+          >
+            Table
+          </Button>
+          <Button
+            size="sm"
+            variant={view === "kanban" ? "default" : "outline"}
+            onClick={() => setView("kanban")}
+          >
+            Kanban
+          </Button>
+          <Button asChild size="sm">
+            <Link href={`/${workspaceDomain}/dashboard/projects/new`}>
+              <Plus className="size-4" aria-hidden="true" />
+              New project
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {truncated ? (
@@ -75,10 +97,18 @@ export function ProjectsList({
         </p>
       ) : null}
 
-      <ProjectsTable
-        projects={filtered}
-        workspaceDomain={workspaceDomain}
-      />
+      {view === "table" ? (
+        <ProjectsTable
+          projects={filtered}
+          workspaceDomain={workspaceDomain}
+        />
+      ) : (
+        <KanbanBoard
+          tasks={tasks}
+          projects={filtered}
+          workspaceDomain={workspaceDomain}
+        />
+      )}
     </div>
   );
 }
