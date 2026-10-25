@@ -17,6 +17,7 @@ export {
   createCompany,
   deleteCompany,
   getCompany,
+  getCompanyImportStatus,
   getCompanyStatusBreakdown,
   listCompanies,
   paginatedListCompanies,
@@ -27,6 +28,7 @@ export {
   type BulkCompanyAction,
   type BulkCompanyResult,
   type ListCompaniesFilters,
+  type CompanyImportResult,
 } from "./companies";
 
 /* Shared list filters */

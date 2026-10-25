@@ -115,6 +115,7 @@ export {
   deleteObservation,
   deleteTierClassification,
   getCompany,
+  getCompanyImportStatus,
   getCompanyStatusBreakdown,
   getContact,
   getDeal,
@@ -148,6 +149,7 @@ export {
   type BulkCompanyAction,
   type BulkCompanyResult,
   type ListCompaniesFilters,
+  type CompanyImportResult,
 } from "./crm";
 
 export { getDashboardWidgets, getNavigationSidebar } from "./dashboard";

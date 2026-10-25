@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { VSButton } from "@/components/shared/components/customUi/VSButton";
-import { Settings2 } from "@/lib/icons";
+import { Settings2, Upload } from "@/lib/icons";
 import { type CompanyPageSize } from "@/lib/crm/constants";
 import type {
   Company,
@@ -24,6 +24,7 @@ import {
 import { CompaniesStatusBoard } from "./_components/companies-status-board";
 import { CompaniesPagination } from "./_components/companies-pagination";
 import { AddCompanyDialog } from "./_components/add-company-dialog";
+import { ImportCompaniesDialog } from "./_components/import-companies-dialog";
 import { AddTierDialog } from "./_components/add-tier-dialog";
 import { ManageTiersDialog } from "./_components/manage-tiers-dialog";
 import { CompaniesViewAllMenu } from "./_components/companies-view-all-menu";
@@ -77,6 +78,7 @@ export function CompaniesList({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [addOpen, setAddOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [tierOpen, setTierOpen] = useState(false);
   const [manageTiersOpen, setManageTiersOpen] = useState(false);
 
@@ -201,6 +203,14 @@ export function CompaniesList({
           <VSButton appearance="threeD" onClick={() => setAddOpen(true)}>
             Add Company
           </VSButton>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setImportOpen(true)}
+          >
+            <Upload className="mr-1.5 size-4" />
+            Import Excel Sheet
+          </Button>
         </div>
       </div>
 
@@ -263,6 +273,12 @@ export function CompaniesList({
         industries={industries}
         tierClassifications={tierClassifications}
         countries={countries}
+      />
+
+      <ImportCompaniesDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        workspace={workspace}
       />
 
       <AddTierDialog

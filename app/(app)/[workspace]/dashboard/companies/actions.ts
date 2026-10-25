@@ -1,9 +1,12 @@
 "use server";
 
+import { cookies } from "next/headers";
+
 import { revalidatePath } from "next/cache";
 
 import {
   bulkCompanyAction,
+  getCompanyImportStatus,
   createCompany,
   createIndustry,
   createTierClassification,
@@ -323,4 +326,67 @@ export async function bulkDeleteCompaniesAction(
   );
   revalidatePath(`/[workspace]/dashboard/companies`, "page");
   return result;
+}
+
+const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:8000";
+
+/**
+ * Server Action: upload an Excel file for bulk company import.
+ *
+ * Multipart FormData cannot go through the JSON-only `serverFetch`/`serverMutate`
+ * base, so this hand-rolls the POST with cookie/CSRF/`X-Workspace` headers,
+ * mirroring the media-upload exception.
+ */
+export async function importCompaniesAction(
+  workspaceDomain: string,
+  formData: FormData,
+): Promise<{ task_id: string } | { error: string }> {
+  const cookieStore = await cookies();
+  const access = cookieStore.get("access");
+  const refresh = cookieStore.get("refresh");
+  const csrf = cookieStore.get("csrftoken");
+
+  const headers: HeadersInit = {};
+  const cookieHeader = [
+    access ? `access=${access.value}` : null,
+    refresh ? `refresh=${refresh.value}` : null,
+  ]
+    .filter(Boolean)
+    .join("; ");
+  if (cookieHeader) headers.Cookie = cookieHeader;
+  if (csrf) headers["X-CSRFToken"] = csrf.value;
+  if (workspaceDomain) headers["X-Workspace"] = workspaceDomain;
+
+  try {
+    const response = await fetch(`${BACKEND_URL}/apis/crm/companies/import_excel/`, {
+      method: "POST",
+      headers,
+      body: formData,
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      return { error: `Import failed: ${response.status} ${text}` };
+    }
+    const data = (await response.json()) as { task_id: string };
+    return { task_id: data.task_id };
+  } catch (error) {
+    console.error("importCompaniesAction failed:", error);
+    return { error: "Could not upload the file. Please try again." };
+  }
+}
+
+/**
+ * Server Action: poll the status of a company import task.
+ */
+export async function getCompanyImportStatusAction(
+  taskId: string,
+  workspaceDomain: string,
+): Promise<{ status: string; result?: import("@/lib/api").CompanyImportResult | null }> {
+  try {
+    return await getCompanyImportStatus(taskId, workspaceDomain);
+  } catch (error) {
+    console.error("getCompanyImportStatusAction failed:", error);
+    return { status: "FAILURE", result: null };
+  }
 }
