@@ -21,18 +21,19 @@ interface Props {
     nanoid: string;
     title: string;
     description: string;
-    deliverable: string | null;
+    project: string | null;
+    parent: string | null;
     assignee: string | null;
     status: string;
     priority: string;
     due_date: string | null;
   };
-  /** The project's deliverables — a task hangs off one of them. */
-  deliverables: PickerOption[];
+  /** The workspace's projects — a task belongs to one of them. */
+  projects: PickerOption[];
   /** The workspace's members, for the assignee picker. */
   members: PickerOption[];
-  /** Pre-selected deliverable, when the form was opened from one. */
-  defaultDeliverable?: string;
+  /** Pre-selected project, when the form was opened from one. */
+  defaultProject?: string;
   submitLabel: string;
   onSuccess?: () => void;
 }
@@ -43,17 +44,16 @@ const selectClass =
 /**
  * The task form.
  *
- * A task has no project of its own: the backend derives it from the
- * task's deliverable, so the "deliverable" field is what places a task
- * inside a project. The picker therefore lists the project's
- * deliverables, and the form says so when there are none.
+ * A task belongs to a project directly via its `project` FK, and may have a
+ * parent task via `parent`. The project picker therefore lists the
+ * workspace's projects, and the form says so when there are none.
  */
 export function TaskForm({
   workspaceDomain,
   task,
-  deliverables,
+  projects,
   members,
-  defaultDeliverable,
+  defaultProject,
   submitLabel,
   onSuccess,
 }: Props) {
@@ -65,15 +65,14 @@ export function TaskForm({
   );
   const [description, setDescription] = useState(task?.description ?? "");
 
-  // A task reaches a project through its deliverable, so a task created
-  // from a project has to name one — otherwise it would be filed nowhere
-  // and never show up again. The pick is only optional when the project
-  // has no deliverables to pick from.
-  const requireDeliverable = !isEdit && deliverables.length > 0;
-  const defaultDeliverableNanoid =
-    task?.deliverable ??
-    defaultDeliverable ??
-    deliverables[0]?.nanoid ??
+  // A task belongs to a project, so a task created from a project has to name
+  // one — otherwise it would be filed nowhere and never show up again. The
+  // pick is only optional when there are no projects to pick from.
+  const requireProject = !isEdit && projects.length > 0;
+  const defaultProjectNanoid =
+    task?.project ??
+    defaultProject ??
+    projects[0]?.nanoid ??
     "";
 
   useEffect(() => {
@@ -105,28 +104,45 @@ export function TaskForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label htmlFor="deliverable">Deliverable</Label>
+          <Label htmlFor="project">Project</Label>
           <select
-            id="deliverable"
-            name="deliverable"
-            required={requireDeliverable}
-            defaultValue={defaultDeliverableNanoid}
+            id="project"
+            name="project"
+            required={requireProject}
+            defaultValue={defaultProjectNanoid}
             className={selectClass}
           >
-            {deliverables.length === 0 ? (
-              <option value="">No deliverable</option>
+            {projects.length === 0 ? (
+              <option value="">No project</option>
             ) : null}
-            {deliverables.map((deliverable) => (
-              <option key={deliverable.nanoid} value={deliverable.nanoid}>
-                {deliverable.name}
+            {projects.map((project) => (
+              <option key={project.nanoid} value={project.nanoid}>
+                {project.name}
               </option>
             ))}
           </select>
           <p className="text-xs text-muted-foreground">
-            A task belongs to a project through its deliverable.
+            A task belongs to a project.
           </p>
         </div>
 
+        <div className="space-y-1.5">
+          <Label htmlFor="parent">Parent task (subtask)</Label>
+          <select
+            id="parent"
+            name="parent"
+            defaultValue={task?.parent ?? ""}
+            className={selectClass}
+          >
+            <option value="">No parent</option>
+          </select>
+          <p className="text-xs text-muted-foreground">
+            Optionally make this task a subtask of another.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="assignee">Assignee</Label>
           <select
@@ -143,9 +159,7 @@ export function TaskForm({
             ))}
           </select>
         </div>
-      </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
         <div className="space-y-1.5">
           <Label htmlFor="status">Status</Label>
           <select
@@ -161,7 +175,9 @@ export function TaskForm({
             ))}
           </select>
         </div>
+      </div>
 
+      <div className="grid gap-4 sm:grid-cols-3">
         <div className="space-y-1.5">
           <Label htmlFor="priority">Priority</Label>
           <select

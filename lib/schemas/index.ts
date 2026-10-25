@@ -105,7 +105,7 @@ export {
 /* ──────────────────────────────────────────────────────────────────────
  * Project manager
  *
- * The project / task / deliverable validation contracts live in their own
+ * The project / task validation contracts live in their own
  * module — `projects.ts` — so the file stays readable. They are re-exported
  * here so `@/lib/schemas` remains the single import path for every schema
  * in the app.
@@ -113,35 +113,23 @@ export {
 
 export {
   CreateCommentSchema,
-  CreateDeliverableSchema,
   CreateProjectSchema,
   CreateTaskSchema,
-  DeliverableStatusSchema,
-  MergeDeliverablesSchema,
   MergeTasksSchema,
   ProjectPrioritySchema,
   ProjectStatusSchema,
-  RequestRevisionsSchema,
-  ReviewSchema,
   TaskStatusSchema,
-  UpdateDeliverableSchema,
   UpdateProjectSchema,
   UpdateProjectStatusSchema,
   UpdateTaskSchema,
   UpdateTaskStatusSchema,
   type CreateCommentInput,
-  type CreateDeliverableInput,
   type CreateProjectInput,
   type CreateTaskInput,
-  type DeliverableStatusInput,
-  type MergeDeliverablesInput,
   type MergeTasksInput,
   type ProjectPriorityInput,
   type ProjectStatusInput,
-  type RequestRevisionsInput,
-  type ReviewInput,
   type TaskStatusInput,
-  type UpdateDeliverableInput,
   type UpdateProjectInput,
   type UpdateProjectStatusInput,
   type UpdateTaskInput,

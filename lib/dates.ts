@@ -52,8 +52,7 @@ export function formatMediumDateTime(
 /**
  * A month, e.g. "October 2026".
  *
- * For the headings that group a list by month — the deliverable card grid
- * groups by the month a deliverable is due in. The full date format is
+ * For headings that group a list by month. The full date format is
  * wrong there: every row in the group shares the month, so repeating the
  * day on each heading is noise.
  */

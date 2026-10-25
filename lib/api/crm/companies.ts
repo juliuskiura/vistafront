@@ -265,3 +265,20 @@ export function bulkCompanyAction(
     { method: "POST", body: { action, nanoids }, workspace },
   );
 }
+
+export interface CompanyImportResult {
+  created: number;
+  updated: number;
+  skipped: number;
+  errors: { row: number; reason: string }[];
+}
+
+export function getCompanyImportStatus(
+  taskId: string,
+  workspace: string,
+): Promise<{ status: string; result?: CompanyImportResult | null }> {
+  return serverFetch<{ status: string; result?: CompanyImportResult | null }>(
+    `/apis/crm/companies/import_status/?task_id=${encodeURIComponent(taskId)}`,
+    wsOpts(workspace),
+  );
+}

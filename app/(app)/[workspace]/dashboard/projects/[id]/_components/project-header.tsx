@@ -45,13 +45,6 @@ interface Props {
   clients: PickerOption[];
 }
 
-/**
- * The project record's header.
- *
- * The name lives in the page banner; this row carries what the banner
- * cannot — the status control, the badges, the progress bars, and the
- * record's actions.
- */
 export function ProjectHeader({
   project,
   workspaceDomain,
@@ -64,10 +57,6 @@ export function ProjectHeader({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  // The record is re-rendered after every save; keep the dropdown in step
-  // with what the server now holds. Adjusting during render (rather than
-  // in an effect) is React's own way to react to a changed prop without a
-  // second paint.
   const [serverStatus, setServerStatus] = useState(project.status);
   if (project.status !== serverStatus) {
     setServerStatus(project.status);
@@ -93,84 +82,142 @@ export function ProjectHeader({
     }
   }
 
+  const totalTasks = project.task_count ?? 0;
+  const doneTasks = project.completed_tasks ?? 0;
+  const rate = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
+
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        {/* The banner shows the name; this keeps the page's heading for
-            assistive technology and search engines. */}
-        <h1 className="sr-only">{project.name}</h1>
+    <div className="space-y-6">
+      <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
+        <div className="p-6 space-y-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="space-y-2 max-w-3xl">
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                {project.category ? (
+                  <span
+                    className="px-2 py-0.5 rounded font-mono font-bold text-[11px] border bg-slate-50 border-slate-200 text-slate-700"
+                  >
+                    {projectCategoryLabel(project.category)}
+                  </span>
+                ) : null}
 
-        <Link
-          href={`/${workspaceDomain}/dashboard/projects`}
-          className="text-sm text-muted-foreground hover:underline"
-        >
-          ← Projects
-        </Link>
+                <span
+                  className={`px-2 py-0.5 rounded font-mono text-[10px] uppercase font-bold border ${statusBadgeClass(
+                    status,
+                  )}`}
+                >
+                  {PROJECT_STATUS_OPTIONS.find((option) => option.value === status)
+                    ?.label ?? status}
+                </span>
 
-        <span
-          className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${
-            statusBadgeClass(status)
-          }`}
-        >
-          {PROJECT_STATUS_OPTIONS.find((option) => option.value === status)
-            ?.label ?? status}
-        </span>
-        <span
-          className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${
-            priorityBadgeClass(project.priority)
-          }`}
-        >
-          {PROJECT_PRIORITY_LABELS[project.priority]}
-        </span>
-        {project.category ? (
-          <Badge variant="soft" className="gap-1">
-            <Tag className="size-3" aria-hidden="true" />
-            {projectCategoryLabel(project.category)}
-          </Badge>
-        ) : null}
-        {project.client_name ? (
-          <Badge variant="outline" className="gap-1">
-            <Building2 className="size-3" aria-hidden="true" />
-            {project.client_name}
-          </Badge>
-        ) : null}
-        {project.company_name ? (
-          <Badge variant="outline" className="gap-1">
-            <Briefcase className="size-3" aria-hidden="true" />
-            {project.company_name}
-          </Badge>
-        ) : null}
+                <span
+                  className={`px-2 py-0.5 rounded font-mono text-[10px] uppercase font-bold border ${priorityBadgeClass(
+                    project.priority,
+                  )}`}
+                >
+                  Priority: {PROJECT_PRIORITY_LABELS[project.priority]}
+                </span>
 
-        <div className="ml-auto flex items-center gap-2">
-          <label htmlFor="project-status" className="sr-only">
-            Project status
-          </label>
-          <select
-            id="project-status"
-            value={status}
-            disabled={statusPending}
-            onChange={(event) => handleStatusChange(event.target.value)}
-            className="h-9 rounded-lg border border-input bg-background px-3 text-sm shadow-xs transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
-          >
-            {PROJECT_STATUS_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+                <span className="font-mono text-[11px] text-slate-400">
+                  nanoid: {project.nanoid}
+                </span>
+              </div>
 
-          <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-            <Edit3 className="size-4" aria-hidden="true" />
-            Edit
-          </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => setDeleteOpen(true)}
-          >
-            <Trash2 className="size-4" aria-hidden="true" />
-            Delete
-          </Button>
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight leading-tight">
+                {project.name}
+              </h1>
+
+              {project.description ? (
+                <p className="text-xs text-slate-600 leading-relaxed max-w-2xl">
+                  {project.description}
+                </p>
+              ) : null}
+
+              <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 pt-1">
+                {project.company_name ? (
+                  <div className="flex items-center gap-1.5">
+                    <Briefcase className="size-3.5 text-slate-400" />
+                    <span className="font-semibold text-slate-800">
+                      {project.company_name}
+                    </span>
+                  </div>
+                ) : null}
+                {project.client_name ? (
+                  <div className="flex items-center gap-1.5">
+                    <Building2 className="size-3.5 text-slate-400" />
+                    <span className="text-slate-800 font-medium">
+                      {project.client_name}
+                    </span>
+                  </div>
+                ) : null}
+
+                <div className="flex items-center gap-1.5 font-mono tabular-nums">
+                  <CalendarIcon className="size-3.5 text-slate-400" />
+                  <span>{formatMediumDate(project.start_date)}</span>
+                  <span className="text-slate-300">→</span>
+                  <span className="text-slate-700 font-medium">
+                    {formatMediumDate(project.deadline)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col justify-between w-full lg:w-72 shrink-0">
+              <div>
+                <div className="flex items-center justify-between text-xs font-semibold text-slate-700 mb-1.5">
+                  <span>Task Execution Rate</span>
+                  <span className="font-mono tabular-nums text-indigo-600 font-bold">
+                    {rate}%
+                  </span>
+                </div>
+                <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden mb-3">
+                  <div
+                    className="h-full bg-indigo-600 transition-all duration-300 rounded-full"
+                    style={{ width: `${rate}%` }}
+                  />
+                </div>
+                <div className="text-xs text-slate-600">
+                  <span className="font-mono tabular-nums font-semibold">
+                    {doneTasks}
+                  </span>{" "}
+                  / {totalTasks} tasks done
+                </div>
+              </div>
+              <div className="flex items-center gap-2 mt-4">
+                <select
+                  id="project-status"
+                  value={status}
+                  disabled={statusPending}
+                  onChange={(event) => handleStatusChange(event.target.value)}
+                  className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs"
+                >
+                  {PROJECT_STATUS_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={() => setEditOpen(true)}
+                >
+                  <Edit3 className="size-3.5" aria-hidden="true" />
+                  Edit
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={() => setDeleteOpen(true)}
+                >
+                  <Trash2 className="size-3.5" aria-hidden="true" />
+                  Delete
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -179,34 +226,6 @@ export function ProjectHeader({
           {actionError}
         </p>
       ) : null}
-
-      <div className="grid gap-4 rounded-xl border bg-card p-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div>
-          <p className="flex items-center gap-1.5 text-xs uppercase text-muted-foreground">
-            <CalendarIcon className="size-3.5" aria-hidden="true" />
-            Deadline
-          </p>
-          <p className="mt-1 text-sm font-medium">
-            {formatMediumDate(project.deadline)}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs uppercase text-muted-foreground">Start</p>
-          <p className="mt-1 text-sm font-medium">
-            {formatMediumDate(project.start_date)}
-          </p>
-        </div>
-        <ProgressMeter
-          label="Tasks"
-          done={project.completed_tasks ?? 0}
-          total={project.task_count ?? 0}
-        />
-        <ProgressMeter
-          label="Deliverables"
-          done={project.completed_deliverables ?? 0}
-          total={project.deliverable_count ?? 0}
-        />
-      </div>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
@@ -234,8 +253,8 @@ export function ProjectHeader({
         description={
           <div className="space-y-2">
             <p>
-              “{project.name}” and everything under it — its deliverables and
-              their tasks — will be deleted. This cannot be undone.
+              “{project.name}” and everything under it — its tasks — will be
+              deleted. This cannot be undone.
             </p>
           </div>
         }

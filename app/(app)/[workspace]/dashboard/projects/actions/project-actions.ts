@@ -207,7 +207,7 @@ export async function updateProjectStatusAction(input: {
 /**
  * Server Action: delete a project.
  *
- * The backend cascades — the project's deliverables and tasks go with it —
+ * The backend cascades — the project's tasks go with it —
  * so the confirm dialog says so before the call is made.
  */
 export async function deleteProjectAction(input: {

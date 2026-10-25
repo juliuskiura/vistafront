@@ -1065,7 +1065,6 @@ export interface CreateNoteTypeBody {
 
 export type ScheduleItemType =
   | "task"
-  | "deliverable"
   | "project_deadline"
   | "activity"
   | "post";
@@ -1084,7 +1083,6 @@ export interface ScheduleItem {
   project_id?: string;
   priority?: string;
   status?: string;
-  deliverable_type?: string;
   action_type?: string;
   contact_name?: string;
   company_id?: string;
@@ -1118,15 +1116,6 @@ export interface ScheduleTaskSummary {
   project_name: string;
 }
 
-export interface ScheduleDeliverableSummary {
-  nanoid: string;
-  title: string;
-  status: string;
-  deliverable_type: string;
-  project_name: string;
-  project_id: string;
-}
-
 export interface ScheduleProjectSummary {
   nanoid: string;
   name: string;
@@ -1137,7 +1126,6 @@ export interface ScheduleProjectSummary {
 export interface TodaySummary {
   overdue_tasks: ScheduleTaskSummary[];
   today_tasks: ScheduleTaskSummary[];
-  needs_review: ScheduleDeliverableSummary[];
   upcoming_projects: ScheduleProjectSummary[];
 }
 
@@ -1145,8 +1133,7 @@ export interface TodaySummary {
  * Project Manager types
  *
  * Mirrors the Django serializers in the `projectmanager` app. Field names
- * match `ProjectSerializer` / `ProjectListSerializer` /
- * `TaskSerializer` / `DeliverableSerializer`.
+ * match `ProjectSerializer` / `ProjectListSerializer` / `TaskSerializer`.
  * ────────────────────────────────────────────────────────────────────── */
 
 export type ProjectStatus =
@@ -1174,8 +1161,6 @@ export interface Project {
   deadline: string | null;
   task_count: number;
   completed_tasks: number;
-  deliverable_count: number;
-  completed_deliverables: number;
   created_at: string;
   updated_at: string;
 }
@@ -1194,12 +1179,10 @@ export interface ProjectSummary {
   deadline: string | null;
   task_count: number;
   completed_tasks: number;
-  deliverable_count: number;
-  completed_deliverables: number;
   created_at: string;
 }
 
-export type TaskStatus = "todo" | "in_progress" | "done";
+export type TaskStatus = "todo" | "in_progress" | "review" | "done";
 export type TaskPriority = ProjectPriority;
 
 export interface Task {
@@ -1209,62 +1192,107 @@ export interface Task {
   description: string;
   project: string | null;
   project_name: string | null;
+  parent: string | null;
+  parent_title: string | null;
   assignee: string | null;
   assignee_name: string | null;
   assignees: Array<{ nanoid: string; name: string }>;
-  deliverable: string | null;
-  deliverable_title: string | null;
+  required_tools: RequiredTool[];
   status: TaskStatus;
   priority: TaskPriority;
   due_date: string | null;
+  metadata: Record<string, unknown>;
   order: number;
   created_at: string;
   updated_at: string;
 }
 
-export type DeliverableStatus =
-  | "draft"
-  | "review"
-  | "revisions"
-  | "approved"
-  | "published"
-  | "cancelled";
-
-export interface Deliverable {
-  id: number;
+export interface RequiredTool {
   nanoid: string;
-  project: string;
-  project_name: string | null;
-  tasks: Task[];
-  project_tasks: Task[];
-  deliverable_type: string | null;
-  title: string;
+  task: string;
+  name: string;
+  category: string;
+  url?: string;
+  access_status: 'Connected' | 'Credentials Stored' | 'Direct Login' | 'Pending Invite';
+  account_identifier?: string;
+  description?: string;
+  position: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ActivityEvent {
+  nanoid: string;
+  user: string | null;
+  user_name: string | null;
+  action: string;
+  target_name: string;
+  target_type: string;
+  target_nanoid: string | null;
+  detail?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateRequiredToolBody {
+  task: string;
+  name: string;
+  category?: string;
+  url?: string;
+  access_status?: 'Connected' | 'Credentials Stored' | 'Direct Login' | 'Pending Invite';
+  account_identifier?: string;
+  description?: string;
+  position?: number;
+}
+
+export interface UpdateRequiredToolBody {
+  name?: string;
+  category?: string;
+  url?: string;
+  access_status?: 'Connected' | 'Credentials Stored' | 'Direct Login' | 'Pending Invite';
+  account_identifier?: string;
+  description?: string;
+  position?: number;
+}
+
+export interface CreateActivityEventBody {
+  user?: string | null;
+  action: string;
+  target_name: string;
+  target_type: string;
+  target_nanoid?: string | null;
+  detail?: string;
+}
+
+export interface ProjectCategory {
+  nanoid: string;
+  workspace: string | null;
+  name: string;
+  key: string;
   description: string;
-  status: DeliverableStatus;
-  metadata: Record<string, unknown>;
-  due_date: string | null;
-  assigned_to: string | null;
-  assigned_to_name: string | null;
-  reviewed_by: string | null;
-  reviewed_by_name: string | null;
-  review_notes: string;
-  order: number;
+  color: string;
+  is_active: boolean;
+  position: number;
   created_at: string;
   updated_at: string;
 }
 
-export interface DeliverableSummary {
-  id: number;
-  nanoid: string;
-  project: string;
-  project_name: string | null;
-  deliverable_type: string | null;
-  title: string;
-  status: DeliverableStatus;
-  metadata: Record<string, unknown>;
-  due_date: string | null;
-  order: number;
-  created_at: string;
+export interface CreateProjectCategoryBody {
+  name: string;
+  key?: string;
+  description?: string;
+  color?: string;
+  is_active?: boolean;
+  position?: number;
+}
+
+export interface UpdateProjectCategoryBody {
+  name?: string;
+  key?: string;
+  description?: string;
+  color?: string;
+  is_active?: boolean;
+  position?: number;
 }
 
 export interface CreateProjectBody {
@@ -1300,48 +1328,30 @@ export interface UpdateProjectBody {
 /**
  * The fields a task PATCH accepts.
  *
- * There is no `project`: the backend derives a task's project from its
- * deliverable, so a task hangs off a project through the deliverable alone.
+ * A task belongs to a project directly via its `project` FK (and may have a
+ * parent task via `parent`).
  */
 export interface UpdateTaskBody {
   title?: string;
   description?: string;
-  deliverable?: string | null;
+  project?: string | null;
+  parent?: string | null;
   assignee?: string | null;
   status?: TaskStatus;
   priority?: TaskPriority;
   due_date?: string | null;
+  metadata?: Record<string, unknown>;
 }
 
 export interface CreateTaskBody {
   title: string;
   description?: string;
-  deliverable?: string | null;
+  project: string;
+  parent?: string | null;
   assignee?: string | null;
   status?: TaskStatus;
   priority?: TaskPriority;
   due_date?: string | null;
-}
-
-/** The fields a deliverable PATCH accepts. */
-export interface UpdateDeliverableBody {
-  title?: string;
-  description?: string;
-  deliverable_type?: string | null;
-  status?: DeliverableStatus;
-  due_date?: string | null;
-  assigned_to?: string | null;
-  metadata?: Record<string, unknown>;
-}
-
-export interface CreateDeliverableBody {
-  project: string;
-  title: string;
-  description?: string;
-  deliverable_type?: string | null;
-  status?: DeliverableStatus;
-  due_date?: string | null;
-  assigned_to?: string | null;
   metadata?: Record<string, unknown>;
 }
 
@@ -1359,8 +1369,7 @@ export interface MergeSuggestion {
 /**
  * A comment on any record, via the generic comments API.
  *
- * `target_type` is the backend's short model name — `project`,
- * `deliverable` or `task`.
+ * `target_type` is the backend's short model name — `project` or `task`.
  */
 export interface Comment {
   nanoid: string;

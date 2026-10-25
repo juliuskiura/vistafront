@@ -13,7 +13,7 @@ import { initialProjectActionState } from "../action-state";
 
 interface Props {
   /** The backend's short model name for the record being discussed. */
-  targetType: "project" | "deliverable" | "task";
+  targetType: "project" | "task";
   targetNanoid: string;
   comments: Comment[];
   workspaceDomain: string;
@@ -24,8 +24,8 @@ interface Props {
  * A comment thread on a record.
  *
  * Comments are a generic backend feature: the record is addressed by a
- * target type and a nanoid, so the same panel serves the task page and
- * the deliverable page.
+ * target type and a nanoid, so the same panel serves the project and the
+ * task page.
  */
 export function CommentsPanel({
   targetType,

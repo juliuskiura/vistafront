@@ -29,16 +29,25 @@ export {
 } from "./tasks";
 
 export {
-  approveDeliverable,
-  completeDeliverable,
-  createDeliverable,
-  deleteDeliverable,
-  getDeliverable,
-  listDeliverables,
-  mergeDeliverables,
-  publishDeliverable,
-  requestRevisions,
-  submitReview,
-  suggestDeliverableMerge,
-  updateDeliverable,
-} from "./deliverables";
+  listRequiredTools,
+  getRequiredTool,
+  createRequiredTool,
+  updateRequiredTool,
+  deleteRequiredTool,
+} from "./required-tools";
+
+export {
+  listActivityEvents,
+  getActivityEvent,
+  createActivityEvent,
+} from "./activity-events";
+
+export {
+  listProjectCategories,
+  getProjectCategory,
+  createProjectCategory,
+  updateProjectCategory,
+  deleteProjectCategory,
+} from "./project-categories";
+
+

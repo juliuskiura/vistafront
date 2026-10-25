@@ -12,10 +12,8 @@ import { unwrap } from "./shared";
 /**
  * The task endpoints.
  *
- * A task has no project of its own: the backend derives one from the
- * task's **deliverable**, so `?project=` filters on
- * `deliverable__project__nanoid` — a task with no deliverable belongs to
- * no project and appears in none of them.
+ * A task belongs to a project directly via its `project` FK, so
+ * `?project=` filters on `project__nanoid`.
  */
 
 export async function listTasks(
@@ -77,9 +75,7 @@ export async function deleteTask(
  * Mark a task as done.
  *
  * The backend has **no** `complete` action on the task viewset — only on
- * projects and deliverables — so completion is a plain status PATCH. The
- * viewset's `perform_update` then recomputes the parent deliverable, so a
- * task that finishes its deliverable publishes it.
+ * projects — so completion is a plain status PATCH.
  */
 export async function completeTask(
   nanoid: string,

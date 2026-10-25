@@ -8,7 +8,7 @@ import { TodayBoard } from "./today-board";
  *
  * The four-bucket "what needs my attention" summary. Backed by
  * `/apis/schedules/today/`. Every entry is a link into the workspace's
- * Projects / Deliverables detail page.
+ * Projects detail page.
  *
  * Pattern: server prefetches via `<LiveServerData>` and dehydrates the
  * TanStack Query cache; the `<TodayBoard>` Client island picks the same

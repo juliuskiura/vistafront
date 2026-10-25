@@ -115,6 +115,7 @@ export {
   deleteObservation,
   deleteTierClassification,
   getCompany,
+  getCompanyImportStatus,
   getCompanyStatusBreakdown,
   getContact,
   getDeal,
@@ -148,6 +149,7 @@ export {
   type BulkCompanyAction,
   type BulkCompanyResult,
   type ListCompaniesFilters,
+  type CompanyImportResult,
 } from "./crm";
 
 export { getDashboardWidgets, getNavigationSidebar } from "./dashboard";
@@ -174,32 +176,20 @@ export {
 export { getSchedule, getTodaySummary } from "./schedules";
 
 export {
-  approveDeliverable,
-  completeDeliverable,
   completeProject,
   completeTask,
-  createDeliverable,
   createProject,
   createTask,
-  deleteDeliverable,
   deleteProject,
   deleteTask,
-  getDeliverable,
   getProject,
   getTask,
   listAllProjects,
-  listDeliverables,
   listProjects,
   listTasks,
-  mergeDeliverables,
   mergeTasks,
   paginatedListProjects,
-  publishDeliverable,
-  requestRevisions,
-  submitReview,
-  suggestDeliverableMerge,
   suggestTaskMerge,
-  updateDeliverable,
   updateProject,
   updateTask,
 } from "./projectmanager";

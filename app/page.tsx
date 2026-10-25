@@ -33,7 +33,7 @@ const CAPABILITIES: Capability[] = [
   {
     featureKey: "projectmanager.projects",
     label: "Project Management",
-    description: "Kanban boards, tasks, and deliverables.",
+    description: "Kanban boards and tasks.",
   },
 ];
 

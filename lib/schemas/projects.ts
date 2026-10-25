@@ -34,18 +34,8 @@ export const ProjectPrioritySchema = z.enum([
 ]);
 export type ProjectPriorityInput = z.infer<typeof ProjectPrioritySchema>;
 
-export const TaskStatusSchema = z.enum(["todo", "in_progress", "done"]);
+export const TaskStatusSchema = z.enum(["todo", "in_progress", "review", "done"]);
 export type TaskStatusInput = z.infer<typeof TaskStatusSchema>;
-
-export const DeliverableStatusSchema = z.enum([
-  "draft",
-  "review",
-  "revisions",
-  "approved",
-  "published",
-  "cancelled",
-]);
-export type DeliverableStatusInput = z.infer<typeof DeliverableStatusSchema>;
 
 /**
  * A free-text field that may be left empty.
@@ -144,15 +134,15 @@ export type UpdateProjectStatusInput = z.infer<typeof UpdateProjectStatusSchema>
 /**
  * Creating a task.
  *
- * There is no `project` field: the backend derives a task's project from
- * its **deliverable** (`Task.project` is a read-only serializer method), so
- * a task belongs to a project only through the deliverable it hangs off.
+ * A task belongs to a project directly via its `project` FK (and may have a
+ * parent task via `parent`).
  */
 export const CreateTaskSchema = z.object({
   workspace_domain: z.string().min(1, "Missing workspace."),
   title: z.string().trim().min(1, "Title is required.").max(255),
   description: optionalLongText(),
-  deliverable: optionalText(),
+  project: z.string().min(1, "Project is required."),
+  parent: optionalText(),
   assignee: optionalText(),
   status: TaskStatusSchema.default("todo"),
   priority: ProjectPrioritySchema.default("medium"),
@@ -165,7 +155,8 @@ export const UpdateTaskSchema = z.object({
   nanoid: z.string().min(1, "Missing task."),
   title: z.string().trim().min(1, "Title is required.").max(255),
   description: optionalLongText(),
-  deliverable: optionalText(),
+  project: optionalText(),
+  parent: optionalText(),
   assignee: optionalText(),
   status: TaskStatusSchema.default("todo"),
   priority: ProjectPrioritySchema.default("medium"),
@@ -180,68 +171,6 @@ export const UpdateTaskStatusSchema = z.object({
   status: TaskStatusSchema,
 });
 export type UpdateTaskStatusInput = z.infer<typeof UpdateTaskStatusSchema>;
-
-/* ──────────────────────────────────────────────────────────────────────
- * Deliverable
- * ────────────────────────────────────────────────────────────────────── */
-
-/**
- * Creating a deliverable.
- *
- * `project` is a project nanoid, `deliverable_type` is a type **key**
- * (`blog_post`, …) and `assigned_to` is a user nanoid.
- */
-export const CreateDeliverableSchema = z.object({
-  workspace_domain: z.string().min(1, "Missing workspace."),
-  project: z.string().min(1, "Missing project."),
-  title: z.string().trim().min(1, "Title is required.").max(255),
-  description: optionalLongText(),
-  deliverable_type: optionalText(50),
-  status: DeliverableStatusSchema.default("draft"),
-  due_date: optionalDate,
-  assigned_to: optionalText(),
-});
-export type CreateDeliverableInput = z.infer<typeof CreateDeliverableSchema>;
-
-export const UpdateDeliverableSchema = z.object({
-  workspace_domain: z.string().min(1, "Missing workspace."),
-  nanoid: z.string().min(1, "Missing deliverable."),
-  title: z.string().trim().min(1, "Title is required.").max(255),
-  description: optionalLongText(),
-  deliverable_type: optionalText(50),
-  status: DeliverableStatusSchema.default("draft"),
-  due_date: optionalDate,
-  assigned_to: optionalText(),
-});
-export type UpdateDeliverableInput = z.infer<typeof UpdateDeliverableSchema>;
-
-/* ──────────────────────────────────────────────────────────────────────
- * Review workflow
- * ────────────────────────────────────────────────────────────────────── */
-
-/**
- * Approving a deliverable, or asking for revisions.
- *
- * Both write `review_notes` onto the deliverable. Notes are optional for an
- * approval (the legacy dialog allowed approving with an empty note) and
- * required for a revision request — the whole point of asking for
- * revisions is telling the author what to change.
- */
-export const ReviewSchema = z.object({
-  workspace_domain: z.string().min(1, "Missing workspace."),
-  nanoid: z.string().min(1, "Missing deliverable."),
-  review_notes: optionalLongText(5000),
-});
-export type ReviewInput = z.infer<typeof ReviewSchema>;
-
-export const RequestRevisionsSchema = ReviewSchema.extend({
-  review_notes: z
-    .string()
-    .trim()
-    .min(1, "Say what needs to change.")
-    .max(5000, "Must be 5000 characters or fewer."),
-});
-export type RequestRevisionsInput = z.infer<typeof RequestRevisionsSchema>;
 
 /* ──────────────────────────────────────────────────────────────────────
  * Merge
@@ -262,17 +191,6 @@ export const MergeTasksSchema = z.object({
 });
 export type MergeTasksInput = z.infer<typeof MergeTasksSchema>;
 
-export const MergeDeliverablesSchema = z.object({
-  workspace_domain: z.string().min(1, "Missing workspace."),
-  deliverable_ids: z
-    .array(z.string().min(1))
-    .min(2, "Select at least two deliverables."),
-  title: z.string().trim().min(1, "Title is required.").max(255),
-  description: optionalLongText(),
-  deliverable_type: optionalText(50),
-});
-export type MergeDeliverablesInput = z.infer<typeof MergeDeliverablesSchema>;
-
 /* ──────────────────────────────────────────────────────────────────────
  * Comments
  * ────────────────────────────────────────────────────────────────────── */
@@ -280,12 +198,12 @@ export type MergeDeliverablesInput = z.infer<typeof MergeDeliverablesSchema>;
 /**
  * A comment on a project manager record.
  *
- * `target_type` is the backend's short name for the model — `project`,
- * `deliverable` or `task` — not an app-qualified label.
+ * `target_type` is the backend's short name for the model — `project` or
+ * `task` — not an app-qualified label.
  */
 export const CreateCommentSchema = z.object({
   workspace_domain: z.string().min(1, "Missing workspace."),
-  target_type: z.enum(["project", "deliverable", "task"]),
+  target_type: z.enum(["project", "task"]),
   target_nanoid: z.string().min(1, "Missing record."),
   text: z.string().trim().min(1, "Write something first.").max(10000),
 });

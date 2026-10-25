@@ -40,7 +40,6 @@ const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const TYPE_COLORS: Record<string, string> = {
   task: "bg-blue-500",
-  deliverable: "bg-purple-500",
   project_deadline: "bg-red-500",
   activity: "bg-green-500",
   post: "bg-primary-500",
@@ -48,7 +47,6 @@ const TYPE_COLORS: Record<string, string> = {
 
 const DEFAULT_LEGEND = [
   { type: "task", label: "Tasks", color: "bg-blue-500" },
-  { type: "deliverable", label: "Deliverables", color: "bg-purple-500" },
   { type: "project_deadline", label: "Project deadlines", color: "bg-red-500" },
   { type: "activity", label: "Activities", color: "bg-green-500" },
   { type: "post", label: "Posts", color: "bg-primary-500" },
