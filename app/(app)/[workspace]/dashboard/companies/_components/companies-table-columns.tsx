@@ -22,6 +22,7 @@ export const SORTABLE_COLUMNS: Record<string, string> = {
   status: "status",
   verified: "verified",
   industry: "industry",
+  source: "source",
   contact_count: "contact_count",
   total_listings: "total_listings",
   tier: "tier",
@@ -33,6 +34,7 @@ export const TOGGLEABLE_COLUMNS: { id: string; label: string }[] = [
   { id: "status", label: "Status" },
   { id: "verified", label: "Verified" },
   { id: "industry", label: "Industry" },
+  { id: "source", label: "Source" },
   { id: "size", label: "Size" },
   { id: "domain", label: "Domain" },
   { id: "email", label: "Email" },
@@ -139,6 +141,14 @@ export function buildCompanyColumns(
     }),
     columnHelper.accessor("industry", {
       header: "Industry",
+      cell: (info) => (
+        <span className="text-muted-foreground">
+          {info.getValue() || "—"}
+        </span>
+      ),
+    }),
+    columnHelper.accessor("source", {
+      header: "Source",
       cell: (info) => (
         <span className="text-muted-foreground">
           {info.getValue() || "—"}

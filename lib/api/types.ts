@@ -705,6 +705,7 @@ export interface Company {
   domain?: string;
   industry?: string;
   size?: string;
+  source?: string;
   phone_numbers?: string[];
   social_links?: CompanySocialLink[];
   about?: string;
