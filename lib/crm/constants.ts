@@ -47,27 +47,27 @@ export const STATUS_COLORS: Record<ProspectStatus, string> = {
 };
 
 export const COMPANY_SIZES = [
-  "Solo",
-  "2-5",
-  "6-10",
-  "11-25",
-  "26-50",
+  "1-10",
+  "11-50",
   "51-200",
-  "201-1000",
-  "1000+",
+  "201-500",
+  "501-1000",
+  "1001-5000",
+  "5001-10000",
+  "10001+",
 ] as const;
 
 export type CompanySize = (typeof COMPANY_SIZES)[number];
 
 export const COMPANY_SIZE_LABELS: Record<CompanySize, string> = {
-  Solo: "Solo",
-  "2-5": "2-5 employees",
-  "6-10": "6-10 employees",
-  "11-25": "11-25 employees",
-  "26-50": "26-50 employees",
+  "1-10": "1-10 employees",
+  "11-50": "11-50 employees",
   "51-200": "51-200 employees",
-  "201-1000": "201-1000 employees",
-  "1000+": "1000+ employees",
+  "201-500": "201-500 employees",
+  "501-1000": "501-1,000 employees",
+  "1001-5000": "1,001-5,000 employees",
+  "5001-10000": "5,001-10,000 employees",
+  "10001+": "10,001+ employees",
 };
 
 /**
