@@ -226,7 +226,7 @@ export function OverviewTab({
 
       <Card className="rounded-xl border bg-card">
         <CardHeader>
-          <CardTitle>About</CardTitle>
+          <CardTitle className="text-lg font-semibold tracking-tight">About</CardTitle>
         </CardHeader>
         <CardContent>
           <AboutField
