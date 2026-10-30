@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Paperclip, Reply, Send, Star } from "@/lib/icons";
 import { formatMediumDate } from "@/lib/dates";
 import { EmailBodyFrame } from "./email-body-frame";
@@ -12,6 +13,7 @@ import type { Attachment, Email } from "@/lib/api/mailbox";
 
 interface EmailMessageProps {
   email: Email;
+  initiallyUnread?: boolean;
   attachments: Attachment[];
   folders: { nanoid: string; name: string }[];
   mailbox: string;
@@ -28,6 +30,7 @@ interface EmailMessageProps {
  */
 export function EmailMessage({
   email,
+  initiallyUnread = false,
   attachments,
   folders,
   mailbox,
@@ -35,6 +38,12 @@ export function EmailMessage({
   workspace,
 }: EmailMessageProps) {
   const [blockRemote, setBlockRemote] = useState(true);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!initiallyUnread) return;
+    router.refresh();
+  }, [initiallyUnread, router]);
   const stamp = email.received_at ?? email.sent_at ?? email.created_at;
   const hasHtml = Boolean(email.body_html);
 

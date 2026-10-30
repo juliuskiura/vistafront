@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { requireWorkspace } from "@/lib/auth/server";
 import { getEmail, listFolders, listMailboxes } from "@/lib/api/mailbox";
+import * as composeApi from "@/lib/api/mailbox-compose";
 import { EmailMessage } from "../../../_components/email-message";
 
 export default async function EmailDetailPage({
@@ -31,6 +32,18 @@ export default async function EmailDetailPage({
   const email = await getEmail(id, ws, mailbox).catch(() => null);
   if (!email) notFound();
 
+  // Opening a message for reading marks it read server-side (the backend has no
+  // implicit read-on-retrieve), so the unread badge and folder counts drop.
+  const initiallyUnread = !email.is_read;
+  if (initiallyUnread) {
+    try {
+      await composeApi.toggleRead(email.nanoid, ws);
+    } catch {
+      // Best-effort: a failed mark-read must not block reading the message.
+    }
+    email.is_read = true;
+  }
+
   return (
     <>
       <div className="shrink-0 border-b border-border px-4 py-2.5">
@@ -45,6 +58,7 @@ export default async function EmailDetailPage({
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
         <EmailMessage
           email={email}
+          initiallyUnread={initiallyUnread}
           attachments={email.attachments ?? []}
           folders={folders.map((f) => ({ nanoid: f.nanoid, name: f.name }))}
           mailbox={mailbox}
