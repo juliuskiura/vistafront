@@ -1,7 +1,10 @@
 import Link from "next/link";
-import { Lock, Sparkles } from "lucide-react";
+import { redirect } from "next/navigation";
+import { Lock, Sparkles } from "@/lib/icons";
 import { requireWorkspace } from "@/lib/auth/server";
 import { accessPageGoBackPath } from "@/lib/features/routes";
+import { getSubscriptionStateCached } from "@/lib/features/guard";
+import { canUseFeature } from "@/lib/features/derived";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -25,6 +28,20 @@ export default async function SubscriptionAccessPage({
   const isLocked = mode === "locked";
   const goBackPath = accessPageGoBackPath(feature);
   const goBackHref = `/${active.domain}${goBackPath}`;
+
+  // If the subscription has since been renewed/upgraded and the requested
+  // feature is now usable, send the user straight to it instead of leaving
+  // them on this stale access page (e.g. after paying and refreshing).
+  if (feature) {
+    try {
+      const state = await getSubscriptionStateCached(active.nanoid);
+      if (canUseFeature(state, feature)) {
+        redirect(goBackHref);
+      }
+    } catch {
+      // Fail closed: keep showing the access page.
+    }
+  }
 
   return (
     <main className="mx-auto flex min-h-[60vh] w-full max-w-lg flex-col items-center justify-center px-4">

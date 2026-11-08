@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ComponentType, type SVGProps } from "react";
-import { ChevronsLeft, ChevronsRight, Lock, Menu, X } from "lucide-react";
-import { ChatIcon, ShoppingCart } from "@/lib/icons";
+import { ChevronsLeft, ChevronsRight, Menu, X } from "lucide-react";
+import { ChatIcon, Lock, ShoppingCart } from "@/lib/icons";
 import { ChatWidget } from "@/components/workspace/chat-widget";
 
 import { Button } from "@/components/ui/button";
