@@ -2419,4 +2419,43 @@ export interface DragDropResult {
   target: string | null;
 }
 
+/** Mirror of regwakes/applications/models.py Application model. */
+export interface Application {
+  nanoid: string;
+  application_name: string;
+  description: string;
+  scopes: string[];
+  is_active: boolean;
+  key_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Mirror of regwakes/applications/models.py ApiKey model. */
+export interface ApiKey {
+  nanoid: string;
+  application: string;
+  application_name: string;
+  prefix: string;
+  last_used: string | null;
+  expires_at: string | null;
+  revoked_at: string | null;
+  created_at: string;
+}
+
+export interface CreateApplicationBody {
+  application_name: string;
+  description?: string;
+  scopes?: string[];
+  is_active?: boolean;
+}
+
+export interface CreateKeyBody {
+  expires_at?: string | null;
+}
+
+export interface KeyCreatedResult {
+  api_key: string;
+}
+
 

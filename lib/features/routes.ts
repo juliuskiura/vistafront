@@ -95,6 +95,7 @@ export const navLandingPaths: Partial<Record<string, string>> = {
   socialmanager: "/dashboard/socialmanager",
   account: "/dashboard/account",
   billing: "/dashboard/billing",
+  developer: "/dashboard/developer",
   // Console-admin-only nav ids (only visible to platform admins).
   companies: "/dashboard/companies",
   contacts: "/dashboard/contacts",

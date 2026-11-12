@@ -135,3 +135,20 @@ export {
   type UpdateTaskInput,
   type UpdateTaskStatusInput,
 } from "./projects";
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Developer console (applications & API keys)
+ *
+ * The validation contracts live in their own module — `applications.ts` — so
+ * the file stays readable. They are re-exported here so `@/lib/schemas`
+ * remains the single import path for every schema in the app.
+ * ────────────────────────────────────────────────────────────────────── */
+
+export {
+  CreateApplicationSchema,
+  CreateKeySchema,
+  RevokeKeySchema,
+  type CreateApplicationInput,
+  type CreateKeyInput,
+  type RevokeKeyInput,
+} from "./applications";
