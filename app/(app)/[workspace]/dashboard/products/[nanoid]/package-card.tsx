@@ -68,6 +68,22 @@ export function PackageCard({
         </ul>
       ) : null}
 
+      {Array.isArray(pkg.operation_boundaries) && pkg.operation_boundaries.length > 0 ? (
+        <div className="mt-4 space-y-1">
+          <p className="text-xs font-semibold uppercase text-muted-foreground">
+            Operating boundaries
+          </p>
+          <ul className="space-y-1 text-sm">
+            {pkg.operation_boundaries.map((b, i) => (
+              <li key={i} className="flex items-start gap-2">
+                <span className="mt-1 size-1.5 shrink-0 rounded-full bg-muted-foreground" />
+                <span>{String(b)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       <div className="mt-4">
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
