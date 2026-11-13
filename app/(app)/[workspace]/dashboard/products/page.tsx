@@ -1,9 +1,11 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
+
 import { Banner } from "@/components/banner";
-import { formatMediumDate } from "@/lib/dates";
 import { listProducts, type Product } from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
 import { getSubscriptionStateCached } from "@/lib/features/guard";
+import { formatMediumDate } from "@/lib/dates";
 
 export default async function ProductsPage({
   params,
@@ -16,8 +18,6 @@ export default async function ProductsPage({
 
   const { exempt } = await getSubscriptionStateCached(active.nanoid);
   if (!exempt) {
-    // Products are a console-admin surface; non-console workspaces get sent
-    // back to the dashboard rather than a dead link.
     redirect(`/${ws}/dashboard`);
   }
 
@@ -33,31 +33,27 @@ export default async function ProductsPage({
         {products.length === 0 ? (
           <p className="text-sm text-muted-foreground">No products found.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 text-left">
-                <tr>
-                  <th className="px-4 py-2 font-medium">Name</th>
-                  <th className="px-4 py-2 font-medium">Slug</th>
-                  <th className="px-4 py-2 font-medium">Description</th>
-                  <th className="px-4 py-2 font-medium">Created</th>
-                </tr>
-              </thead>
-              <tbody>
-                {products.map((product) => (
-                  <tr key={product.nanoid} className="border-t">
-                    <td className="px-4 py-2 font-medium">{product.name}</td>
-                    <td className="px-4 py-2 text-muted-foreground">
-                      {product.slug ?? "—"}
-                    </td>
-                    <td className="px-4 py-2">{product.description}</td>
-                    <td className="px-4 py-2 text-muted-foreground">
-                      {formatMediumDate(product.created_at)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {products.map((product) => (
+              <Link
+                key={product.nanoid}
+                href={`/${ws}/dashboard/products/${product.nanoid}`}
+                className="group rounded-lg border bg-card p-5 transition hover:shadow-md"
+              >
+                <h3 className="text-base font-semibold group-hover:text-primary">
+                  {product.name}
+                </h3>
+                {product.slug ? (
+                  <p className="mt-1 text-xs text-muted-foreground">{product.slug}</p>
+                ) : null}
+                <p className="mt-3 line-clamp-3 text-sm text-muted-foreground">
+                  {product.description}
+                </p>
+                <p className="mt-4 text-xs text-muted-foreground">
+                  Created {formatMediumDate(product.created_at)}
+                </p>
+              </Link>
+            ))}
           </div>
         )}
       </div>
