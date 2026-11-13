@@ -748,9 +748,54 @@ export interface PackageFeature {
   updated_at: string;
 }
 
+export interface FeatureGroup {
+  id: number;
+  nanoid: string;
+  package: string;
+  name: string;
+  slug: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UpdateProductBody {
+  name?: string;
+  description?: string;
+  slug?: string | null;
+}
+
+export interface CreateProductBody {
+  name: string;
+  description?: string;
+  slug?: string | null;
+}
+
+export interface CreateProductPackageBody {
+  product: string;
+  name: string;
+  period: string;
+  description?: string;
+  promise?: string | null;
+  international_price: number;
+  kenyan_price?: number | null;
+  popular?: boolean;
+  operation_boundaries?: string[] | null;
+  cta?: unknown;
+}
+
+export interface CreatePackageFeatureBody {
+  package: string;
+  name: string;
+  group?: string | null;
+  slug?: string | null;
+  basic_usd_value?: number | null;
+  kenyan_price_value?: number | null;
+}
+
 export interface UpdatePackageFeatureBody {
   name?: string;
   slug?: string | null;
+  group?: string | null;
   basic_usd_value?: number | null;
   kenyan_price_value?: number | null;
 }
@@ -764,6 +809,19 @@ export interface UpdateProductPackageBody {
   kenyan_price?: number | null;
   popular?: boolean;
   operation_boundaries?: string[] | null;
+  cta?: unknown;
+}
+
+export interface CreateFeatureGroupBody {
+  package: string;
+  name: string;
+  slug?: string | null;
+}
+
+export interface UpdateFeatureGroupBody {
+  name?: string;
+  slug?: string | null;
+  package?: string;
 }
 
 export interface ProductPricing {

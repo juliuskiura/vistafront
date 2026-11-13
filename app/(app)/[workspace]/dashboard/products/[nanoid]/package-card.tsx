@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { useActionState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -33,18 +33,24 @@ export function PackageCard({
   rawFeatures,
   workspace,
   product,
+  featureGroups,
 }: {
   pkg: ProductPricingPackage;
   raw: ProductPackage | null;
   rawFeatures: PackageFeature[];
   workspace: string;
   product: string;
+  featureGroups: { nanoid: string; name: string }[];
 }) {
   const [open, setOpen] = useState(false);
   const [state, formAction, pending] = useActionState(
     updatePackageAction,
     initialState,
   );
+
+  useEffect(() => {
+    if (state.status === "success") setOpen(false);
+  }, [state.status]);
 
   return (
     <div className="flex flex-col rounded-lg border bg-card p-6">
@@ -56,7 +62,7 @@ export function PackageCard({
       <h3 className="text-base font-semibold">{pkg.name}</h3>
       <p className="mt-1 text-2xl font-bold">{pkg.price}</p>
       {raw?.kenyan_price ? (
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="mt-1 text-lg font-semibold text-muted-foreground">
           Kenya: KSH {Number(raw.kenyan_price).toLocaleString()}
         </p>
       ) : (
@@ -91,6 +97,7 @@ export function PackageCard({
                   raw={rawFeature}
                   workspace={workspace}
                   product={product}
+                  featureGroups={featureGroups}
                 />
               </li>
             );
@@ -121,7 +128,7 @@ export function PackageCard({
               Edit Package
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogContent className="max-h-[85vh] overflow-y-auto" onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
             <DialogHeader>
               <DialogTitle>Edit package</DialogTitle>
               <DialogDescription>
@@ -199,7 +206,11 @@ export function PackageCard({
                     name="kenyan_price"
                     type="number"
                     step="0.01"
-                    defaultValue={raw?.kenyan_price ? Number(raw.kenyan_price) : ""}
+                    defaultValue={
+                      raw?.kenyan_price != null && raw.kenyan_price !== ""
+                        ? Number(raw.kenyan_price)
+                        : ""
+                    }
                   />
                 </div>
               </div>
@@ -242,6 +253,9 @@ export function PackageCard({
               ) : null}
 
               <DialogFooter>
+                <Button type="button" variant="destructive" onClick={() => setOpen(false)}>
+                  Cancel
+                </Button>
                 <Button type="submit" disabled={pending}>
                   {pending ? "Saving..." : "Save changes"}
                 </Button>
@@ -261,17 +275,23 @@ function FeatureEditDialog({
   raw,
   workspace,
   product,
+  featureGroups,
 }: {
   feature: { nanoid: string; name: string };
   raw: PackageFeature | null;
   workspace: string;
   product: string;
+  featureGroups: { nanoid: string; name: string }[];
 }) {
   const [open, setOpen] = useState(false);
   const [state, formAction, pending] = useActionState(
     updateFeatureAction,
     initialFeatureState,
   );
+
+  useEffect(() => {
+    if (state.status === "success") setOpen(false);
+  }, [state.status]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -284,7 +304,7 @@ function FeatureEditDialog({
           <Pencil className="size-4" />
         </button>
       </DialogTrigger>
-      <DialogContent className="max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-h-[85vh] overflow-y-auto" onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Edit feature</DialogTitle>
           <DialogDescription>Modify the feature text or settings.</DialogDescription>
@@ -307,6 +327,23 @@ function FeatureEditDialog({
                 {state.fieldErrors.name.join(" ")}
               </p>
             ) : null}
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor={`group-${feature.nanoid}`}>Feature group</Label>
+            <select
+              id={`group-${feature.nanoid}`}
+              name="group"
+              defaultValue={raw?.group ?? ""}
+              className="flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm"
+            >
+              <option value="">No group</option>
+              {featureGroups.map((g) => (
+                <option key={g.nanoid} value={g.nanoid}>
+                  {g.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -344,6 +381,9 @@ function FeatureEditDialog({
           ) : null}
 
           <DialogFooter>
+            <Button type="button" variant="destructive" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
             <Button type="submit" disabled={pending}>
               {pending ? "Saving..." : "Save changes"}
             </Button>

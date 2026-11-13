@@ -1,10 +1,13 @@
 import { notFound, redirect } from "next/navigation";
 
 import { Banner } from "@/components/banner";
-import { getPackageFeature, getProductDetail, getProductPackage, type PackageFeature, type ProductPackage, type ProductPricing } from "@/lib/api";
+import { WorkspaceInnerNav } from "@/components/workspace/workspace-inner-nav";
+import { getPackageFeature, getProductDetail, getProductPackage, listFeatureGroups, type FeatureGroup, type PackageFeature, type ProductPackage, type ProductPricing } from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
 import { getSubscriptionStateCached } from "@/lib/features/guard";
 import { PackageCard } from "./package-card";
+import { ProductActions } from "./product-actions";
+import { Package } from "@/lib/icons";
 
 export default async function ProductDetailPage({
   params,
@@ -42,11 +45,38 @@ export default async function ProductDetailPage({
     ),
   );
 
+  const featureGroupsByPackage = await Promise.all(
+    product.packages.map((pkg) =>
+      listFeatureGroups(pkg.nanoid, ws).catch(() => [] as FeatureGroup[]),
+    ),
+  );
+  const allFeatureGroups = featureGroupsByPackage.flat();
+
   return (
     <div className="flex min-h-full flex-col">
       <Banner
         title={product.name}
         description={product.description}
+      />
+
+      <WorkspaceInnerNav
+        basePath={`/${ws}/dashboard/products`}
+        brandLabel="Products"
+        brandIcon={Package}
+        hideBrand
+        trailing={
+          <ProductActions
+            product={product.nanoid}
+            workspace={ws}
+            productName={product.name}
+            productDescription={product.description}
+            packages={product.packages.map((pkg) => ({
+              nanoid: pkg.nanoid,
+              name: pkg.name,
+            }))}
+            featureGroups={allFeatureGroups}
+          />
+        }
       />
 
       <div className="mt-6 flex-1 space-y-8">
@@ -78,6 +108,7 @@ export default async function ProductDetailPage({
                   )}
                   workspace={ws}
                   product={product.nanoid}
+                  featureGroups={allFeatureGroups.filter((g) => g.package === pkg.nanoid)}
                 />
               ))}
             </div>
