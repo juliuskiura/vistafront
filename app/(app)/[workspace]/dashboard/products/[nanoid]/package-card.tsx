@@ -91,7 +91,7 @@ export function PackageCard({
               Edit Package
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit package</DialogTitle>
               <DialogDescription>
