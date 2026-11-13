@@ -22,6 +22,7 @@ export const UpdatePackageSchema = z.object({
     .union([z.literal("on"), z.literal("true"), z.literal("false"), z.null()])
     .optional()
     .transform((v) => v === "on" || v === "true"),
+  operation_boundaries: z.string().optional().default(""),
 });
 
 export type UpdatePackageInput = z.infer<typeof UpdatePackageSchema>;
@@ -55,6 +56,12 @@ export async function updatePackageAction(
         international_price: body.international_price,
         kenyan_price: body.kenyan_price,
         popular: body.popular,
+        operation_boundaries: body.operation_boundaries
+          ? body.operation_boundaries
+              .split("\n")
+              .map((line) => line.trim())
+              .filter(Boolean)
+          : undefined,
       },
       workspace,
     );

@@ -743,6 +743,7 @@ export interface UpdateProductPackageBody {
   international_price?: number;
   kenyan_price?: number | null;
   popular?: boolean;
+  operation_boundaries?: string[] | null;
 }
 
 export interface ProductPricing {

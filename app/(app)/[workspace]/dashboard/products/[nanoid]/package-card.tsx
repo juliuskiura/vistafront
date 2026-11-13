@@ -185,6 +185,25 @@ export function PackageCard({
                 <Label htmlFor={`popular-${pkg.nanoid}`}>Popular</Label>
               </div>
 
+              {Array.isArray(pkg.operation_boundaries) &&
+              pkg.operation_boundaries.length > 0 ? (
+                <div className="space-y-1">
+                  <Label htmlFor={`boundaries-${pkg.nanoid}`}>
+                    Operational boundaries
+                  </Label>
+                  <Textarea
+                    id={`boundaries-${pkg.nanoid}`}
+                    name="operation_boundaries"
+                    defaultValue={pkg.operation_boundaries
+                      .map((b) => String(b))
+                      .join("\n")}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    One boundary per line.
+                  </p>
+                </div>
+              ) : null}
+
               {state.status === "error" && state.message ? (
                 <p className="text-xs text-red-600">{state.message}</p>
               ) : null}
