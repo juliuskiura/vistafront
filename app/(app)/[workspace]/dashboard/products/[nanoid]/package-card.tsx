@@ -55,6 +55,11 @@ export function PackageCard({
       ) : null}
       <h3 className="text-base font-semibold">{pkg.name}</h3>
       <p className="mt-1 text-2xl font-bold">{pkg.price}</p>
+      {raw?.kenyan_price ? (
+        <p className="mt-1 text-xs text-muted-foreground">
+          Kenya: KSH {Number(raw.kenyan_price).toLocaleString()}
+        </p>
+      ) : null}
       <p className="mt-1 text-xs text-muted-foreground">{pkg.period}</p>
       {pkg.description ? (
         <p className="mt-3 text-sm text-muted-foreground">{pkg.description}</p>
