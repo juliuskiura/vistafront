@@ -14,24 +14,29 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Pencil } from "@/lib/icons";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  updateFeatureAction,
   updatePackageAction,
+  type FeatureActionState,
   type PackageActionState,
 } from "./actions";
-import type { ProductPackage, ProductPricingPackage } from "@/lib/api";
+import type { PackageFeature, ProductPackage, ProductPricingPackage } from "@/lib/api";
 
 const initialState: PackageActionState = { status: "idle" };
 
 export function PackageCard({
   pkg,
   raw,
+  rawFeatures,
   workspace,
   product,
 }: {
   pkg: ProductPricingPackage;
   raw: ProductPackage | null;
+  rawFeatures: PackageFeature[];
   workspace: string;
   product: string;
 }) {
@@ -59,12 +64,27 @@ export function PackageCard({
       ) : null}
       {Array.isArray(pkg.features) && pkg.features.length > 0 ? (
         <ul className="mt-4 space-y-1 text-sm">
-          {pkg.features.map((feature) => (
-            <li key={feature.nanoid} className="flex items-start gap-2">
-              <span className="mt-1 size-1.5 shrink-0 rounded-full bg-primary" />
-              <span>{feature.name}</span>
-            </li>
-          ))}
+          {pkg.features.map((feature) => {
+            const rawFeature =
+              rawFeatures.find((f) => f.nanoid === feature.nanoid) ?? null;
+            return (
+              <li
+                key={feature.nanoid}
+                className="flex items-start justify-between gap-2"
+              >
+                <span className="flex items-start gap-2">
+                  <span className="mt-1 size-1.5 shrink-0 rounded-full bg-primary" />
+                  <span>{feature.name}</span>
+                </span>
+                <FeatureEditDialog
+                  feature={feature}
+                  raw={rawFeature}
+                  workspace={workspace}
+                  product={product}
+                />
+              </li>
+            );
+          })}
         </ul>
       ) : null}
 
@@ -221,5 +241,105 @@ export function PackageCard({
         </Dialog>
       </div>
     </div>
+  );
+}
+
+const initialFeatureState: FeatureActionState = { status: "idle" };
+
+function FeatureEditDialog({
+  feature,
+  raw,
+  workspace,
+  product,
+}: {
+  feature: { nanoid: string; name: string };
+  raw: PackageFeature | null;
+  workspace: string;
+  product: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [state, formAction, pending] = useActionState(
+    updateFeatureAction,
+    initialFeatureState,
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <button
+          type="button"
+          className="text-muted-foreground hover:text-foreground"
+          aria-label="Edit feature"
+        >
+          <Pencil className="size-4" />
+        </button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Edit feature</DialogTitle>
+          <DialogDescription>Modify the feature text or settings.</DialogDescription>
+        </DialogHeader>
+        <form action={formAction} className="space-y-3">
+          <input type="hidden" name="nanoid" value={feature.nanoid} />
+          <input type="hidden" name="workspace" value={workspace} />
+          <input type="hidden" name="product" value={product} />
+
+          <div className="space-y-1">
+            <Label htmlFor={`feature-name-${feature.nanoid}`}>Feature text</Label>
+            <Input
+              id={`feature-name-${feature.nanoid}`}
+              name="name"
+              defaultValue={raw?.name ?? feature.name}
+              required
+            />
+            {state.fieldErrors?.name ? (
+              <p className="text-xs text-red-600">
+                {state.fieldErrors.name.join(" ")}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor={`basic-${feature.nanoid}`}>Basic USD value</Label>
+              <Input
+                id={`basic-${feature.nanoid}`}
+                name="basic_usd_value"
+                type="number"
+                step="0.01"
+                defaultValue={
+                  raw?.basic_usd_value ? Number(raw.basic_usd_value) : ""
+                }
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor={`kenyan-${feature.nanoid}`}>Kenyan price value</Label>
+              <Input
+                id={`kenyan-${feature.nanoid}`}
+                name="kenyan_price_value"
+                type="number"
+                step="0.01"
+                defaultValue={
+                  raw?.kenyan_price_value ? Number(raw.kenyan_price_value) : ""
+                }
+              />
+            </div>
+          </div>
+
+          {state.status === "error" && state.message ? (
+            <p className="text-xs text-red-600">{state.message}</p>
+          ) : null}
+          {state.status === "success" && state.message ? (
+            <p className="text-xs text-green-600">{state.message}</p>
+          ) : null}
+
+          <DialogFooter>
+            <Button type="submit" disabled={pending}>
+              {pending ? "Saving..." : "Save changes"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

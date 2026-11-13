@@ -174,7 +174,7 @@ export {
 } from "./notebook";
 
 export { getSchedule, getTodaySummary } from "./schedules";
-export { getProductDetail, getProductPackage, listProducts, updateProductPackage } from "./products";
+export { getPackageFeature, getProductDetail, getProductPackage, listProducts, updatePackageFeature, updateProductPackage } from "./products";
 
 export {
   completeProject,

@@ -735,6 +735,26 @@ export interface ProductPackage {
   updated_at: string;
 }
 
+export interface PackageFeature {
+  id: number;
+  nanoid: string;
+  package: string;
+  group: string | null;
+  name: string;
+  slug: string | null;
+  basic_usd_value: string | null;
+  kenyan_price_value: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UpdatePackageFeatureBody {
+  name?: string;
+  slug?: string | null;
+  basic_usd_value?: number | null;
+  kenyan_price_value?: number | null;
+}
+
 export interface UpdateProductPackageBody {
   name?: string;
   description?: string;

@@ -77,3 +77,60 @@ export async function updatePackageAction(
   revalidatePath(`/${workspace}/dashboard/products`, "page");
   return { status: "success", message: "Package updated." };
 }
+
+import { updatePackageFeature } from "@/lib/api";
+
+export const UpdateFeatureSchema = z.object({
+  nanoid: z.string().min(1, "Missing feature."),
+  workspace: z.string().min(1, "Missing workspace."),
+  product: z.string().min(1, "Missing product."),
+  name: z.string().min(1, "Name is required.").max(200),
+  basic_usd_value: z
+    .union([z.coerce.number().min(0), z.literal("")])
+    .optional()
+    .transform((v) => (v === "" ? null : v)),
+  kenyan_price_value: z
+    .union([z.coerce.number().min(0), z.literal("")])
+    .optional()
+    .transform((v) => (v === "" ? null : v)),
+});
+
+export type FeatureActionState = {
+  status: "idle" | "success" | "error";
+  message?: string;
+  fieldErrors?: Record<string, string[]>;
+};
+
+export async function updateFeatureAction(
+  _prev: FeatureActionState,
+  formData: FormData,
+): Promise<FeatureActionState> {
+  const parsed = UpdateFeatureSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) {
+    const { fieldErrors } = flattenError(parsed.error);
+    return { status: "error", message: "Please fix the highlighted fields.", fieldErrors };
+  }
+
+  const { nanoid, workspace, product, ...body } = parsed.data;
+
+  try {
+    await updatePackageFeature(
+      nanoid,
+      {
+        name: body.name,
+        basic_usd_value: body.basic_usd_value,
+        kenyan_price_value: body.kenyan_price_value,
+      },
+      workspace,
+    );
+  } catch (error) {
+    console.error("updateFeatureAction failed:", error);
+    return {
+      status: "error",
+      message: "We could not update the feature. Please try again.",
+    };
+  }
+
+  revalidatePath(`/${workspace}/dashboard/products/${product}`, "page");
+  return { status: "success", message: "Feature updated." };
+}

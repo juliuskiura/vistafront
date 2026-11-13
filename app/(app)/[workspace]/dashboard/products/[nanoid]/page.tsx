@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 
 import { Banner } from "@/components/banner";
-import { getProductDetail, getProductPackage, type ProductPackage, type ProductPricing } from "@/lib/api";
+import { getPackageFeature, getProductDetail, getProductPackage, type PackageFeature, type ProductPackage, type ProductPricing } from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
 import { getSubscriptionStateCached } from "@/lib/features/guard";
 import { PackageCard } from "./package-card";
@@ -30,6 +30,15 @@ export default async function ProductDetailPage({
   const rawPackages = await Promise.all(
     product.packages.map((pkg) =>
       getProductPackage(pkg.nanoid, ws).catch(() => null as ProductPackage | null),
+    ),
+  );
+
+  const featureNanoids = product.packages.flatMap((pkg) =>
+    (pkg.features ?? []).map((f) => f.nanoid),
+  );
+  const rawFeatures = await Promise.all(
+    featureNanoids.map((nanoid) =>
+      getPackageFeature(nanoid, ws).catch(() => null as PackageFeature | null),
     ),
   );
 
@@ -64,6 +73,9 @@ export default async function ProductDetailPage({
                   key={pkg.nanoid}
                   pkg={pkg}
                   raw={rawPackages[index]}
+                  rawFeatures={rawFeatures.filter(
+                    (f): f is PackageFeature => f !== null,
+                  )}
                   workspace={ws}
                   product={product.nanoid}
                 />

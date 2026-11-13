@@ -1,5 +1,5 @@
 import { serverFetch, serverMutate } from "./server-fetch";
-import type { Paginated, Product, ProductPackage, ProductPricing, ProductPricingPackage, UpdateProductPackageBody } from "./types";
+import type { Paginated, PackageFeature, Product, ProductPackage, ProductPricing, ProductPricingPackage, UpdatePackageFeatureBody, UpdateProductPackageBody } from "./types";
 
 /**
  * Products are global (not tenant-scoped in the queryset), but the endpoint
@@ -48,4 +48,20 @@ export async function updateProductPackage(
 
 export async function getProductPackage(nanoid: string, workspace: string): Promise<ProductPackage> {
   return serverFetch<ProductPackage>(`/apis/products/product-packages/${nanoid}/`, { workspace });
+}
+
+
+export async function getPackageFeature(nanoid: string, workspace: string): Promise<PackageFeature> {
+  return serverFetch<PackageFeature>(`/apis/products/package-features/${nanoid}/`, { workspace });
+}
+
+export async function updatePackageFeature(
+  nanoid: string,
+  body: UpdatePackageFeatureBody,
+  workspace: string,
+): Promise<PackageFeature> {
+  return serverMutate<PackageFeature>(
+    `/apis/products/package-features/${nanoid}/`,
+    { method: "PATCH", body, workspace },
+  );
 }
