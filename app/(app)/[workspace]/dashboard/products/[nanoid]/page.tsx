@@ -1,9 +1,10 @@
 import { notFound, redirect } from "next/navigation";
 
 import { Banner } from "@/components/banner";
-import { getProductDetail, type ProductPricing } from "@/lib/api";
+import { getProductDetail, getProductPackage, type ProductPackage, type ProductPricing } from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
 import { getSubscriptionStateCached } from "@/lib/features/guard";
+import { PackageCard } from "./package-card";
 
 export default async function ProductDetailPage({
   params,
@@ -25,6 +26,12 @@ export default async function ProductDetailPage({
   if (!product) {
     notFound();
   }
+
+  const rawPackages = await Promise.all(
+    product.packages.map((pkg) =>
+      getProductPackage(pkg.nanoid, ws).catch(() => null as ProductPackage | null),
+    ),
+  );
 
   return (
     <div className="flex min-h-full flex-col">
@@ -52,40 +59,14 @@ export default async function ProductDetailPage({
             </p>
           ) : (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {product.packages.map((pkg) => (
-                <div
+              {product.packages.map((pkg, index) => (
+                <PackageCard
                   key={pkg.nanoid}
-                  className="flex flex-col rounded-lg border bg-card p-6"
-                >
-                  {pkg.popular ? (
-                    <span className="mb-2 w-fit rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                      Popular
-                    </span>
-                  ) : null}
-                  <h3 className="text-base font-semibold">{pkg.name}</h3>
-                  <p className="mt-1 text-2xl font-bold">{pkg.price}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {pkg.period}
-                  </p>
-                  {pkg.description ? (
-                    <p className="mt-3 text-sm text-muted-foreground">
-                      {pkg.description}
-                    </p>
-                  ) : null}
-                  {pkg.promise ? (
-                    <p className="mt-2 text-sm">{String(pkg.promise)}</p>
-                  ) : null}
-                  {Array.isArray(pkg.features) && pkg.features.length > 0 ? (
-                    <ul className="mt-4 space-y-1 text-sm">
-                      {pkg.features.map((feature) => (
-                        <li key={feature.nanoid} className="flex items-start gap-2">
-                          <span className="mt-1 size-1.5 shrink-0 rounded-full bg-primary" />
-                          <span>{feature.name}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
-                </div>
+                  pkg={pkg}
+                  raw={rawPackages[index]}
+                  workspace={ws}
+                  product={product.nanoid}
+                />
               ))}
             </div>
           )}

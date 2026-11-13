@@ -699,6 +699,61 @@ export interface CompanySocialLink {
   is_primary?: boolean;
 }
 
+export interface ProductPricingFeature {
+  nanoid: string;
+  name: string;
+}
+
+export interface ProductPricingPackage {
+  nanoid: string;
+  period: string;
+  name: string;
+  description: string;
+  promise?: string | null;
+  cta?: unknown;
+  operation_boundaries?: unknown;
+  popular: boolean;
+  features: ProductPricingFeature[];
+  order?: number;
+  price: string;
+}
+
+export interface ProductPackage {
+  id: number;
+  nanoid: string;
+  product: string;
+  period: string;
+  name: string;
+  description: string;
+  promise: string | null;
+  operation_boundaries: unknown;
+  international_price: string;
+  kenyan_price: string | null;
+  cta: unknown;
+  popular: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UpdateProductPackageBody {
+  name?: string;
+  description?: string;
+  promise?: string | null;
+  period?: string;
+  international_price?: number;
+  kenyan_price?: number | null;
+  popular?: boolean;
+}
+
+export interface ProductPricing {
+  name: string;
+  description: string;
+  slug: string | null;
+  nanoid: string;
+  packages: ProductPricingPackage[];
+  product_type: string;
+}
+
 export interface Product {
   id: number;
   nanoid: string;
