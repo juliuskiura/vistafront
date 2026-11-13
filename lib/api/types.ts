@@ -699,6 +699,16 @@ export interface CompanySocialLink {
   is_primary?: boolean;
 }
 
+export interface Product {
+  id: number;
+  nanoid: string;
+  slug: string | null;
+  name: string;
+  description: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Company {
   nanoid: string;
   name: string;
