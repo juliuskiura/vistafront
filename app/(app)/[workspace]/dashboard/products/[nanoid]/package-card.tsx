@@ -14,7 +14,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Pencil } from "@/lib/icons";
+import { Pencil, XCircle } from "@/lib/icons";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -59,7 +59,12 @@ export function PackageCard({
         <p className="mt-1 text-xs text-muted-foreground">
           Kenya: KSH {Number(raw.kenyan_price).toLocaleString()}
         </p>
-      ) : null}
+      ) : (
+        <p className="mt-1 flex items-center gap-1 text-xs text-red-600">
+          <XCircle className="size-3.5" />
+          Kenyan price missing
+        </p>
+      )}
       <p className="mt-1 text-xs text-muted-foreground">{pkg.period}</p>
       {pkg.description ? (
         <p className="mt-3 text-sm text-muted-foreground">{pkg.description}</p>
