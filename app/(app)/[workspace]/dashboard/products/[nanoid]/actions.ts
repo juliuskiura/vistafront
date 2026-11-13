@@ -62,7 +62,7 @@ function parseBackendError(error: unknown, fallback: string): ActionState {
 
 /* ---------------- Package update ---------------- */
 
-export const UpdatePackageSchema = z.object({
+const UpdatePackageSchema = z.object({
   nanoid: z.string().min(1, "Missing package."),
   product: z.string().min(1, "Missing product."),
   workspace: z.string().min(1, "Missing workspace."),
@@ -82,7 +82,7 @@ export const UpdatePackageSchema = z.object({
   operation_boundaries: z.string().optional().default(""),
 });
 
-export type UpdatePackageInput = z.infer<typeof UpdatePackageSchema>;
+ type UpdatePackageInput = z.infer<typeof UpdatePackageSchema>;
 
 export type PackageActionState = ActionState;
 
@@ -130,7 +130,7 @@ export async function updatePackageAction(
 
 /* ---------------- Feature update ---------------- */
 
-export const UpdateFeatureSchema = z.object({
+const UpdateFeatureSchema = z.object({
   nanoid: z.string().min(1, "Missing feature."),
   workspace: z.string().min(1, "Missing workspace."),
   product: z.string().min(1, "Missing product."),
@@ -149,7 +149,7 @@ export const UpdateFeatureSchema = z.object({
     .transform((v) => (v === "" ? null : v)),
 });
 
-export type UpdateFeatureInput = z.infer<typeof UpdateFeatureSchema>;
+ type UpdateFeatureInput = z.infer<typeof UpdateFeatureSchema>;
 
 export type FeatureActionState = ActionState;
 
@@ -187,7 +187,7 @@ export async function updateFeatureAction(
 
 /* ---------------- Product update/create ---------------- */
 
-export const UpdateProductSchema = z.object({
+const UpdateProductSchema = z.object({
   nanoid: z.string().min(1),
   workspace: z.string().min(1),
   name: z.string().min(1, "Name is required.").max(100),
@@ -224,7 +224,7 @@ export async function updateProductAction(
   return { status: "success", message: "Product updated." };
 }
 
-export const CreateProductSchema = z.object({
+const CreateProductSchema = z.object({
   workspace: z.string().min(1),
   name: z.string().min(1, "Name is required.").max(100),
   description: z.string().max(5000).default(""),
@@ -258,7 +258,7 @@ export async function createProductAction(
 
 /* ---------------- Package create ---------------- */
 
-export const CreatePackageSchema = z.object({
+const CreatePackageSchema = z.object({
   workspace: z.string().min(1),
   product: z.string().min(1),
   name: z.string().min(1, "Name is required.").max(100),
@@ -319,7 +319,7 @@ export async function createPackageAction(
 
 /* ---------------- Feature create ---------------- */
 
-export const CreateFeatureSchema = z.object({
+const CreateFeatureSchema = z.object({
   workspace: z.string().min(1),
   package: z.string().min(1),
   product: z.string().min(1),
@@ -371,7 +371,7 @@ export async function createFeatureAction(
 
 /* ---------------- Feature group create/update ---------------- */
 
-export const CreateFeatureGroupSchema = z.object({
+const CreateFeatureGroupSchema = z.object({
   workspace: z.string().min(1),
   package: z.string().min(1),
   product: z.string().min(1),
@@ -400,7 +400,7 @@ export async function createFeatureGroupAction(
   return { status: "success", message: "Feature group created." };
 }
 
-export const UpdateFeatureGroupSchema = z.object({
+const UpdateFeatureGroupSchema = z.object({
   nanoid: z.string().min(1, "Missing group."),
   workspace: z.string().min(1, "Missing workspace."),
   product: z.string().min(1, "Missing product."),
