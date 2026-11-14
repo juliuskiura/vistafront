@@ -119,7 +119,7 @@ export async function listPackageFeatures(workspace: string): Promise<PackageFea
 export async function movePackageFeatureLink(
   packageNanoid: string,
   featureNanoid: string,
-  direction: "up" | "down",
+  direction: "up" | "down" | "top" | "bottom",
   workspace: string,
 ): Promise<void> {
   await serverMutate(

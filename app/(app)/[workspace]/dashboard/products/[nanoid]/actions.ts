@@ -519,7 +519,7 @@ const MoveFeatureInPackageSchema = z.object({
   package: z.string().min(1, "Missing package."),
   product: z.string().min(1, "Missing product."),
   workspace: z.string().min(1, "Missing workspace."),
-  direction: z.enum(["up", "down"]),
+  direction: z.enum(["up", "down", "top", "bottom"]),
 });
 
 export async function moveFeatureInPackageAction(formData: FormData): Promise<void> {

@@ -16,7 +16,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -55,6 +54,19 @@ export function PackageFeatureRow({
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, startDelete] = useTransition();
+  const [moving, startMove] = useTransition();
+
+  function handleMove(direction: "up" | "down" | "top" | "bottom") {
+    const formData = new FormData();
+    formData.set("nanoid", feature.nanoid);
+    formData.set("package", packageNanoid);
+    formData.set("product", product);
+    formData.set("workspace", workspace);
+    formData.set("direction", direction);
+    startMove(async () => {
+      await moveFeatureInPackageAction(formData);
+    });
+  }
 
   function handleDelete() {
     const formData = new FormData();
@@ -120,16 +132,32 @@ export function PackageFeatureRow({
               <MoreVertical className="size-4" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-32">
-            <DropdownMenuItem onSelect={() => setEditOpen(true)}>
+          <DropdownMenuContent align="end" className="w-36 p-1">
+            <DropdownMenuItem
+              className="py-1 text-xs"
+              onSelect={() => setEditOpen(true)}
+            >
               Edit
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
             <DropdownMenuItem
+              className="py-1 text-xs text-destructive focus:text-destructive"
               onSelect={() => setDeleteOpen(true)}
-              className="text-destructive focus:text-destructive"
             >
               Delete
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="py-1 text-xs"
+              disabled={isFirst || moving}
+              onSelect={() => handleMove("up")}
+            >
+              Move up
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="py-1 text-xs"
+              disabled={isLast || moving}
+              onSelect={() => handleMove("down")}
+            >
+              Move down
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
