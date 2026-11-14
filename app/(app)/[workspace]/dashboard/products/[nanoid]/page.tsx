@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { Banner } from "@/components/banner";
 import { WorkspaceInnerNav } from "@/components/workspace/workspace-inner-nav";
-import { getPackageFeature, getProductDetail, getProductPackage, listFeatureGroups, type FeatureGroup, type PackageFeature, type ProductPackage, type ProductPricing } from "@/lib/api";
+import { getPackageFeature, getProductDetail, getProductPackage, listFeatureGroups, listPackageFeatures, type FeatureGroup, type PackageFeature, type ProductPackage, type ProductPricing } from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
 import { getSubscriptionStateCached } from "@/lib/features/guard";
 import { PackageCard } from "./package-card";
@@ -51,6 +51,7 @@ export default async function ProductDetailPage({
     ),
   );
   const allFeatureGroups = featureGroupsByPackage.flat();
+  const allPackageFeatures = await listPackageFeatures(ws).catch(() => [] as PackageFeature[]);
 
   return (
     <div className="flex min-h-full flex-col">
@@ -108,6 +109,7 @@ export default async function ProductDetailPage({
                   )}
                   workspace={ws}
                   product={product.nanoid}
+                  allFeatures={allPackageFeatures}
                   featureGroups={allFeatureGroups.filter((g) => g.package === pkg.nanoid)}
                 />
               ))}

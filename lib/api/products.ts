@@ -95,6 +95,27 @@ export async function createPackageFeature(
 
 
 
+
+export async function listPackageFeatures(workspace: string): Promise<PackageFeature[]> {
+  const all: PackageFeature[] = [];
+  let page = 1;
+  const MAX_PAGES = 1000;
+  while (page <= MAX_PAGES) {
+    const payload = await serverFetch<PackageFeature[] | Paginated<PackageFeature>>(
+      `/apis/products/package-features/?page=${page}&page_size=100`,
+      { workspace },
+    );
+    if (Array.isArray(payload)) {
+      all.push(...payload);
+      break;
+    }
+    all.push(...(payload?.results ?? []));
+    if (!payload?.next) break;
+    page += 1;
+  }
+  return all;
+}
+
 export async function listFeatureGroups(packageNanoid: string, workspace: string): Promise<FeatureGroup[]> {
   const all: FeatureGroup[] = [];
   let page = 1;

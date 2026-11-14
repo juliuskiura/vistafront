@@ -76,7 +76,8 @@ export function ProductActions({
 
   const [selectedPackage, setSelectedPackage] = useState(packages[0]?.nanoid ?? "");
 
-  const groupsForPackage = featureGroups.filter((g) => g.package === selectedPackage);
+  const selectedPackages = selectedPackage.split(",").filter(Boolean);
+  const groupsForPackage = featureGroups.filter((g) => selectedPackages.includes(g.package));
 
 
   useEffect(() => {
@@ -343,13 +344,18 @@ export function ProductActions({
             <input type="hidden" name="workspace" value={workspace} />
             <input type="hidden" name="product" value={product} />
             <div className="space-y-1">
-              <Label htmlFor="add-feature-package">Package</Label>
+              <Label htmlFor="add-feature-package">Packages</Label>
               <select
                 id="add-feature-package"
                 name="package"
-                className="flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm"
-                defaultValue={packages[0]?.nanoid ?? ""}
-                onChange={(e) => setSelectedPackage(e.target.value)}
+                multiple
+                className="flex min-h-[6rem] w-full rounded-md border bg-background px-3 py-1 text-sm"
+                defaultValue={packages[0]?.nanoid ? [packages[0].nanoid] : []}
+                onChange={(e) =>
+                  setSelectedPackage(
+                    Array.from(e.target.selectedOptions).map((o) => o.value).join(","),
+                  )
+                }
               >
                 {packages.map((pkg) => (
                   <option key={pkg.nanoid} value={pkg.nanoid}>
@@ -357,6 +363,7 @@ export function ProductActions({
                   </option>
                 ))}
               </select>
+              <p className="text-xs text-muted-foreground">Hold Ctrl/Cmd to select multiple.</p>
             </div>
             <div className="space-y-1">
               <Label htmlFor="add-feature-group">Feature group</Label>
@@ -381,6 +388,11 @@ export function ProductActions({
                 <p className="text-xs text-red-600">{addFeatureState.fieldErrors.name.join(" ")}</p>
               ) : null}
             </div>
+            <div className="flex items-center gap-2">
+              <input id="add-feature-bolded" name="bolded" type="checkbox" value="on" />
+              <Label htmlFor="add-feature-bolded">Bolded</Label>
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="add-feature-basic">Basic USD value</Label>

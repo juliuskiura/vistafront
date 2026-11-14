@@ -702,6 +702,7 @@ export interface CompanySocialLink {
 export interface ProductPricingFeature {
   nanoid: string;
   name: string;
+  bolded?: boolean;
 }
 
 export interface ProductPricingPackage {
@@ -722,6 +723,7 @@ export interface ProductPackage {
   id: number;
   nanoid: string;
   product: string;
+  features?: string[];
   period: string;
   name: string;
   description: string;
@@ -738,8 +740,8 @@ export interface ProductPackage {
 export interface PackageFeature {
   id: number;
   nanoid: string;
-  package: string;
   group: string | null;
+  bolded: boolean;
   name: string;
   slug: string | null;
   basic_usd_value: string | null;
@@ -784,12 +786,12 @@ export interface CreateProductPackageBody {
 }
 
 export interface CreatePackageFeatureBody {
-  package: string;
   name: string;
   group?: string | null;
   slug?: string | null;
   basic_usd_value?: number | null;
   kenyan_price_value?: number | null;
+  bolded?: boolean;
 }
 
 export interface UpdatePackageFeatureBody {
@@ -798,6 +800,7 @@ export interface UpdatePackageFeatureBody {
   group?: string | null;
   basic_usd_value?: number | null;
   kenyan_price_value?: number | null;
+  bolded?: boolean;
 }
 
 export interface UpdateProductPackageBody {
@@ -810,6 +813,7 @@ export interface UpdateProductPackageBody {
   popular?: boolean;
   operation_boundaries?: string[] | null;
   cta?: unknown;
+  features?: string[];
 }
 
 export interface CreateFeatureGroupBody {

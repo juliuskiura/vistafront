@@ -8,6 +8,7 @@ import {
   createPackageFeature,
   createProduct,
   createProductPackage,
+  getProductPackage,
   updateFeatureGroup,
   updatePackageFeature,
   updateProduct,
@@ -147,6 +148,10 @@ const UpdateFeatureSchema = z.object({
     .union([z.coerce.number().min(0), z.literal("")])
     .optional()
     .transform((v) => (v === "" ? null : v)),
+  bolded: z
+    .union([z.literal("on"), z.literal("true"), z.literal("false"), z.null()])
+    .optional()
+    .transform((v) => v === "on" || v === "true"),
 });
 
  type UpdateFeatureInput = z.infer<typeof UpdateFeatureSchema>;
@@ -173,6 +178,7 @@ export async function updateFeatureAction(
         group: body.group,
         basic_usd_value: body.basic_usd_value,
         kenyan_price_value: body.kenyan_price_value,
+        bolded: body.bolded,
       },
       workspace,
     );
@@ -321,9 +327,9 @@ export async function createPackageAction(
 
 const CreateFeatureSchema = z.object({
   workspace: z.string().min(1),
-  package: z.string().min(1),
   product: z.string().min(1),
   name: z.string().min(1, "Name is required.").max(100),
+  packages: z.array(z.string().min(1)).optional().default([]),
   group: z
     .union([z.string().min(1), z.literal("")])
     .optional()
@@ -336,6 +342,10 @@ const CreateFeatureSchema = z.object({
     .union([z.coerce.number().min(0), z.literal("")])
     .optional()
     .transform((v) => (v === "" ? null : v)),
+  bolded: z
+    .union([z.literal("on"), z.literal("true"), z.literal("false"), z.null()])
+    .optional()
+    .transform((v) => v === "on" || v === "true"),
 });
 
 export type FeatureCreateState = ActionState;
@@ -344,23 +354,36 @@ export async function createFeatureAction(
   _prev: FeatureCreateState,
   formData: FormData,
 ): Promise<FeatureCreateState> {
-  const parsed = CreateFeatureSchema.safeParse(Object.fromEntries(formData));
+  const raw = Object.fromEntries(formData) as Record<string, unknown>;
+  raw.packages = formData.getAll("package");
+  const parsed = CreateFeatureSchema.safeParse(raw);
   if (!parsed.success) {
     const { fieldErrors } = flattenError(parsed.error);
     return { status: "error", message: "Please fix the highlighted fields.", fieldErrors };
   }
-  const { workspace, package: pkg, product, ...rest } = parsed.data;
+  const { workspace, packages: selectedPackages, product, ...rest } = parsed.data;
   try {
-    await createPackageFeature(
+    const feature = await createPackageFeature(
       {
-        package: pkg,
         name: rest.name,
         group: rest.group,
         basic_usd_value: rest.basic_usd_value,
         kenyan_price_value: rest.kenyan_price_value,
+        bolded: rest.bolded,
       },
       workspace,
     );
+    for (const pkgNanoid of selectedPackages ?? []) {
+      const existing = await getProductPackage(pkgNanoid, workspace);
+      const current = Array.isArray(existing.features) ? existing.features : [];
+      if (!current.includes(feature.nanoid)) {
+        await updateProductPackage(
+          pkgNanoid,
+          { features: [...current, feature.nanoid] },
+          workspace,
+        );
+      }
+    }
   } catch (error) {
     console.error("createFeatureAction failed:", error);
     return parseBackendError(error, "We could not create the feature.");
@@ -427,4 +450,72 @@ export async function updateFeatureGroupAction(
   }
   revalidatePath(`/${workspace}/dashboard/products/${product}`, "page");
   return { status: "success", message: "Feature group updated." };
+}
+
+const RemoveFeatureFromPackageSchema = z.object({
+  nanoid: z.string().min(1, "Missing feature."),
+  package: z.string().min(1, "Missing package."),
+  product: z.string().min(1, "Missing product."),
+  workspace: z.string().min(1, "Missing workspace."),
+});
+
+export type RemoveFeatureState = ActionState;
+
+export async function removeFeatureFromPackageAction(
+  _prev: RemoveFeatureState,
+  formData: FormData,
+): Promise<RemoveFeatureState> {
+  const parsed = RemoveFeatureFromPackageSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) {
+    const { fieldErrors } = flattenError(parsed.error);
+    return { status: "error", message: "Please fix the highlighted fields.", fieldErrors };
+  }
+  const { nanoid, package: pkg, product, workspace } = parsed.data;
+  try {
+    const existing = await getProductPackage(pkg, workspace);
+    const current = Array.isArray(existing.features) ? existing.features : [];
+    await updateProductPackage(
+      pkg,
+      { features: current.filter((f) => f !== nanoid) },
+      workspace,
+    );
+  } catch (error) {
+    console.error("removeFeatureFromPackageAction failed:", error);
+    return parseBackendError(error, "We could not remove the feature from the package.");
+  }
+  revalidatePath(`/${workspace}/dashboard/products/${product}`, "page");
+  return { status: "success", message: "Feature removed from package." };
+}
+
+export async function removeFeatureFromPackageFormAction(formData: FormData): Promise<void> {
+  await removeFeatureFromPackageAction({} as never, formData);
+}
+
+const AddFeatureToPackageSchema = z.object({
+  nanoid: z.string().min(1, "Missing feature."),
+  package: z.string().min(1, "Missing package."),
+  product: z.string().min(1, "Missing product."),
+  workspace: z.string().min(1, "Missing workspace."),
+});
+
+export async function addFeatureToPackageAction(
+  formData: FormData,
+): Promise<void> {
+  const parsed = AddFeatureToPackageSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return;
+  const { nanoid, package: pkg, product, workspace } = parsed.data;
+  try {
+    const existing = await getProductPackage(pkg, workspace);
+    const current = Array.isArray(existing.features) ? existing.features : [];
+    if (!current.includes(nanoid)) {
+      await updateProductPackage(
+        pkg,
+        { features: [...current, nanoid] },
+        workspace,
+      );
+    }
+  } catch (error) {
+    console.error("addFeatureToPackageAction failed:", error);
+  }
+  revalidatePath(`/${workspace}/dashboard/products/${product}`, "page");
 }

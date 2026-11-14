@@ -14,10 +14,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Pencil, XCircle } from "@/lib/icons";
+import { Pencil, Plus, XCircle } from "@/lib/icons";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  addFeatureToPackageAction,
+  removeFeatureFromPackageFormAction,
   updateFeatureAction,
   updatePackageAction,
   type FeatureActionState,
@@ -33,6 +35,7 @@ export function PackageCard({
   rawFeatures,
   workspace,
   product,
+  allFeatures,
   featureGroups,
 }: {
   pkg: ProductPricingPackage;
@@ -40,6 +43,7 @@ export function PackageCard({
   rawFeatures: PackageFeature[];
   workspace: string;
   product: string;
+  allFeatures: PackageFeature[];
   featureGroups: { nanoid: string; name: string }[];
 }) {
   const [open, setOpen] = useState(false);
@@ -78,8 +82,18 @@ export function PackageCard({
       {pkg.promise ? (
         <p className="mt-2 text-sm">{String(pkg.promise)}</p>
       ) : null}
+      <div className="mt-4 flex items-center justify-between">
+        <p className="text-xs font-semibold uppercase text-muted-foreground">Features</p>
+        <AddFeatureDialog
+          packageNanoid={pkg.nanoid}
+          assigned={pkg.features ?? []}
+          allFeatures={allFeatures}
+          product={product}
+          workspace={workspace}
+        />
+      </div>
       {Array.isArray(pkg.features) && pkg.features.length > 0 ? (
-        <ul className="mt-4 space-y-1 text-sm">
+        <ul className="mt-2 space-y-1 text-sm">
           {pkg.features.map((feature) => {
             const rawFeature =
               rawFeatures.find((f) => f.nanoid === feature.nanoid) ?? null;
@@ -90,15 +104,30 @@ export function PackageCard({
               >
                 <span className="flex items-start gap-2">
                   <span className="mt-1 size-1.5 shrink-0 rounded-full bg-primary" />
-                  <span>{feature.name}</span>
+                  <span className={feature.bolded ? "font-semibold" : undefined}>{feature.name}</span>
                 </span>
-                <FeatureEditDialog
-                  feature={feature}
-                  raw={rawFeature}
-                  workspace={workspace}
-                  product={product}
-                  featureGroups={featureGroups}
-                />
+                <div className="flex items-center gap-1">
+                  <FeatureEditDialog
+                    feature={feature}
+                    raw={rawFeature}
+                    workspace={workspace}
+                    product={product}
+                    featureGroups={featureGroups}
+                  />
+                  <form action={removeFeatureFromPackageFormAction}>
+                    <input type="hidden" name="nanoid" value={feature.nanoid} />
+                    <input type="hidden" name="package" value={pkg.nanoid} />
+                    <input type="hidden" name="product" value={product} />
+                    <input type="hidden" name="workspace" value={workspace} />
+                    <button
+                      type="submit"
+                      className="text-muted-foreground hover:text-destructive"
+                      aria-label="Remove feature from package"
+                    >
+                      ×
+                    </button>
+                  </form>
+                </div>
               </li>
             );
           })}
@@ -346,6 +375,17 @@ function FeatureEditDialog({
             </select>
           </div>
 
+          <div className="flex items-center gap-2">
+            <input
+              id={`bolded-${feature.nanoid}`}
+              name="bolded"
+              type="checkbox"
+              defaultChecked={raw?.bolded ?? false}
+              value="on"
+            />
+            <Label htmlFor={`bolded-${feature.nanoid}`}>Bolded</Label>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label htmlFor={`basic-${feature.nanoid}`}>Basic USD value</Label>
@@ -389,6 +429,91 @@ function FeatureEditDialog({
             </Button>
           </DialogFooter>
         </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AddFeatureDialog({
+  packageNanoid,
+  assigned,
+  allFeatures,
+  product,
+  workspace,
+}: {
+  packageNanoid: string;
+  assigned: { nanoid: string }[];
+  allFeatures: PackageFeature[];
+  product: string;
+  workspace: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const assignedIds = new Set(assigned.map((f) => f.nanoid));
+  const visibleFeatures = allFeatures.filter((feature) =>
+    feature.name.toLowerCase().includes(query.trim().toLowerCase()),
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" aria-label="Add feature to package">
+          <Plus className="size-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[85vh] overflow-y-auto" onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
+        <DialogHeader>
+          <DialogTitle>Add features</DialogTitle>
+          <DialogDescription>
+            Select features to add to this package.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2">
+          <Input
+            placeholder="Search features..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          {visibleFeatures.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {allFeatures.length === 0 ? "No features available." : "No features match your search."}
+            </p>
+          ) : (
+            visibleFeatures.map((feature) => {
+              const isAssigned = assignedIds.has(feature.nanoid);
+              return (
+                <div
+                  key={feature.nanoid}
+                  className="flex items-center justify-between gap-3 rounded-md border px-3 py-2"
+                >
+                  <span className={feature.bolded ? "text-sm font-semibold" : "text-sm"}>
+                    {feature.name}
+                  </span>
+                  {isAssigned ? (
+                    <Button variant="outline" size="sm" disabled>
+                      Added
+                    </Button>
+                  ) : (
+                    <form action={addFeatureToPackageAction}>
+                      <input type="hidden" name="nanoid" value={feature.nanoid} />
+                      <input type="hidden" name="package" value={packageNanoid} />
+                      <input type="hidden" name="product" value={product} />
+                      <input type="hidden" name="workspace" value={workspace} />
+                      <Button type="submit" size="sm">
+                        Add
+                      </Button>
+                    </form>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="destructive" onClick={() => setOpen(false)}>
+            Close
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
