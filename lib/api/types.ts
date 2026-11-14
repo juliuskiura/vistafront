@@ -703,6 +703,15 @@ export interface ProductPricingFeature {
   nanoid: string;
   name: string;
   bolded?: boolean;
+  order?: number;
+}
+
+export interface PackageFeatureSummary {
+  id: number;
+  nanoid: string;
+  name: string;
+  bolded?: boolean;
+  order?: number;
 }
 
 export interface ProductPricingPackage {
@@ -723,7 +732,7 @@ export interface ProductPackage {
   id: number;
   nanoid: string;
   product: string;
-  features?: string[];
+  features?: PackageFeatureSummary[];
   period: string;
   name: string;
   description: string;

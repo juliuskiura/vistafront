@@ -14,11 +14,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Pencil, Plus, XCircle } from "@/lib/icons";
+import { ChevronDown, ChevronUp, Pencil, Plus, XCircle } from "@/lib/icons";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   addFeatureToPackageAction,
+  moveFeatureInPackageAction,
   removeFeatureFromPackageFormAction,
   updateFeatureAction,
   updatePackageAction,
@@ -55,6 +56,12 @@ export function PackageCard({
   useEffect(() => {
     if (state.status === "success") setOpen(false);
   }, [state.status]);
+
+  // The pricing serializer emits features in their package-scoped through
+  // order; sort again here so the sequence survives any payload reordering.
+  const orderedFeatures = [...(pkg.features ?? [])].sort(
+    (a, b) => (a.order ?? 0) - (b.order ?? 0),
+  );
 
   return (
     <div className="flex flex-col rounded-lg border bg-card p-6">
@@ -94,7 +101,7 @@ export function PackageCard({
       </div>
       {Array.isArray(pkg.features) && pkg.features.length > 0 ? (
         <ul className="mt-2 space-y-1 text-sm">
-          {pkg.features.map((feature) => {
+          {orderedFeatures.map((feature, index) => {
             const rawFeature =
               rawFeatures.find((f) => f.nanoid === feature.nanoid) ?? null;
             return (
@@ -104,9 +111,41 @@ export function PackageCard({
               >
                 <span className="flex items-start gap-2">
                   <span className="mt-1 size-1.5 shrink-0 rounded-full bg-primary" />
-                  <span className={feature.bolded ? "font-semibold" : undefined}>{feature.name}</span>
+                  <span className={feature.bolded ? "font-semibold" : undefined}>{feature.order}. {feature.name}</span>
                 </span>
                 <div className="flex items-center gap-1">
+                  <div className="flex flex-col items-center">
+                    <form action={moveFeatureInPackageAction}>
+                      <input type="hidden" name="nanoid" value={feature.nanoid} />
+                      <input type="hidden" name="package" value={pkg.nanoid} />
+                      <input type="hidden" name="product" value={product} />
+                      <input type="hidden" name="workspace" value={workspace} />
+                      <input type="hidden" name="direction" value="up" />
+                      <button
+                        type="submit"
+                        disabled={index === 0}
+                        className="text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
+                        aria-label={`Move ${feature.name} up`}
+                      >
+                        <ChevronUp className="size-4" />
+                      </button>
+                    </form>
+                    <form action={moveFeatureInPackageAction}>
+                      <input type="hidden" name="nanoid" value={feature.nanoid} />
+                      <input type="hidden" name="package" value={pkg.nanoid} />
+                      <input type="hidden" name="product" value={product} />
+                      <input type="hidden" name="workspace" value={workspace} />
+                      <input type="hidden" name="direction" value="down" />
+                      <button
+                        type="submit"
+                        disabled={index === orderedFeatures.length - 1}
+                        className="text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
+                        aria-label={`Move ${feature.name} down`}
+                      >
+                        <ChevronDown className="size-4" />
+                      </button>
+                    </form>
+                  </div>
                   <FeatureEditDialog
                     feature={feature}
                     raw={rawFeature}

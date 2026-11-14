@@ -174,7 +174,7 @@ export {
 } from "./notebook";
 
 export { getSchedule, getTodaySummary } from "./schedules";
-export { createFeatureGroup, createPackageFeature, createProduct, createProductPackage, getFeatureGroup, getPackageFeature, getProductDetail, getProductPackage, listFeatureGroups, listPackageFeatures, listProducts, updateFeatureGroup, updatePackageFeature, updateProduct, updateProductPackage } from "./products";
+export { createFeatureGroup, createPackageFeature, createPackageFeatureLink, createProduct, createProductPackage, deletePackageFeatureLink, getFeatureGroup, getPackageFeature, getProductDetail, getProductPackage, listFeatureGroups, listPackageFeatures, listProducts, movePackageFeatureLink, updateFeatureGroup, updatePackageFeature, updateProduct, updateProductPackage } from "./products";
 
 export {
   completeProject,

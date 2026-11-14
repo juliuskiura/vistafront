@@ -6,9 +6,12 @@ import { z, flattenError } from "zod";
 import {
   createFeatureGroup,
   createPackageFeature,
+  createPackageFeatureLink,
   createProduct,
   createProductPackage,
+  deletePackageFeatureLink,
   getProductPackage,
+  movePackageFeatureLink,
   updateFeatureGroup,
   updatePackageFeature,
   updateProduct,
@@ -376,12 +379,8 @@ export async function createFeatureAction(
     for (const pkgNanoid of selectedPackages ?? []) {
       const existing = await getProductPackage(pkgNanoid, workspace);
       const current = Array.isArray(existing.features) ? existing.features : [];
-      if (!current.includes(feature.nanoid)) {
-        await updateProductPackage(
-          pkgNanoid,
-          { features: [...current, feature.nanoid] },
-          workspace,
-        );
+      if (!current.some((f) => f.nanoid === feature.nanoid)) {
+        await createPackageFeatureLink(pkgNanoid, feature.nanoid, workspace);
       }
     }
   } catch (error) {
@@ -473,12 +472,11 @@ export async function removeFeatureFromPackageAction(
   const { nanoid, package: pkg, product, workspace } = parsed.data;
   try {
     const existing = await getProductPackage(pkg, workspace);
-    const current = Array.isArray(existing.features) ? existing.features : [];
-    await updateProductPackage(
-      pkg,
-      { features: current.filter((f) => f !== nanoid) },
-      workspace,
-    );
+    const link = (existing.features ?? []).find((f) => f.nanoid === nanoid);
+    if (!link) {
+      return { status: "error", message: "This feature is not linked to the package." };
+    }
+    await deletePackageFeatureLink(link.id, workspace);
   } catch (error) {
     console.error("removeFeatureFromPackageAction failed:", error);
     return parseBackendError(error, "We could not remove the feature from the package.");
@@ -507,15 +505,32 @@ export async function addFeatureToPackageAction(
   try {
     const existing = await getProductPackage(pkg, workspace);
     const current = Array.isArray(existing.features) ? existing.features : [];
-    if (!current.includes(nanoid)) {
-      await updateProductPackage(
-        pkg,
-        { features: [...current, nanoid] },
-        workspace,
-      );
+    if (!current.some((f) => f.nanoid === nanoid)) {
+      await createPackageFeatureLink(pkg, nanoid, workspace);
     }
   } catch (error) {
     console.error("addFeatureToPackageAction failed:", error);
+  }
+  revalidatePath(`/${workspace}/dashboard/products/${product}`, "page");
+}
+
+const MoveFeatureInPackageSchema = z.object({
+  nanoid: z.string().min(1, "Missing feature."),
+  package: z.string().min(1, "Missing package."),
+  product: z.string().min(1, "Missing product."),
+  workspace: z.string().min(1, "Missing workspace."),
+  direction: z.enum(["up", "down"]),
+});
+
+export async function moveFeatureInPackageAction(formData: FormData): Promise<void> {
+  const parsed = MoveFeatureInPackageSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return;
+  const { nanoid, package: pkg, product, workspace, direction } = parsed.data;
+  try {
+    // Swaps this feature's through-row with its neighbour inside the package.
+    await movePackageFeatureLink(pkg, nanoid, direction, workspace);
+  } catch (error) {
+    console.error("moveFeatureInPackageAction failed:", error);
   }
   revalidatePath(`/${workspace}/dashboard/products/${product}`, "page");
 }

@@ -116,8 +116,42 @@ export async function listPackageFeatures(workspace: string): Promise<PackageFea
   return all;
 }
 
-export async function listFeatureGroups(packageNanoid: string, workspace: string): Promise<FeatureGroup[]> {
-  const all: FeatureGroup[] = [];
+export async function movePackageFeatureLink(
+  packageNanoid: string,
+  featureNanoid: string,
+  direction: "up" | "down",
+  workspace: string,
+): Promise<void> {
+  await serverMutate(
+    `/apis/products/product-packages/${packageNanoid}/features/${featureNanoid}/${direction}/`,
+    { method: "POST", body: {}, workspace },
+  );
+}
+
+export async function createPackageFeatureLink(
+  packageNanoid: string,
+  featureNanoid: string,
+  workspace: string,
+): Promise<void> {
+  await serverMutate("/apis/products/package-feature-links/", {
+    method: "POST",
+    body: { package: packageNanoid, feature: featureNanoid },
+    workspace,
+  });
+}
+
+export async function deletePackageFeatureLink(
+  linkId: number,
+  workspace: string,
+): Promise<void> {
+  await serverMutate(`/apis/products/package-feature-links/${linkId}/`, {
+    method: "DELETE",
+    body: {},
+    workspace,
+  });
+}
+
+export async function listFeatureGroups(packageNanoid: string, workspace: string): Promise<FeatureGroup[]> {  const all: FeatureGroup[] = [];
   let page = 1;
   const MAX_PAGES = 1000;
   while (page <= MAX_PAGES) {
