@@ -144,7 +144,7 @@ export function PackageCard({
                 Modify the details for {pkg.name}.
               </DialogDescription>
             </DialogHeader>
-            <form action={formAction} className="space-y-3">
+            <form method="POST" action={formAction} className="space-y-3">
               <input type="hidden" name="nanoid" value={pkg.nanoid} />
               <input type="hidden" name="product" value={product} />
               <input type="hidden" name="workspace" value={workspace} />
@@ -337,7 +337,7 @@ function AddFeatureDialog({
                       Added
                     </Button>
                   ) : (
-                    <form action={addFeatureToPackageAction}>
+                    <form method="POST" action={addFeatureToPackageAction}>
                       <input type="hidden" name="nanoid" value={feature.nanoid} />
                       <input type="hidden" name="package" value={packageNanoid} />
                       <input type="hidden" name="product" value={product} />

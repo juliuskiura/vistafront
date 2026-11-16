@@ -135,20 +135,19 @@ export function proxy(request: NextRequest) {
   const isDjangoApiPath = pathname === "/apis" || pathname.startsWith("/apis/");
   const isAsset = isAssetPath(pathname);
 
-  // Canonicalise a trailing slash by REWRITING to the slash-less path.
-  //
-  // A redirect is not usable here. Next re-parses the middleware's `Location`
-  // and answers the redirect with the ORIGINAL request path, so the browser is
-  // sent back to the very URL it asked for and loops until it gives up
-  // (ERR_TOO_MANY_REDIRECTS on every trailing-slash URL). A rewrite routes the
-  // request to the canonical page with no round trip, and the address bar keeps
-  // the URL the user typed.
+  const isServerActionRequest = Boolean(request.headers.get("next-action"));
+  const hasRequestBody =
+    request.method !== "GET" && request.method !== "HEAD";
+
   if (
     pathname !== "/" &&
     pathname.endsWith("/") &&
     !isDjangoApiPath &&
     !isAsset
   ) {
+    if (hasRequestBody || isServerActionRequest) {
+      return NextResponse.next();
+    }
     const canonicalUrl = request.nextUrl.clone();
     canonicalUrl.pathname = pathname.slice(0, -1);
     return NextResponse.rewrite(canonicalUrl);

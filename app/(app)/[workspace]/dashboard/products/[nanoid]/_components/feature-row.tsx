@@ -90,7 +90,7 @@ export function PackageFeatureRow({
       </span>
       <div className="flex items-center gap-1">
         <div className="flex flex-col items-center">
-          <form action={moveFeatureInPackageAction}>
+          <form method="POST" action={moveFeatureInPackageAction}>
             <input type="hidden" name="nanoid" value={feature.nanoid} />
             <input type="hidden" name="package" value={packageNanoid} />
             <input type="hidden" name="product" value={product} />
@@ -105,7 +105,7 @@ export function PackageFeatureRow({
               <ChevronUp className="size-4" />
             </button>
           </form>
-          <form action={moveFeatureInPackageAction}>
+          <form method="POST" action={moveFeatureInPackageAction}>
             <input type="hidden" name="nanoid" value={feature.nanoid} />
             <input type="hidden" name="package" value={packageNanoid} />
             <input type="hidden" name="product" value={product} />
@@ -224,7 +224,7 @@ function FeatureEditDialog({
           <DialogTitle>Edit feature</DialogTitle>
           <DialogDescription>Modify the feature text or settings.</DialogDescription>
         </DialogHeader>
-        <form action={formAction} className="space-y-3">
+        <form method="POST" action={formAction} className="space-y-3">
           <input type="hidden" name="nanoid" value={feature.nanoid} />
           <input type="hidden" name="workspace" value={workspace} />
           <input type="hidden" name="product" value={product} />

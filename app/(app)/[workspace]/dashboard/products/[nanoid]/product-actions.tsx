@@ -109,7 +109,7 @@ export function ProductActions({
             <DialogTitle>Edit product details</DialogTitle>
             <DialogDescription>Update the product name and description.</DialogDescription>
           </DialogHeader>
-          <form action={editAction} className="space-y-3">
+          <form method="POST" action={editAction} className="space-y-3">
             <input type="hidden" name="nanoid" value={product} />
             <input type="hidden" name="workspace" value={workspace} />
             <div className="space-y-1">
@@ -150,7 +150,7 @@ export function ProductActions({
             <DialogTitle>Add package</DialogTitle>
             <DialogDescription>Create a new package for this product.</DialogDescription>
           </DialogHeader>
-          <form action={addPackageAction} className="space-y-3">
+          <form method="POST" action={addPackageAction} className="space-y-3">
             <input type="hidden" name="workspace" value={workspace} />
             <input type="hidden" name="product" value={product} />
             <div className="space-y-1">
@@ -244,7 +244,7 @@ export function ProductActions({
             <DialogTitle>Add product</DialogTitle>
             <DialogDescription>Create a new product.</DialogDescription>
           </DialogHeader>
-          <form action={addProductAction} className="space-y-3">
+          <form method="POST" action={addProductAction} className="space-y-3">
             <input type="hidden" name="workspace" value={workspace} />
             <div className="space-y-1">
               <Label htmlFor="add-product-name">Name</Label>
@@ -286,7 +286,7 @@ export function ProductActions({
             <DialogTitle>Add feature group</DialogTitle>
             <DialogDescription>Create a new feature group for a package.</DialogDescription>
           </DialogHeader>
-          <form action={addFeatureGroupAction} className="space-y-3">
+          <form method="POST" action={addFeatureGroupAction} className="space-y-3">
             <input type="hidden" name="workspace" value={workspace} />
             <input type="hidden" name="product" value={product} />
             <div className="space-y-1">
@@ -340,7 +340,7 @@ export function ProductActions({
             <DialogTitle>Add feature</DialogTitle>
             <DialogDescription>Add a feature to a package.</DialogDescription>
           </DialogHeader>
-          <form action={addFeatureAction} className="space-y-3">
+          <form method="POST" action={addFeatureAction} className="space-y-3">
             <input type="hidden" name="workspace" value={workspace} />
             <input type="hidden" name="product" value={product} />
             <div className="space-y-1">
