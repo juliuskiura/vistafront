@@ -36,6 +36,7 @@ interface Props {
   attachments: Attachment[];
   members: PickerOption[];
   projects: PickerOption[];
+  subtasks?: Task[];
 }
 
 export function TaskRecord({
@@ -45,6 +46,7 @@ export function TaskRecord({
   attachments,
   members,
   projects,
+  subtasks = [],
 }: Props) {
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
@@ -100,9 +102,10 @@ export function TaskRecord({
               </h1>
 
               {task.description ? (
-                <p className="text-xs text-slate-600 leading-relaxed max-w-2xl">
-                  {task.description}
-                </p>
+                <RichText
+                  html={task.description}
+                  className="text-xs text-slate-600 leading-relaxed max-w-2xl"
+                />
               ) : null}
 
               <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 pt-1">
@@ -166,12 +169,34 @@ export function TaskRecord({
 
       <div className="rounded-xl border bg-white p-4 shadow-sm">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-          Description
+          Subtasks ({subtasks.length})
         </h3>
-        {task.description ? (
-          <RichText html={task.description} className="mt-3" />
+        {subtasks.length === 0 ? (
+          <p className="mt-3 text-sm text-slate-500">No subtasks yet.</p>
         ) : (
-          <p className="mt-3 text-sm text-slate-500">No description yet.</p>
+          <ul className="mt-3 space-y-2">
+            {subtasks.map((subtask) => (
+              <li
+                key={subtask.nanoid}
+                className="flex items-center gap-2 text-sm text-slate-700"
+              >
+                <span
+                  className={
+                    subtask.status === "done"
+                      ? "line-through text-slate-400"
+                      : "text-slate-800"
+                  }
+                >
+                  {subtask.title}
+                </span>
+                {subtask.due_date ? (
+                  <span className="ml-auto text-xs text-slate-400">
+                    {formatMediumDate(subtask.due_date)}
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
         )}
       </div>
 
