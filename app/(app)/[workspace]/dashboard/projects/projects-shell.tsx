@@ -1,22 +1,39 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { FolderKanban, Plus } from "lucide-react";
-import Link from "next/link";
+import { FolderKanban, Plus } from "@/lib/icons";
 import {
   WorkspaceInnerNav,
   type InnerNavItem,
 } from "@/components/workspace/workspace-inner-nav";
 import { Banner } from "@/components/banner";
 
-const NAV_ITEMS: InnerNavItem[] = [
-  { label: "Projects", href: "", end: true, icon: FolderKanban },
-];
+const NAV_ITEMS: InnerNavItem[] = [];
 
 interface ProjectsLayoutProps {
   children: React.ReactNode;
   workspaceDomain: string;
 }
+
+const ROUTE_META: Record<
+  string,
+  { title: string; description: string }
+> = {
+  "": {
+    title: "Business Operations Engagements Portfolio",
+    description:
+      "Internal operations managing client accounts, CRM outreach, Canva marketing, and daily workflows.",
+  },
+  "/new": {
+    title: "New project",
+    description:
+      "Give the work a name, pick the company it belongs to, and set how it should be handled.",
+  },
+  "/categories": {
+    title: "Category taxonomy",
+    description: "Classify projects with workspace-defined categories.",
+  },
+};
 
 export function ProjectsLayout({
   children,
@@ -26,33 +43,47 @@ export function ProjectsLayout({
   const basePath = `/${workspaceDomain}/dashboard/projects`;
   const isRoot = pathname === basePath;
 
-  const trailing = (
-    <Link
-      href={`${basePath}/new`}
-      className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-primary-600 to-secondary-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition-all hover:from-primary-500 hover:to-secondary-500"
-    >
-      <Plus className="h-4 w-4" />
-      New Project
-    </Link>
-  );
+  const suffix = pathname.startsWith(basePath)
+    ? pathname.slice(basePath.length) || ""
+    : "";
+  const meta = ROUTE_META[suffix] ?? {
+    title: "Projects",
+    description: "",
+  };
+
+  const showBanner =
+    suffix === "" || suffix === "/new" || suffix === "/categories";
+  const showOuterNav = showBanner;
+
+  const actions = isRoot
+    ? [
+        {
+          label: "New Project",
+          icon: Plus,
+          href: `${basePath}/new`,
+        },
+      ]
+    : undefined;
 
   return (
     <div className="flex min-h-full flex-col">
-      {isRoot && (
-        <Banner
-          title="Client VA Engagements Portfolio"
-          description="Internal virtual assistant operations managing client accounts, CRM outreach, Canva marketing, and daily workflows."
+      {showBanner ? (
+        <Banner title={meta.title} description={meta.description} actions={actions} />
+      ) : null}
+      {showOuterNav ? (
+        <WorkspaceInnerNav
+          basePath={basePath}
+          brandLabel="Projects"
+          brandIcon={FolderKanban}
+          items={NAV_ITEMS}
+          hideBrand={false}
         />
+      ) : null}
+      {showOuterNav ? (
+        <div className="mt-6 flex-1">{children}</div>
+      ) : (
+        <div className="flex-1">{children}</div>
       )}
-      <WorkspaceInnerNav
-        basePath={basePath}
-        brandLabel="Projects"
-        brandIcon={FolderKanban}
-        items={NAV_ITEMS}
-        hideBrand={!isRoot}
-        trailing={trailing}
-      />
-      <div className="mt-6 flex-1">{children}</div>
     </div>
   );
 }

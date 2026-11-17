@@ -1,7 +1,6 @@
 "use client";
 
 import type { Project, Task } from "@/lib/api";
-import { ProjectHeader } from "./_components/project-header";
 import { ProjectTabs } from "./_components/project-tabs";
 import { OverviewTab } from "./_components/overview-tab";
 import { TasksTab } from "./_components/tasks-tab";
@@ -33,10 +32,6 @@ export function ProjectRecord({
 }: Props) {
   return (
     <div className="space-y-6">
-      <ProjectHeader
-        project={project}
-        workspaceDomain={workspaceDomain}
-      />
 
       <ProjectTabs
         projectNanoid={project.nanoid}
@@ -46,7 +41,7 @@ export function ProjectRecord({
       />
 
       {activeTab === "overview" ? (
-        <OverviewTab project={project} />
+        <OverviewTab project={project} workspaceDomain={workspaceDomain} />
       ) : null}
 
       {activeTab === "tasks" ? (

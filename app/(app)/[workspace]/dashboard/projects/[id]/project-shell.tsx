@@ -1,14 +1,6 @@
-import { FolderKanban, ListTodo } from "@/lib/icons";
-import {
-  WorkspaceInnerNav,
-  type InnerNavItem,
-} from "@/components/workspace/workspace-inner-nav";
+import { ArrowLeft } from "@/lib/icons";
 import { Banner } from "@/components/banner";
-
-const NAV_ITEMS: InnerNavItem[] = [
-  { label: "Projects", href: "", end: true, icon: FolderKanban },
-  { label: "Tasks", href: "/tasks", icon: ListTodo },
-];
+import { formatMediumDate } from "@/lib/dates";
 
 interface Props {
   children: React.ReactNode;
@@ -36,18 +28,18 @@ export function ProjectDetailShell({
         description={
           [
             project.company_name ?? "No company",
-            project.deadline ? `Due ${project.deadline}` : null,
+            project.deadline ? `Due ${formatMediumDate(project.deadline)}` : null,
           ]
             .filter(Boolean)
             .join(" · ") || "Project details"
         }
-      />
-      <WorkspaceInnerNav
-        basePath={basePath}
-        brandLabel="Project"
-        brandIcon={FolderKanban}
-        items={NAV_ITEMS}
-        hideBrand
+        actions={[
+          {
+            label: "Back to Projects",
+            icon: ArrowLeft,
+            href: basePath,
+          },
+        ]}
       />
       <div className="mt-6 flex-1">{children}</div>
     </div>

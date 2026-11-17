@@ -6,9 +6,11 @@ import {
   projectCategoryLabel,
 } from "@/lib/projects/constants";
 import { RichText } from "../../_components/rich-text";
+import { ProjectHeader } from "@/app/(app)/[workspace]/dashboard/projects/[id]/_components/project-header";
 
 interface Props {
   project: Project;
+  workspaceDomain: string;
 }
 
 /**
@@ -18,7 +20,7 @@ interface Props {
  * same form the create page uses, so there is one place where a project's
  * fields are written.
  */
-export function OverviewTab({ project }: Props) {
+export function OverviewTab({ project,workspaceDomain }: Props) {
   const fields: Array<{ label: string; value: string }> = [
     { label: "Company", value: project.company_name ?? "No company" },
     { label: "Category", value: projectCategoryLabel(project.category) },
@@ -31,6 +33,10 @@ export function OverviewTab({ project }: Props) {
 
   return (
     <div className="space-y-4">
+      <ProjectHeader
+              project={project}
+              workspaceDomain={workspaceDomain}
+            />
       <div className="rounded-xl border bg-card p-4">
         <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {fields.map((field) => (
@@ -44,18 +50,7 @@ export function OverviewTab({ project }: Props) {
         </dl>
       </div>
 
-      <div className="rounded-xl border bg-card p-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Description
-        </h2>
-        {project.description ? (
-          <RichText html={project.description} className="mt-3" />
-        ) : (
-          <p className="mt-3 text-sm text-muted-foreground">
-            No description yet.
-          </p>
-        )}
-      </div>
+    
     </div>
   );
 }

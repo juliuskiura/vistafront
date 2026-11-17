@@ -1,7 +1,6 @@
 import { listProjectCategories } from "@/lib/api/projectmanager/project-categories";
 import { requireWorkspace } from "@/lib/auth/server";
 import { requireFeature } from "@/lib/features/guard";
-import { Banner } from "@/components/banner";
 import { CategoryTaxonomyStudio } from "./_components/category-taxonomy-studio";
 
 /**
@@ -32,17 +31,9 @@ export default async function CategoriesPage({
   );
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Banner
-        title="Category taxonomy"
-        description="Classify projects with workspace-defined categories."
-      />
-      <div className="mt-6 flex-1">
-        <CategoryTaxonomyStudio
-          categories={categories}
-          workspaceDomain={active.domain}
-        />
-      </div>
-    </div>
+    <CategoryTaxonomyStudio
+      categories={categories}
+      workspaceDomain={active.domain}
+    />
   );
 }
