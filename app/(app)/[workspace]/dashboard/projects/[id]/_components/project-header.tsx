@@ -31,6 +31,7 @@ import {
   deleteProjectAction,
   updateProjectStatusAction,
 } from "../../actions/project-actions";
+import { RichText } from "@/app/(app)/[workspace]/dashboard/projects/_components/rich-text";
 
 interface Props {
   project: Project;
@@ -128,9 +129,10 @@ export function ProjectHeader({
       </div>
 
       {project.description ? (
-        <p className="text-xs text-muted-foreground leading-relaxed max-w-2xl">
-          {project.description}
-        </p>
+        <RichText
+          html={project.description}
+          className="text-xs text-muted-foreground leading-relaxed max-w-2xl mt-3"
+        />
       ) : null}
 
       <div className="rounded-xl border bg-card p-4">

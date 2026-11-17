@@ -831,223 +831,225 @@
   box-shadow: inset 3px 0 0 0 var(--nb-accent, transparent);
 }
 
-/* ══════════════════════════════════════════════════════════════════════
- * The note document surface
- *
- * `.nb-prose` styles a *rendered* note (sanitized, read-only);
- * `.nb-editor-content` styles the *live* ProseMirror surface. They are
- * grouped in one selector list below rather than given a shared class,
- * because they genuinely need to differ — the editor needs a caret target,
- * a placeholder, and a selected-node outline, and it must not inherit the
- * reader's looser rhythm — but everything that describes the *document*
- * (type scale, colours, list and quote treatment) must be identical, or
- * a note changes appearance the moment you finish editing it.
- *
- * Hierarchy comes from type scale, weight, and tracking — not from size
- * alone. A six-level scale in one weight reads as a wall; the top three
- * levels carry the weight and the bottom three step down quietly.
- * ══════════════════════════════════════════════════════════════════════ */
-
-/* Reading and editing share the document's type scale, but not its density.
- * The reader is set for reading: 1rem on 1.75. The editor is set for working:
- * one step smaller and a touch tighter, because a full-window canvas of
- * 16px/1.75 text is a wall, and the editor is read *and* revised rather than
- * read once. Matching the two exactly is what made clicking "Edit" change the
- * page's texture as well as its function. */
-.nb-prose {
-  font-size: 1rem;
-  line-height: 1.75;
-  color: var(--nb-ink);
-}
-
-.nb-editor-content {
-  font-size: 0.9375rem;
-  line-height: 1.6;
-  color: var(--nb-ink);
-}
-
-/* Block rhythm follows the same split. The reader keeps the airier gap; the
- * editor tightens so a list or a run of short paragraphs fits on screen. */
-.nb-prose > * + * { margin-top: 1.15em; }
-.nb-editor-content > * + * { margin-top: 0.65em; }
-
-/* ── Headings ────────────────────────────────────────────────────────────
- * h1–h3 lead, h4–h6 recede. Tracking tightens as the size grows, which is
- * what keeps a large heading from looking loose next to body copy. */
-.nb-prose h1, .nb-prose h2, .nb-prose h3,
-.nb-prose h4, .nb-prose h5, .nb-prose h6,
-.nb-editor-content h1, .nb-editor-content h2, .nb-editor-content h3,
-.nb-editor-content h4, .nb-editor-content h5, .nb-editor-content h6 {
-  color: var(--nb-ink);
-  font-weight: 650;
-  letter-spacing: -0.021em;
-  line-height: 1.25;
-  text-wrap: balance;
-}
-.nb-prose :is(h1, h2, h3, h4, h5, h6) { margin-top: 1.9em; }
-.nb-editor-content :is(h1, h2, h3, h4, h5, h6) { margin-top: 1.5em; }
-.nb-prose :is(h1, h2, h3, h4, h5, h6):first-child,
-.nb-prose > :first-child,
-.nb-editor-content :is(h1, h2, h3, h4, h5, h6):first-child,
-.nb-editor-content > :first-child { margin-top: 0; }
-
-.nb-prose h1, .nb-editor-content h1 {
-  font-size: 1.875rem;
-  letter-spacing: -0.03em;
-  font-weight: 700;
-}
-.nb-prose h2, .nb-editor-content h2 {
-  font-size: 1.4375rem;
-  letter-spacing: -0.026em;
-}
-.nb-prose h3, .nb-editor-content h3 { font-size: 1.1875rem; }
-.nb-prose h4, .nb-editor-content h4 { font-size: 1.0625rem; }
-.nb-prose h5, .nb-editor-content h5 {
-  font-size: 0.9375rem;
-  color: var(--nb-ink-muted);
-}
-.nb-prose h6, .nb-editor-content h6 {
-  font-size: 0.8125rem;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--nb-ink-muted);
-}
-
-/* ── Inline marks ───────────────────────────────────────────────────────── */
-.nb-prose strong, .nb-editor-content strong { font-weight: 650; }
-.nb-prose a, .nb-editor-content a {
-  color: var(--color-primary-600);
-  text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, var(--color-primary-600) 40%, transparent);
-  text-underline-offset: 2px;
-  text-decoration-thickness: 1.5px;
-  border-radius: 0.15rem;
-  transition: background-color 0.15s ease, text-decoration-color 0.15s ease;
-}
-.nb-prose a:hover, .nb-editor-content a:hover {
-  text-decoration-color: var(--color-primary-600);
-  background-color: color-mix(in srgb, var(--color-primary-500) 10%, transparent);
-}
-
-/* Highlight. `box-decoration-break: clone` keeps the background hugging
- * each line of a multi-line highlight instead of one rectangle around the
- * whole run. */
-.nb-prose mark, .nb-editor-content mark {
-  border-radius: 0.25rem;
-  padding: 0.08em 0.15em;
-  margin-inline: -0.05em;
-  box-decoration-break: clone;
-  -webkit-box-decoration-break: clone;
-  color: inherit;
-}
-
-.nb-prose code, .nb-editor-content code {
-  background: color-mix(in srgb, var(--color-primary-500) 9%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-primary-500) 14%, transparent);
-  padding: 0.1em 0.35em;
-  border-radius: 0.3rem;
-  font-size: 0.85em;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-.nb-prose pre, .nb-editor-content pre {
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--color-primary-500) 7%, transparent),
-      color-mix(in srgb, var(--color-primary-500) 3%, transparent)
+@layer components {
+  /* ══════════════════════════════════════════════════════════════════════
+   * The note document surface
+   *
+   * `.nb-prose` styles a *rendered* note (sanitized, read-only);
+   * `.nb-editor-content` styles the *live* ProseMirror surface. They are
+   * grouped in one selector list below rather than given a shared class,
+   * because they genuinely need to differ — the editor needs a caret target,
+   * a placeholder, and a selected-node outline, and it must not inherit the
+   * reader's looser rhythm — but everything that describes the *document*
+   * (type scale, colours, list and quote treatment) must be identical, or
+   * a note changes appearance the moment you finish editing it.
+   *
+   * Hierarchy comes from type scale, weight, and tracking — not from size
+   * alone. A six-level scale in one weight reads as a wall; the top three
+   * levels carry the weight and the bottom three step down quietly.
+   * ══════════════════════════════════════════════════════════════════════ */
+  
+  /* Reading and editing share the document's type scale, but not its density.
+   * The reader is set for reading: 1rem on 1.75. The editor is set for working:
+   * one step smaller and a touch tighter, because a full-window canvas of
+   * 16px/1.75 text is a wall, and the editor is read *and* revised rather than
+   * read once. Matching the two exactly is what made clicking "Edit" change the
+   * page's texture as well as its function. */
+  .nb-prose {
+    font-size: 1rem;
+    line-height: 1.75;
+    color: var(--nb-ink);
+  }
+  
+  .nb-editor-content {
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--nb-ink);
+  }
+  
+  /* Block rhythm follows the same split. The reader keeps the airier gap; the
+   * editor tightens so a list or a run of short paragraphs fits on screen. */
+  .nb-prose > * + * { margin-top: 1.15em; }
+  .nb-editor-content > * + * { margin-top: 0.65em; }
+  
+  /* ── Headings ────────────────────────────────────────────────────────────
+   * h1–h3 lead, h4–h6 recede. Tracking tightens as the size grows, which is
+   * what keeps a large heading from looking loose next to body copy. */
+  .nb-prose h1, .nb-prose h2, .nb-prose h3,
+  .nb-prose h4, .nb-prose h5, .nb-prose h6,
+  .nb-editor-content h1, .nb-editor-content h2, .nb-editor-content h3,
+  .nb-editor-content h4, .nb-editor-content h5, .nb-editor-content h6 {
+    color: var(--nb-ink);
+    font-weight: 650;
+    letter-spacing: -0.021em;
+    line-height: 1.25;
+    text-wrap: balance;
+  }
+  .nb-prose :is(h1, h2, h3, h4, h5, h6) { margin-top: 1.9em; }
+  .nb-editor-content :is(h1, h2, h3, h4, h5, h6) { margin-top: 1.5em; }
+  .nb-prose :is(h1, h2, h3, h4, h5, h6):first-child,
+  .nb-prose > :first-child,
+  .nb-editor-content :is(h1, h2, h3, h4, h5, h6):first-child,
+  .nb-editor-content > :first-child { margin-top: 0; }
+  
+  .nb-prose h1, .nb-editor-content h1 {
+    font-size: 1.875rem;
+    letter-spacing: -0.03em;
+    font-weight: 700;
+  }
+  .nb-prose h2, .nb-editor-content h2 {
+    font-size: 1.4375rem;
+    letter-spacing: -0.026em;
+  }
+  .nb-prose h3, .nb-editor-content h3 { font-size: 1.1875rem; }
+  .nb-prose h4, .nb-editor-content h4 { font-size: 1.0625rem; }
+  .nb-prose h5, .nb-editor-content h5 {
+    font-size: 0.9375rem;
+    color: var(--nb-ink-muted);
+  }
+  .nb-prose h6, .nb-editor-content h6 {
+    font-size: 0.8125rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--nb-ink-muted);
+  }
+  
+  /* ── Inline marks ───────────────────────────────────────────────────────── */
+  .nb-prose strong, .nb-editor-content strong { font-weight: 650; }
+  .nb-prose a, .nb-editor-content a {
+    color: var(--color-primary-600);
+    text-decoration: underline;
+    text-decoration-color: color-mix(in srgb, var(--color-primary-600) 40%, transparent);
+    text-underline-offset: 2px;
+    text-decoration-thickness: 1.5px;
+    border-radius: 0.15rem;
+    transition: background-color 0.15s ease, text-decoration-color 0.15s ease;
+  }
+  .nb-prose a:hover, .nb-editor-content a:hover {
+    text-decoration-color: var(--color-primary-600);
+    background-color: color-mix(in srgb, var(--color-primary-500) 10%, transparent);
+  }
+  
+  /* Highlight. `box-decoration-break: clone` keeps the background hugging
+   * each line of a multi-line highlight instead of one rectangle around the
+   * whole run. */
+  .nb-prose mark, .nb-editor-content mark {
+    border-radius: 0.25rem;
+    padding: 0.08em 0.15em;
+    margin-inline: -0.05em;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    color: inherit;
+  }
+  
+  .nb-prose code, .nb-editor-content code {
+    background: color-mix(in srgb, var(--color-primary-500) 9%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-primary-500) 14%, transparent);
+    padding: 0.1em 0.35em;
+    border-radius: 0.3rem;
+    font-size: 0.85em;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .nb-prose pre, .nb-editor-content pre {
+    background:
+      linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--color-primary-500) 7%, transparent),
+        color-mix(in srgb, var(--color-primary-500) 3%, transparent)
+      );
+    border: 1px solid var(--nb-rule);
+    padding: 1.1em 1.2em;
+    border-radius: 0.85rem;
+    overflow-x: auto;
+    font-size: 0.875rem;
+    line-height: 1.65;
+  }
+  .nb-prose pre code, .nb-editor-content pre code {
+    background: none;
+    border: 0;
+    padding: 0;
+    font-size: inherit;
+  }
+  
+  /* ── Lists ─────────────────────────────────────────────────────────────── */
+  .nb-prose ul, .nb-editor-content ul,
+  .nb-prose ol, .nb-editor-content ol { padding-left: 1.45em; }
+  .nb-prose ul, .nb-editor-content ul { list-style: disc; }
+  .nb-prose ol, .nb-editor-content ol { list-style: decimal; }
+  .nb-prose li, .nb-editor-content li { margin-top: 0.3em; }
+  .nb-prose li::marker, .nb-editor-content li::marker {
+    color: color-mix(in srgb, var(--color-primary-600) 65%, var(--nb-ink-muted));
+  }
+  .nb-prose li > ul, .nb-editor-content li > ul,
+  .nb-prose li > ol, .nb-editor-content li > ol { margin-top: 0.3em; }
+  
+  /* ── Quote ─────────────────────────────────────────────────────────────── */
+  .nb-prose blockquote, .nb-editor-content blockquote {
+    border-left: 3px solid var(--color-primary-500);
+    padding: 0.15em 0 0.15em 1.1em;
+    color: var(--nb-ink-muted);
+    font-style: normal;
+  }
+  .nb-prose blockquote p:first-child, .nb-editor-content blockquote p:first-child { margin-top: 0; }
+  
+  /* ── Rule ────────────────────────────────────────────────────────────────
+   * A gradient that fades at both ends, so a divider reads as a break in the
+   * page rather than a drawn line. */
+  .nb-prose hr, .nb-editor-content hr {
+    border: 0;
+    height: 1px;
+    margin-block: 2.2em;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--nb-rule-strong) 18%,
+      var(--nb-rule-strong) 82%,
+      transparent
     );
-  border: 1px solid var(--nb-rule);
-  padding: 1.1em 1.2em;
-  border-radius: 0.85rem;
-  overflow-x: auto;
-  font-size: 0.875rem;
-  line-height: 1.65;
-}
-.nb-prose pre code, .nb-editor-content pre code {
-  background: none;
-  border: 0;
-  padding: 0;
-  font-size: inherit;
-}
-
-/* ── Lists ─────────────────────────────────────────────────────────────── */
-.nb-prose ul, .nb-editor-content ul,
-.nb-prose ol, .nb-editor-content ol { padding-left: 1.45em; }
-.nb-prose ul, .nb-editor-content ul { list-style: disc; }
-.nb-prose ol, .nb-editor-content ol { list-style: decimal; }
-.nb-prose li, .nb-editor-content li { margin-top: 0.3em; }
-.nb-prose li::marker, .nb-editor-content li::marker {
-  color: color-mix(in srgb, var(--color-primary-600) 65%, var(--nb-ink-muted));
-}
-.nb-prose li > ul, .nb-editor-content li > ul,
-.nb-prose li > ol, .nb-editor-content li > ol { margin-top: 0.3em; }
-
-/* ── Quote ─────────────────────────────────────────────────────────────── */
-.nb-prose blockquote, .nb-editor-content blockquote {
-  border-left: 3px solid var(--color-primary-500);
-  padding: 0.15em 0 0.15em 1.1em;
-  color: var(--nb-ink-muted);
-  font-style: normal;
-}
-.nb-prose blockquote p:first-child, .nb-editor-content blockquote p:first-child { margin-top: 0; }
-
-/* ── Rule ────────────────────────────────────────────────────────────────
- * A gradient that fades at both ends, so a divider reads as a break in the
- * page rather than a drawn line. */
-.nb-prose hr, .nb-editor-content hr {
-  border: 0;
-  height: 1px;
-  margin-block: 2.2em;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--nb-rule-strong) 18%,
-    var(--nb-rule-strong) 82%,
-    transparent
-  );
-}
-
-/* ── Media ─────────────────────────────────────────────────────────────── */
-.nb-prose img, .nb-editor-content img {
-  max-width: 100%;
-  height: auto;
-  border-radius: 0.75rem;
-  border: 1px solid var(--nb-rule);
-}
-.nb-editor-content img.ProseMirror-selectednode {
-  outline: 2px solid var(--color-primary-500);
-  outline-offset: 2px;
-}
-
-/* ── Tables ────────────────────────────────────────────────────────────── */
-.nb-prose table, .nb-editor-content table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9rem;
-  table-layout: fixed;
-}
-.nb-prose th, .nb-editor-content th,
-.nb-prose td, .nb-editor-content td {
-  border: 1px solid var(--nb-rule);
-  padding: 0.55em 0.75em;
-  vertical-align: top;
-  text-align: left;
-}
-.nb-prose th, .nb-editor-content th {
-  background: color-mix(in srgb, var(--color-primary-500) 7%, transparent);
-  font-weight: 650;
-}
-.nb-editor-content th,
-.nb-editor-content td { position: relative; min-width: 3em; }
-.nb-prose tbody tr:nth-child(even) td,
-.nb-editor-content tbody tr:nth-child(even) td {
-  background: color-mix(in srgb, var(--nb-rule) 22%, transparent);
-}
-
-/* ── Selection ─────────────────────────────────────────────────────────── */
-.nb-prose ::selection,
-.nb-editor-content ::selection {
-  background: color-mix(in srgb, var(--color-primary-500) 26%, transparent);
+  }
+  
+  /* ── Media ─────────────────────────────────────────────────────────────── */
+  .nb-prose img, .nb-editor-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.75rem;
+    border: 1px solid var(--nb-rule);
+  }
+  .nb-editor-content img.ProseMirror-selectednode {
+    outline: 2px solid var(--color-primary-500);
+    outline-offset: 2px;
+  }
+  
+  /* ── Tables ────────────────────────────────────────────────────────────── */
+  .nb-prose table, .nb-editor-content table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    table-layout: fixed;
+  }
+  .nb-prose th, .nb-editor-content th,
+  .nb-prose td, .nb-editor-content td {
+    border: 1px solid var(--nb-rule);
+    padding: 0.55em 0.75em;
+    vertical-align: top;
+    text-align: left;
+  }
+  .nb-prose th, .nb-editor-content th {
+    background: color-mix(in srgb, var(--color-primary-500) 7%, transparent);
+    font-weight: 650;
+  }
+  .nb-editor-content th,
+  .nb-editor-content td { position: relative; min-width: 3em; }
+  .nb-prose tbody tr:nth-child(even) td,
+  .nb-editor-content tbody tr:nth-child(even) td {
+    background: color-mix(in srgb, var(--nb-rule) 22%, transparent);
+  }
+  
+  /* ── Selection ─────────────────────────────────────────────────────────── */
+  .nb-prose ::selection,
+  .nb-editor-content ::selection {
+    background: color-mix(in srgb, var(--color-primary-500) 26%, transparent);
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════════════
