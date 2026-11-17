@@ -72,16 +72,13 @@ const optionalDate = z
 /**
  * Creating a project.
  *
- * `company` is a company **nanoid** and `client` an optional contact
- * **nanoid**; `category` is the category **key** (`social`, `blog`, …),
+ * `category` is the category **key** (`social`, `blog`, …),
  * never a nanoid — the backend reads it by key.
  */
 export const CreateProjectSchema = z.object({
   workspace_domain: z.string().min(1, "Missing workspace."),
   name: z.string().trim().min(1, "Project name is required.").max(255),
   description: optionalLongText(),
-  company: z.string().min(1, "Company is required."),
-  client: optionalText(),
   category: optionalText(50),
   status: ProjectStatusSchema.default("planning"),
   priority: ProjectPrioritySchema.default("medium"),
@@ -103,8 +100,6 @@ export const UpdateProjectSchema = z.object({
   nanoid: z.string().min(1, "Missing project."),
   name: z.string().trim().min(1, "Project name is required.").max(255),
   description: optionalLongText(),
-  company: z.string().min(1, "Company is required."),
-  client: optionalText(),
   category: optionalText(50),
   status: ProjectStatusSchema.default("planning"),
   priority: ProjectPrioritySchema.default("medium"),

@@ -36,8 +36,6 @@ export async function createProjectAction(
     workspace_domain: pick(formData, "workspace_domain"),
     name: pick(formData, "name"),
     description: pick(formData, "description"),
-    company: pick(formData, "company"),
-    client: pick(formData, "client"),
     category: pick(formData, "category"),
     status: pick(formData, "status") || "planning",
     priority: pick(formData, "priority") || "medium",
@@ -61,8 +59,6 @@ export async function createProjectAction(
       {
         name: data.name,
         description: data.description,
-        company: data.company,
-        client: orNull(data.client),
         category: orNull(data.category),
         status: data.status,
         priority: data.priority,
@@ -92,8 +88,7 @@ export async function createProjectAction(
 /**
  * Server Action: save the project form.
  *
- * Bound to the edit dialog on the project record. The company and the
- * client are relations, so an empty selection clears them.
+ * Bound to the edit dialog on the project record.
  */
 export async function updateProjectAction(
   _prev: ProjectActionState,
@@ -104,8 +99,6 @@ export async function updateProjectAction(
     nanoid: pick(formData, "nanoid"),
     name: pick(formData, "name"),
     description: pick(formData, "description"),
-    company: pick(formData, "company"),
-    client: pick(formData, "client"),
     category: pick(formData, "category"),
     status: pick(formData, "status") || "planning",
     priority: pick(formData, "priority") || "medium",
@@ -129,8 +122,6 @@ export async function updateProjectAction(
       {
         name: data.name,
         description: data.description,
-        company: data.company,
-        client: orNull(data.client),
         category: orNull(data.category),
         status: data.status,
         priority: data.priority,

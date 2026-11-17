@@ -4,7 +4,6 @@ import {
   type InnerNavItem,
 } from "@/components/workspace/workspace-inner-nav";
 import { Banner } from "@/components/banner";
-import type { PickerOption } from "../forms/project-form";
 
 const NAV_ITEMS: InnerNavItem[] = [
   { label: "Projects", href: "", end: true, icon: FolderKanban },
@@ -19,11 +18,8 @@ interface Props {
     name: string;
     description?: string | null;
     company_name?: string | null;
-    client_name?: string | null;
     deadline?: string | null;
   };
-  companies: PickerOption[];
-  clients: PickerOption[];
 }
 
 export function ProjectDetailShell({
@@ -40,7 +36,6 @@ export function ProjectDetailShell({
         description={
           [
             project.company_name ?? "No company",
-            project.client_name,
             project.deadline ? `Due ${project.deadline}` : null,
           ]
             .filter(Boolean)

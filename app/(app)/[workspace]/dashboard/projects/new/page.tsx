@@ -1,4 +1,3 @@
-import { listCompanies, listContacts, type Company, type Contact } from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
 import { requireFeature } from "@/lib/features/guard";
 import { Banner } from "@/components/banner";
@@ -14,14 +13,6 @@ export default async function NewProjectPage({
   const active = await requireWorkspace(slug);
   await requireFeature(active, "projectmanager.projects");
 
-  const [companies, contacts] = await Promise.all([
-    listCompanies({
-      filters: { page_size: 100 },
-      workspace: active.domain,
-    }).catch(() => [] as Company[]),
-    listContacts({ workspace: active.domain }).catch(() => [] as Contact[]),
-  ]);
-
   return (
     <div className="flex min-h-full flex-col">
       <Banner
@@ -31,14 +22,6 @@ export default async function NewProjectPage({
       <div className="mt-6 flex-1">
         <NewProjectForm
           workspaceDomain={active.domain}
-          companies={companies.map((company) => ({
-            nanoid: company.nanoid,
-            name: company.name,
-          }))}
-          clients={contacts.map((contact) => ({
-            nanoid: contact.nanoid,
-            name: `${contact.first_name} ${contact.last_name}`.trim(),
-          }))}
         />
       </div>
     </div>

@@ -2,12 +2,8 @@ import Link from "next/link";
 
 import {
   getProject,
-  listCompanies,
-  listContacts,
   listTasks,
   listWorkspaceMembers,
-  type Company,
-  type Contact,
   type Project,
   type Task,
   type WorkspaceMember,
@@ -73,15 +69,10 @@ export default async function ProjectDetailPage({
   // The picker data every tab can need: the members who can be assigned a
   // task, the companies and contacts the project form offers, and the
   // project's own tasks.
-  const [members, companies, contacts, tasks] = await Promise.all([
+  const [members, tasks] = await Promise.all([
     listWorkspaceMembers(active.nanoid, active.domain).catch(
       () => [] as WorkspaceMember[],
     ),
-    listCompanies({
-      filters: { page_size: 100 },
-      workspace: active.domain,
-    }).catch(() => [] as Company[]),
-    listContacts({ workspace: active.domain }).catch(() => [] as Contact[]),
     listTasks({ project: project.nanoid, workspace: active.domain }).catch(
       () => [] as Task[],
     ),
@@ -91,16 +82,6 @@ export default async function ProjectDetailPage({
     nanoid: member.user_nanoid,
     name: [member.first_name, member.last_name].filter(Boolean).join(" ") ||
       member.email,
-  }));
-
-  const companyOptions = companies.map((company) => ({
-    nanoid: company.nanoid,
-    name: company.name,
-  }));
-
-  const clientOptions = contacts.map((contact) => ({
-    nanoid: contact.nanoid,
-    name: `${contact.first_name} ${contact.last_name}`.trim(),
   }));
 
   const projectOptions = [
@@ -115,8 +96,6 @@ export default async function ProjectDetailPage({
         activeTab={activeTab}
         tasks={tasks}
         members={memberOptions}
-        companies={companyOptions}
-        clients={clientOptions}
         projectOptions={projectOptions}
       />
     </div>

@@ -32,7 +32,6 @@ import {
 } from "@/components/ui/dialog";
 import { ProgressMeter } from "../../_components/project-progress";
 import { ProjectForm } from "../../forms/project-form";
-import type { PickerOption } from "../../forms/project-form";
 import {
   deleteProjectAction,
   updateProjectStatusAction,
@@ -41,15 +40,11 @@ import {
 interface Props {
   project: Project;
   workspaceDomain: string;
-  companies: PickerOption[];
-  clients: PickerOption[];
 }
 
 export function ProjectHeader({
   project,
   workspaceDomain,
-  companies,
-  clients,
 }: Props) {
   const [status, setStatus] = useState(project.status);
   const [statusPending, setStatusPending] = useState(false);
@@ -142,14 +137,6 @@ export function ProjectHeader({
                     </span>
                   </div>
                 ) : null}
-                {project.client_name ? (
-                  <div className="flex items-center gap-1.5">
-                    <Building2 className="size-3.5 text-slate-400" />
-                    <span className="text-slate-800 font-medium">
-                      {project.client_name}
-                    </span>
-                  </div>
-                ) : null}
 
                 <div className="flex items-center gap-1.5 font-mono tabular-nums">
                   <CalendarIcon className="size-3.5 text-slate-400" />
@@ -238,8 +225,6 @@ export function ProjectHeader({
           <ProjectForm
             workspaceDomain={workspaceDomain}
             project={project}
-            companies={companies}
-            clients={clients}
             submitLabel="Save changes"
             onSuccess={() => setEditOpen(false)}
           />

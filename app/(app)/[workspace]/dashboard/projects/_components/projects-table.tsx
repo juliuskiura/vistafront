@@ -75,9 +75,8 @@ export function ProjectsTable({ projects, workspaceDomain }: Props) {
                   {project.name}
                 </Link>
                 <p className="text-xs text-muted-foreground">
-                  {project.client_name ?? "No client"}
                   {project.deadline
-                    ? ` · due ${formatMediumDate(project.deadline)}`
+                    ? `due ${formatMediumDate(project.deadline)}`
                     : ""}
                 </p>
               </div>

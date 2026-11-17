@@ -13,8 +13,6 @@ interface Props {
   activeTab: string;
   tasks: Task[];
   members: PickerOption[];
-  companies: PickerOption[];
-  clients: PickerOption[];
   /** The current project, as a single-option picker for the task form. */
   projectOptions: PickerOption[];
 }
@@ -31,8 +29,6 @@ export function ProjectRecord({
   activeTab,
   tasks,
   members,
-  companies,
-  clients,
   projectOptions,
 }: Props) {
   return (
@@ -40,8 +36,6 @@ export function ProjectRecord({
       <ProjectHeader
         project={project}
         workspaceDomain={workspaceDomain}
-        companies={companies}
-        clients={clients}
       />
 
       <ProjectTabs

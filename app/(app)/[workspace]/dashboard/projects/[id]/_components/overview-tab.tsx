@@ -21,7 +21,6 @@ interface Props {
 export function OverviewTab({ project }: Props) {
   const fields: Array<{ label: string; value: string }> = [
     { label: "Company", value: project.company_name ?? "No company" },
-    { label: "Client", value: project.client_name ?? "No client" },
     { label: "Category", value: projectCategoryLabel(project.category) },
     { label: "Status", value: PROJECT_STATUS_LABELS[project.status] },
     { label: "Priority", value: PROJECT_PRIORITY_LABELS[project.priority] },

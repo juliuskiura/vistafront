@@ -1309,8 +1309,6 @@ export interface Project {
   name: string;
   description: string;
   category: string | null;
-  client: string | null;
-  client_name: string | null;
   company: string;
   company_name: string | null;
   status: ProjectStatus;
@@ -1330,8 +1328,6 @@ export interface ProjectSummary {
   status: ProjectStatus;
   priority: ProjectPriority;
   category: string | null;
-  client: string | null;
-  client_name: string | null;
   company: string;
   company_name: string | null;
   deadline: string | null;
@@ -1456,8 +1452,6 @@ export interface UpdateProjectCategoryBody {
 export interface CreateProjectBody {
   name: string;
   description?: string;
-  company: string;
-  client?: string | null;
   category?: string | null;
   status?: ProjectStatus;
   priority?: ProjectPriority;
@@ -1474,8 +1468,6 @@ export interface CreateProjectBody {
 export interface UpdateProjectBody {
   name?: string;
   description?: string;
-  company?: string;
-  client?: string | null;
   category?: string | null;
   status?: ProjectStatus;
   priority?: ProjectPriority;

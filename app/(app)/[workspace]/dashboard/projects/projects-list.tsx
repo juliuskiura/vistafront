@@ -111,11 +111,8 @@ export function ProjectsList({
         const matchCompany = (project.company_name ?? "")
           .toLowerCase()
           .includes(needle);
-        const matchClient = (project.client_name ?? "")
-          .toLowerCase()
-          .includes(needle);
         const matchNanoid = project.nanoid.toLowerCase().includes(needle);
-        if (!matchName && !matchCompany && !matchClient && !matchNanoid)
+        if (!matchName && !matchCompany && !matchNanoid)
           return false;
       }
 
@@ -362,7 +359,6 @@ export function ProjectsList({
           {filteredProjects.map((proj) => {
             const cat = categories.find((c) => c.key === proj.category);
             const comp = proj.company_name;
-            const client = proj.client_name;
             const stats = getProjectStats(proj);
 
             return (
@@ -423,12 +419,6 @@ export function ProjectsList({
                         <span className="text-slate-800 font-semibold">
                           {comp}
                         </span>
-                      </div>
-                    )}
-                    {client && (
-                      <div className="flex items-center gap-1">
-                        <UserIcon className="size-3 text-slate-400" />
-                        <span>{client}</span>
                       </div>
                     )}
                   </div>

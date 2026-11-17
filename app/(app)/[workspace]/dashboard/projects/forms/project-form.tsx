@@ -27,16 +27,12 @@ interface Props {
     nanoid: string;
     name: string;
     description: string;
-    company: string;
-    client: string | null;
     category: string | null;
     status: string;
     priority: string;
     start_date: string | null;
     deadline: string | null;
   };
-  companies: PickerOption[];
-  clients: PickerOption[];
   submitLabel: string;
   /** Called after a successful save, so the caller can close its dialog. */
   onSuccess?: () => void;
@@ -60,8 +56,6 @@ const selectClass =
 export function ProjectForm({
   workspaceDomain,
   project,
-  companies,
-  clients,
   submitLabel,
   onSuccess,
 }: Props) {
@@ -100,48 +94,6 @@ export function ProjectForm({
         {errors.name ? (
           <p className="text-xs text-destructive">{errors.name[0]}</p>
         ) : null}
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label htmlFor="company">Company</Label>
-          <select
-            id="company"
-            name="company"
-            required
-            defaultValue={project?.company ?? ""}
-            className={selectClass}
-          >
-            <option value="" disabled>
-              Pick a company…
-            </option>
-            {companies.map((company) => (
-              <option key={company.nanoid} value={company.nanoid}>
-                {company.name}
-              </option>
-            ))}
-          </select>
-          {errors.company ? (
-            <p className="text-xs text-destructive">{errors.company[0]}</p>
-          ) : null}
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor="client">Client</Label>
-          <select
-            id="client"
-            name="client"
-            defaultValue={project?.client ?? ""}
-            className={selectClass}
-          >
-            <option value="">No client</option>
-            {clients.map((client) => (
-              <option key={client.nanoid} value={client.nanoid}>
-                {client.name}
-              </option>
-            ))}
-          </select>
-        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
