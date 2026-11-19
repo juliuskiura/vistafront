@@ -1,4 +1,4 @@
-import { getTask, listWorkspaceMembers } from "@/lib/api";
+import { getTask, listWorkspaceMembers, listNoteTypes } from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
 import { requireFeature } from "@/lib/features/guard";
 import { TaskDetailShell } from "./task-shell";
@@ -16,6 +16,7 @@ export default async function TaskDetailLayout({
 
   const task = await getTask(id, active.domain);
   const members = await listWorkspaceMembers(active.nanoid, active.domain).catch(() => [] as any[]);
+  const noteTypes = await listNoteTypes(active.domain).catch(() => [] as any[]);
 
   let parentTask = null;
   if ((task as any).parent) {
@@ -44,6 +45,7 @@ export default async function TaskDetailLayout({
       members={memberOptions}
       projects={projects}
       parentTask={parentTask}
+      noteTypes={noteTypes}
     >
       {children}
     </TaskDetailShell>

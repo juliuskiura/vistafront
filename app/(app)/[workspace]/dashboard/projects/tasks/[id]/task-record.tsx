@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import type { Attachment, Comment, Task } from "@/lib/api";
+import type { Attachment, Comment, Task, Note } from "@/lib/api";
 import { formatMediumDate } from "@/lib/dates";
 import { Edit3, Trash2 } from "@/lib/icons";
 import {
@@ -37,6 +37,7 @@ interface Props {
   members: PickerOption[];
   projects: PickerOption[];
   subtasks?: Task[];
+  notes?: Note[];
 }
 
 export function TaskRecord({
@@ -47,6 +48,7 @@ export function TaskRecord({
   members,
   projects,
   subtasks = [],
+  notes = [],
 }: Props) {
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
@@ -201,6 +203,26 @@ export function TaskRecord({
           </ul>
         )}
       </div>
+      ) : null}
+
+      {notes.length > 0 ? (
+        <div className="rounded-xl border bg-white p-4 shadow-sm">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+            Attached Notes ({notes.length})
+          </h3>
+          <ul className="mt-3 space-y-2">
+            {notes.map((note) => (
+              <li key={note.nanoid}>
+                <Link
+                  href={`/${workspaceDomain}/dashboard/notebook/${note.nanoid}`}
+                  className="text-sm text-slate-800 hover:underline"
+                >
+                  {note.title}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
 
       <TaskComments

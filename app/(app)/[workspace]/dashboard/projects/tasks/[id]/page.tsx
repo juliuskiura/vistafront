@@ -6,10 +6,14 @@ import {
   listComments,
   listTasks,
   listWorkspaceMembers,
+  listNotes,
+  listNoteTypes,
   type Attachment,
   type Comment,
   type Task,
   type WorkspaceMember,
+  type Note,
+  type NoteTypeOption,
 } from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
 import { requireFeature } from "@/lib/features/guard";
@@ -54,7 +58,7 @@ export default async function TaskDetailPage({
     );
   }
 
-  const [comments, attachments, members, allProjectTasks] = await Promise.all([
+  const [comments, attachments, members, allProjectTasks, notes] = await Promise.all([
     listComments("task", task.nanoid, active.domain).catch(
       () => [] as Comment[],
     ),
@@ -69,6 +73,9 @@ export default async function TaskDetailPage({
           () => [] as Task[],
         )
       : Promise.resolve([] as Task[]),
+    listNotes({ relatable: "task", object_nanoid: task.nanoid, workspace: active.domain }).catch(
+      () => [] as Note[],
+    ),
   ]);
 
   const subtasks = allProjectTasks.filter(
@@ -90,6 +97,7 @@ export default async function TaskDetailPage({
         }))}
         projects={[{ nanoid: task.project ?? "", name: task.project_name ?? "Untitled project" }]}
         subtasks={subtasks}
+        notes={notes}
       />
     </div>
   );

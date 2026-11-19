@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useActionState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   ChevronDown,
   Edit3,
+  FileText,
   FolderKanban,
   GitBranch,
   ListTodo,
@@ -26,6 +27,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { RichTextEditor } from "@/components/editor";
+import { attachNoteAction } from "@/app/(app)/[workspace]/dashboard/notebook/actions";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Dialog,
@@ -47,6 +57,7 @@ interface Props {
   members: PickerOption[];
   projects: PickerOption[];
   parentTask?: any;
+  noteTypes?: any[];
 }
 
 export function TaskDetailShell({
@@ -56,6 +67,7 @@ export function TaskDetailShell({
   members,
   projects,
   parentTask,
+  noteTypes = [],
 }: Props) {
   const router = useRouter();
   const projectBase = task.project
@@ -80,6 +92,21 @@ export function TaskDetailShell({
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [subtaskOpen, setSubtaskOpen] = useState(false);
+  const [noteSheetOpen, setNoteSheetOpen] = useState(false);
+  const [noteContent, setNoteContent] = useState("");
+  const [headerOpen, setHeaderOpen] = useState(true);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [noteState, noteAction, notePending] = useActionState(attachNoteAction, {
+    status: "idle",
+  });
+
+  useEffect(() => {
+    if (noteState.status === "success") {
+      formRef.current?.reset();
+      setNoteContent("");
+      setNoteSheetOpen(false);
+    }
+  }, [noteState]);
   const [error, setError] = useState<string | null>(null);
 
   const trailing = undefined;
@@ -98,6 +125,11 @@ export function TaskDetailShell({
         icon: Trash2,
         destructive: true,
         onClick: () => setDeleteOpen(true),
+      },
+      {
+        label: "Attach a Note",
+        icon: FileText,
+        onClick: () => setNoteSheetOpen(true),
       },
     ],
   };
@@ -153,7 +185,81 @@ export function TaskDetailShell({
          </DialogContent>
        </Dialog>
 
-       <Dialog open={editOpen} onOpenChange={setEditOpen}>
+       <Sheet open={noteSheetOpen} onOpenChange={setNoteSheetOpen}>
+        <SheetContent side="right" className="w-full sm:w-[720px] lg:w-[960px] p-6 overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Attach a Note</SheetTitle>
+            <SheetDescription>
+              Create a note attached to this task.
+            </SheetDescription>
+          </SheetHeader>
+          <form ref={formRef} action={noteAction} className="space-y-4 p-4">
+            <input type="hidden" name="workspace_domain" value={workspaceDomain} />
+            <input type="hidden" name="object_nanoid" value={task.nanoid} />
+            <input type="hidden" name="relatable_key" value="task" />
+            <input type="hidden" name="content" value={noteContent} />
+
+            <button
+              type="button"
+              className="flex w-full items-center justify-between rounded-md border border-border/60 bg-transparent px-3 py-2 text-sm font-medium transition-colors hover:bg-muted/50"
+              onClick={() => setHeaderOpen((v) => !v)}
+            >
+              <span>Note details</span>
+              <ChevronDown
+                className={`size-4 transition-transform ${headerOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+
+            {headerOpen ? (
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Title</label>
+                  <input
+                    name="title"
+                    required
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Type</label>
+                  <select
+                    name="note_type"
+                    defaultValue={noteTypes[0]?.key ?? "general"}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    {noteTypes.map((t: any) => (
+                      <option key={t.nanoid} value={String(t.key)}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium">Content</label>
+              <RichTextEditor
+                value={noteContent}
+                onChange={setNoteContent}
+                placeholder="Write your note…"
+              />
+            </div>
+
+            {noteState.status === "error" ? (
+              <p className="text-sm text-destructive">{noteState.message}</p>
+            ) : null}
+            {noteState.status === "success" ? (
+              <p className="text-sm text-green-600">{noteState.message}</p>
+            ) : null}
+            <Button type="submit" disabled={notePending}>
+              {notePending ? "Attaching…" : "Attach note"}
+            </Button>
+          </form>
+        </SheetContent>
+      </Sheet>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit task</DialogTitle>
