@@ -431,7 +431,7 @@ export function RichTextEditor({
         }}
       >
         {editor ? <EditorDragHandle editor={editor} /> : null}
-        <div className="mx-auto w-full max-w-[720px]">
+        <div className="mx-auto w-full max-w-180">
           <EditorContent editor={editor} />
         </div>
       </div>
