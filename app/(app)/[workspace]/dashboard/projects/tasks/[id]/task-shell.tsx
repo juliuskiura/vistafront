@@ -4,10 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
+  ChevronDown,
   Edit3,
   FolderKanban,
   GitBranch,
   ListTodo,
+  Plus,
   Trash2,
   UserPlus,
 } from "lucide-react";
@@ -18,6 +20,12 @@ import {
 } from "@/components/workspace/workspace-inner-nav";
 import { Banner } from "@/components/banner";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Dialog,
@@ -30,10 +38,7 @@ import { TaskForm } from "../../forms/task-form";
 import type { PickerOption } from "../../forms/project-form";
 import { deleteTaskAction } from "../../actions/task-actions";
 
-const NAV_ITEMS: InnerNavItem[] = [
-  { label: "Tasks", href: "", end: true, icon: ListTodo },
-  { label: "Projects", href: "..", icon: FolderKanban },
-];
+const NAV_ITEMS: InnerNavItem[] = [];
 
 interface Props {
   children: React.ReactNode;
@@ -53,69 +58,49 @@ export function TaskDetailShell({
   parentTask,
 }: Props) {
   const router = useRouter();
-  const basePath = `/${workspaceDomain}/dashboard/projects/tasks`;
+  const projectBase = task.project
+    ? `/${workspaceDomain}/dashboard/projects/${task.project}`
+    : `/${workspaceDomain}/dashboard/projects`;
+  const basePath = `/${workspaceDomain}/dashboard/projects`;
+  const taskBase = `/${workspaceDomain}/dashboard/projects/tasks`;
+  const navItems: InnerNavItem[] = [
+    {
+      label: "Tasks",
+      href: task.project ? `/${task.project}/tasks` : "/tasks",
+      icon: ListTodo,
+    },
+  ];
+  if (task.project) {
+    navItems.push({
+      label: "View Parent Project",
+      href: `/${task.project}`,
+      icon: FolderKanban,
+    });
+  }
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [subtaskOpen, setSubtaskOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const trailing = (
-    <div className="flex flex-wrap items-center gap-2">
-      {task.project ? (
-        <Button asChild variant="outline" size="sm" className="h-8 text-xs">
-          <Link href={`/${workspaceDomain}/dashboard/projects/${task.project}`}>
-            <FolderKanban className="size-3.5" />
-            View Parent Project
-          </Link>
-        </Button>
-      ) : null}
-      {parentTask ? (
-        <Button
-          asChild
-          variant="outline"
-          size="sm"
-          className="h-8 text-xs"
-        >
-          <Link href={`${basePath}/${parentTask.nanoid}`}>
-            <GitBranch className="size-3.5" />
-            Parent Task
-          </Link>
-        </Button>
-      ) : null}
-      <Button
-        variant="outline"
-        size="sm"
-        className="h-8 text-xs"
-        onClick={() => setEditOpen(true)}
-      >
-        <Edit3 className="size-3.5" />
-        Edit Task
-      </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        className="h-8 text-xs"
-        onClick={() => setEditOpen(true)}
-      >
-        <UserPlus className="size-3.5" />
-        Assign Task
-      </Button>
-      <Button
-        variant="destructive"
-        size="sm"
-        className="h-8 text-xs"
-        onClick={() => setDeleteOpen(true)}
-      >
-        <Trash2 className="size-3.5" />
-        Delete Task
-      </Button>
-      <Button asChild variant="ghost" size="sm" className="h-8 text-xs">
-        <Link href={`/${workspaceDomain}/dashboard/projects`}>
-          <ArrowLeft className="size-3.5" />
-          Back to Projects
-        </Link>
-      </Button>
-    </div>
-  );
+  const trailing = undefined;
+
+  const actionsGroup = {
+    label: "Actions",
+    icon: Edit3,
+    items: [
+      ...(!task.parent
+        ? [{ label: "Add SubTask", icon: Plus, onClick: () => setSubtaskOpen(true) }]
+        : []),
+      { label: "Edit Task", icon: Edit3, onClick: () => setEditOpen(true) },
+      { label: "Assign Task", icon: UserPlus, onClick: () => setEditOpen(true) },
+      {
+        label: "Delete Task",
+        icon: Trash2,
+        destructive: true,
+        onClick: () => setDeleteOpen(true),
+      },
+    ],
+  };
 
   return (
     <div className="flex min-h-full flex-col">
@@ -133,15 +118,42 @@ export function TaskDetailShell({
       />
       <WorkspaceInnerNav
         basePath={basePath}
-        brandLabel="Task"
-        brandIcon={ListTodo}
-        items={NAV_ITEMS}
-        hideBrand
+        brandLabel="Project Manager"
+        brandIcon={FolderKanban}
+        items={navItems}
+        groups={[actionsGroup]}
         trailing={trailing}
       />
-      <div className="mt-6 flex-1">{children}</div>
+      <div className="flex-1 p-4 md:p-6">{children}</div>
 
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+       <Dialog
+         open={subtaskOpen}
+         onOpenChange={(open) => !open && setSubtaskOpen(false)}
+       >
+         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+           <DialogHeader>
+             <DialogTitle>Add subtask</DialogTitle>
+             <DialogDescription>
+               A subtask belongs to “{task.title}”.
+             </DialogDescription>
+           </DialogHeader>
+           <TaskForm
+             workspaceDomain={workspaceDomain}
+             task={undefined}
+             projects={projects}
+             members={members}
+             defaultProject={task.project ?? undefined}
+             defaultParent={task.nanoid}
+             defaultParentName={task.title}
+             defaultParentTaskId={task.task_id}
+             parentCreatedAt={task.created_at}
+             submitLabel="Add subtask"
+             onSuccess={() => setSubtaskOpen(false)}
+           />
+         </DialogContent>
+       </Dialog>
+
+       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit task</DialogTitle>

@@ -75,8 +75,13 @@ export async function createTaskAction(
     };
   }
 
-  revalidatePath(`/${data.workspace_domain}/dashboard/projects`);
-  return { status: "success", message: "Task added." };
+   revalidatePath(`/${data.workspace_domain}/dashboard/projects`);
+   if (data.parent) {
+     revalidatePath(
+       `/${data.workspace_domain}/dashboard/projects/tasks/${data.parent}`,
+     );
+   }
+   return { status: "success", message: "Task added." };
 }
 
 /**

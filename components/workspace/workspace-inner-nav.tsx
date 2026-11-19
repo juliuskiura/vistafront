@@ -11,7 +11,7 @@ import { NavCountBadge } from "./nav-count-badge";
 export interface InnerNavItem {
   label: string;
   /** Path fragment after `basePath`. Empty string means the section home. */
-  href: string;
+  href?: string;
   icon: LucideIcon;
   /** Exact-match basePath (used for the section home item). */
   end?: boolean;
@@ -25,8 +25,17 @@ export interface InnerNavItem {
    * line tall, so a menu can mix plain navigation with described actions.
    */
   description?: string;
-  /** Tinted badge behind the icon in menus. Supplied with `iconColor`. */
+  /**
+   * Tinted badge behind the icon in menus. Supplied with `iconColor`.
+   */
   iconBg?: string;
+  /**
+   * Optional click handler. When present, the item renders as a button
+   * instead of a link (used for in-page actions like opening a dialog).
+   */
+  onClick?: () => void;
+  /** Render the item's label in a destructive (red) tone. */
+  destructive?: boolean;
   /** Accent for the icon inside that badge. Supplied with `iconBg`. */
   iconColor?: string;
 }
@@ -124,9 +133,31 @@ export function WorkspaceInnerNav({
         <div className="hidden flex-1 flex-wrap items-center gap-1 md:flex" aria-label={brandLabel}>
           {flatItems.map((item) => {
             const active = itemActive(item);
+            if (item.onClick) {
+              return (
+                <button
+                  key={item.href + item.label}
+                  type="button"
+                  onClick={() => {
+                    item.onClick?.();
+                  }}
+                  className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                    item.destructive
+                      ? "text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
+                      : active
+                        ? "bg-primary-50 text-primary-700 dark:bg-primary-950/60 dark:text-primary-300"
+                        : "text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  <item.icon className="h-4 w-4 shrink-0" />
+                  <span className="whitespace-nowrap">{item.label}</span>
+                  <NavCountBadge count={item.badge} />
+                </button>
+              );
+            }
             return (
               <Link
-                key={item.href || item.label}
+                key={item.href + item.label}
                 href={itemHref(item)}
                 className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                   active
@@ -190,7 +221,7 @@ export function WorkspaceInnerNav({
                   >
                     {group.items.map((item) => (
                       <InnerNavItemLink
-                        key={item.href || item.label}
+                        key={item.href + item.label}
                         item={item}
                         href={itemHref(item)}
                         active={itemActive(item)}
@@ -232,7 +263,7 @@ export function WorkspaceInnerNav({
             <div className="absolute left-0 right-0 z-30 mt-1 max-h-[70vh] overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-800 dark:bg-slate-900">
               {flatItems.map((item) => (
                 <InnerNavItemLink
-                  key={item.href || item.label}
+                  key={item.href + item.label}
                   item={item}
                   href={itemHref(item)}
                   active={itemActive(item)}
@@ -248,7 +279,7 @@ export function WorkspaceInnerNav({
                     </p>
                     {group.items.map((item) => (
                       <InnerNavItemLink
-                        key={item.href || item.label}
+                        key={item.href + item.label}
                         item={item}
                         href={itemHref(item)}
                         active={itemActive(item)}

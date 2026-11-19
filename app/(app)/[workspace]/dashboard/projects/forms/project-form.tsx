@@ -32,6 +32,7 @@ interface Props {
     priority: string;
     start_date: string | null;
     deadline: string | null;
+    created_at?: string | null;
   };
   submitLabel: string;
   /** Called after a successful save, so the caller can close its dialog. */
@@ -66,6 +67,22 @@ export function ProjectForm({
     initialProjectActionState,
   );
   const [description, setDescription] = useState(project?.description ?? "");
+  const [deadlineError, setDeadlineError] = useState<string | null>(null);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const minDeadline = project?.created_at
+    ? (project.created_at.slice(0, 10) > today
+        ? project.created_at.slice(0, 10)
+        : today)
+    : today;
+
+  function handleDeadlineChange(value: string) {
+    if (value && value < minDeadline) {
+      setDeadlineError(`Deadline cannot be earlier than ${minDeadline}.`);
+    } else {
+      setDeadlineError(null);
+    }
+  }
 
   useEffect(() => {
     if (state.status === "success") onSuccess?.();
@@ -157,15 +174,20 @@ export function ProjectForm({
             defaultValue={project?.start_date ?? ""}
           />
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="deadline">Deadline</Label>
-          <Input
-            id="deadline"
-            name="deadline"
-            type="date"
-            defaultValue={project?.deadline ?? ""}
-          />
-        </div>
+         <div className="space-y-1.5">
+           <Label htmlFor="deadline">Deadline</Label>
+           <Input
+             id="deadline"
+             name="deadline"
+             type="date"
+             min={minDeadline}
+             defaultValue={project?.deadline ?? ""}
+             onChange={(event) => handleDeadlineChange(event.target.value)}
+           />
+           {deadlineError ? (
+             <p className="text-xs text-destructive">{deadlineError}</p>
+           ) : null}
+         </div>
       </div>
 
       <div className="space-y-1.5">

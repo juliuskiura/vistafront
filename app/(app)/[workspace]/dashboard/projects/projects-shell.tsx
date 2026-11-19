@@ -27,7 +27,7 @@ const ROUTE_META: Record<
   "/new": {
     title: "New project",
     description:
-      "Give the work a name, pick the company it belongs to, and set how it should be handled.",
+      "Name the project, set its status and priority, and add dates and a description to keep everyone aligned.",
   },
   "/categories": {
     title: "Category taxonomy",

@@ -64,6 +64,7 @@ export function TasksTab({
 }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [addOpen, setAddOpen] = useState(false);
+  const [subtaskParent, setSubtaskParent] = useState<Task | null>(null);
   const [editTarget, setEditTarget] = useState<Task | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Task | null>(null);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
@@ -297,6 +298,12 @@ export function TasksTab({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => setSubtaskParent(parent)}
+                          >
+                            <Plus className="size-4" aria-hidden="true" />
+                            Add subtask
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => onEdit(parent)}>
                             <Edit3 className="size-4" aria-hidden="true" />
                             Edit
@@ -373,7 +380,35 @@ export function TasksTab({
         </div>
       )}
 
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+       <Dialog
+         open={subtaskParent !== null}
+         onOpenChange={(open) => !open && setSubtaskParent(null)}
+       >
+         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+           <DialogHeader>
+             <DialogTitle>Add subtask</DialogTitle>
+             <DialogDescription>
+               A subtask belongs to “{subtaskParent?.title}”.
+             </DialogDescription>
+           </DialogHeader>
+           {subtaskParent ? (
+             <TaskForm
+               workspaceDomain={workspaceDomain}
+               projects={projectOptions}
+               members={members}
+               defaultProject={subtaskParent.project ?? undefined}
+               defaultParent={subtaskParent.nanoid}
+               defaultParentName={subtaskParent.title}
+               defaultParentTaskId={subtaskParent.task_id}
+               parentCreatedAt={subtaskParent.created_at}
+               submitLabel="Add subtask"
+               onSuccess={() => setSubtaskParent(null)}
+             />
+           ) : null}
+         </DialogContent>
+       </Dialog>
+
+       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Add task</DialogTitle>

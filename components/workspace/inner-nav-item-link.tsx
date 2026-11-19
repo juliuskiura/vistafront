@@ -26,26 +26,27 @@ export function InnerNavItemLink({
   onNavigate,
 }: {
   item: InnerNavItem;
-  href: string;
+  href?: string;
   active: boolean;
   onNavigate: () => void;
 }) {
   const Icon = item.icon;
   const tinted = Boolean(item.iconBg && item.iconColor);
   const described = Boolean(item.description);
+  const clickable = Boolean(item.onClick);
 
-  return (
-    <Link
-      href={href}
-      onClick={onNavigate}
-      className={cn(
-        "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors",
-        described && "items-start",
-        active
-          ? "bg-primary-50 text-primary-700 dark:bg-primary-950/60 dark:text-primary-300"
-          : "text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800",
-      )}
-    >
+  const classes = cn(
+    "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors",
+    described && "items-start",
+    item.destructive
+      ? "text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
+      : active
+        ? "bg-primary-50 text-primary-700 dark:bg-primary-950/60 dark:text-primary-300"
+        : "text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800",
+  );
+
+  const content = (
+    <>
       {tinted ? (
         <span
           className={cn(
@@ -71,6 +72,31 @@ export function InnerNavItemLink({
       </span>
 
       <NavCountBadge count={item.badge} />
+    </>
+  );
+
+  if (clickable) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          item.onClick?.();
+          onNavigate();
+        }}
+        className={classes}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <Link
+      href={href ?? "#"}
+      onClick={onNavigate}
+      className={classes}
+    >
+      {content}
     </Link>
   );
 }

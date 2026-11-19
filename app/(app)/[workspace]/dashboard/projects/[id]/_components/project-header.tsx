@@ -104,7 +104,7 @@ export function ProjectHeader({
         </span>
 
         <span className="font-mono text-[11px] text-muted-foreground">
-          nanoid: {project.nanoid}
+          PROJECT ID: {project.project_id}
         </span>
       </div>
 

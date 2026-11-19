@@ -27,6 +27,7 @@ interface Props {
     status: string;
     priority: string;
     due_date: string | null;
+    created_at?: string | null;
   };
   /** The workspace's projects — a task belongs to one of them. */
   projects: PickerOption[];
@@ -34,6 +35,14 @@ interface Props {
   members: PickerOption[];
   /** Pre-selected project, when the form was opened from one. */
   defaultProject?: string;
+  /** Pre-selected parent task, when creating a subtask. */
+  defaultParent?: string;
+  /** Display name of the pre-selected parent task. */
+  defaultParentName?: string;
+  /** Task ID of the pre-selected parent task. */
+  defaultParentTaskId?: string;
+  /** Creation date (ISO) of the parent task, for due-date validation. */
+  parentCreatedAt?: string | null;
   submitLabel: string;
   onSuccess?: () => void;
 }
@@ -54,6 +63,10 @@ export function TaskForm({
   projects,
   members,
   defaultProject,
+  defaultParent,
+  defaultParentName,
+  defaultParentTaskId,
+  parentCreatedAt,
   submitLabel,
   onSuccess,
 }: Props) {
@@ -64,6 +77,25 @@ export function TaskForm({
     initialProjectActionState,
   );
   const [description, setDescription] = useState(task?.description ?? "");
+  const [dueDateError, setDueDateError] = useState<string | null>(null);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const minDueDate = (() => {
+    const candidates = [today];
+    if (task?.created_at) candidates.push(task.created_at.slice(0, 10));
+    if (parentCreatedAt) candidates.push(parentCreatedAt.slice(0, 10));
+    return candidates.reduce((a, b) => (a > b ? a : b));
+  })();
+
+  function handleDueDateChange(value: string) {
+    if (value && value < minDueDate) {
+      setDueDateError(
+        `Due date cannot be earlier than ${minDueDate}.`,
+      );
+    } else {
+      setDueDateError(null);
+    }
+  }
 
   // A task belongs to a project, so a task created from a project has to name
   // one — otherwise it would be filed nowhere and never show up again. The
@@ -84,8 +116,8 @@ export function TaskForm({
 
   return (
     <form action={formAction} className="space-y-4">
-      <input type="hidden" name="workspace_domain" value={workspaceDomain} />
-      {task ? <input type="hidden" name="nanoid" value={task.nanoid} /> : null}
+       <input type="hidden" name="workspace_domain" value={workspaceDomain} />
+       {task ? <input type="hidden" name="nanoid" value={task.nanoid} /> : null}
 
       <div className="space-y-1.5">
         <Label htmlFor="title">Title</Label>
@@ -126,20 +158,44 @@ export function TaskForm({
           </p>
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="parent">Parent task (subtask)</Label>
-          <select
-            id="parent"
-            name="parent"
-            defaultValue={task?.parent ?? ""}
-            className={selectClass}
-          >
-            <option value="">No parent</option>
-          </select>
-          <p className="text-xs text-muted-foreground">
-            Optionally make this task a subtask of another.
-          </p>
-        </div>
+       <div className="space-y-1.5">
+         <Label htmlFor="parent">Parent task (subtask)</Label>
+         {defaultParent ? (
+           <>
+             <input type="hidden" name="parent" value={defaultParent} />
+             <Input
+               id="parent"
+               value={defaultParentName ?? defaultParent}
+               readOnly
+               className="bg-muted text-muted-foreground"
+             />
+           </>
+         ) : (
+           <select
+             id="parent"
+             name="parent"
+             defaultValue={task?.parent ?? ""}
+             className={selectClass}
+           >
+             <option value="">No parent</option>
+           </select>
+         )}
+         <p className="text-xs text-muted-foreground">
+           {defaultParent
+             ? (
+               <>
+                 This task will be created as a subtask of the current task{" "}
+                 {defaultParentTaskId ? (
+                   <span className="text-primary font-medium">
+                     {defaultParentTaskId}
+                   </span>
+                 ) : null}
+                 .
+               </>
+             )
+             : "Optionally make this task a subtask of another."}
+         </p>
+       </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -194,15 +250,20 @@ export function TaskForm({
           </select>
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="due_date">Due date</Label>
-          <Input
-            id="due_date"
-            name="due_date"
-            type="date"
-            defaultValue={task?.due_date ?? ""}
-          />
-        </div>
+         <div className="space-y-1.5">
+           <Label htmlFor="due_date">Due date</Label>
+           <Input
+             id="due_date"
+             name="due_date"
+             type="date"
+             min={minDueDate}
+             defaultValue={task?.due_date ?? ""}
+             onChange={(event) => handleDueDateChange(event.target.value)}
+           />
+           {dueDateError ? (
+             <p className="text-xs text-destructive">{dueDateError}</p>
+           ) : null}
+         </div>
       </div>
 
       <div className="space-y-1.5">

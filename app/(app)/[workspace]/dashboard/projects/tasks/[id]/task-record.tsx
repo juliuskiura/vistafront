@@ -167,6 +167,7 @@ export function TaskRecord({
         </p>
       ) : null}
 
+      {!task.parent ? (
       <div className="rounded-xl border bg-white p-4 shadow-sm">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
           Subtasks ({subtasks.length})
@@ -180,15 +181,16 @@ export function TaskRecord({
                 key={subtask.nanoid}
                 className="flex items-center gap-2 text-sm text-slate-700"
               >
-                <span
+                <Link
+                  href={`/${workspaceDomain}/dashboard/projects/tasks/${subtask.nanoid}`}
                   className={
                     subtask.status === "done"
-                      ? "line-through text-slate-400"
-                      : "text-slate-800"
+                      ? "line-through text-slate-400 hover:underline"
+                      : "text-slate-800 hover:underline"
                   }
                 >
                   {subtask.title}
-                </span>
+                </Link>
                 {subtask.due_date ? (
                   <span className="ml-auto text-xs text-slate-400">
                     {formatMediumDate(subtask.due_date)}
@@ -199,6 +201,7 @@ export function TaskRecord({
           </ul>
         )}
       </div>
+      ) : null}
 
       <TaskComments
         targetNanoid={task.nanoid}
@@ -212,7 +215,7 @@ export function TaskRecord({
         workspaceDomain={workspaceDomain}
       />
 
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit task</DialogTitle>

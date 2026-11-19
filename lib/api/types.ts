@@ -1306,6 +1306,7 @@ export type ProjectPriority = "low" | "medium" | "high" | "urgent";
 export interface Project {
   id: number;
   nanoid: string;
+  project_id: string;
   name: string;
   description: string;
   category: string | null;
@@ -1342,6 +1343,7 @@ export type TaskPriority = ProjectPriority;
 export interface Task {
   id: number;
   nanoid: string;
+  task_id: string;
   title: string;
   description: string;
   project: string | null;
