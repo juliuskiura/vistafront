@@ -44,8 +44,9 @@ import {
  */
 
 /** Collect FormData into a plain object, dropping empty strings. */
-function toPayload(formData: FormData): Record<string, string> {
+function toPayload(formData: FormData | undefined): Record<string, string> {
   const payload: Record<string, string> = {};
+  if (!formData) return payload;
   for (const [key, value] of formData.entries()) {
     if (typeof value === "string") payload[key] = value;
   }
@@ -61,9 +62,12 @@ function fail(
 
 function invalid(error: Parameters<typeof flattenError>[0]): NoteActionState {
   const { fieldErrors } = flattenError(error);
+  const details = Object.entries(fieldErrors ?? {})
+    .map(([key, value]) => `${key}: ${Array.isArray(value) ? value[0] : value}`)
+    .join("; ");
   return {
     status: "error",
-    message: "Please fix the highlighted fields.",
+    message: details ? `Please fix: ${details}` : "Please fix the highlighted fields.",
     fieldErrors: fieldErrors as Record<string, string[]>,
   };
 }

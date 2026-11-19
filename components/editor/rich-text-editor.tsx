@@ -13,9 +13,11 @@ import type { EditorView } from "@tiptap/pm/view";
 import { sanitizeNoteHtml } from "@/lib/api/sanitize-note-html";
 import { rememberColorsFromHtml } from "@/lib/color-memory";
 import { cn } from "@/lib/utils";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Trash2 } from "@/lib/icons";
 
 import { EditorToolbar } from "./_components/editor-toolbar";
 import { EditorDragHandle } from "./_components/editor-drag-handle";
+import { ToolbarButton } from "./_components/editor-toolbar-primitives";
 import { blockDrag } from "./block-drag";
 import { createEditorExtensions } from "./extensions";
 
@@ -157,8 +159,11 @@ export function RichTextEditor({
 }: RichTextEditorProps) {
   const lastEmitted = useRef<string | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const contextMenuRef = useRef<HTMLDivElement | null>(null);
   const [status, setStatus] = useState<SaveStatus>("idle");
   const [counts, setCounts] = useState({ characters: 0, words: 0 });
+  const [inTable, setInTable] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -288,6 +293,36 @@ export function RichTextEditor({
   }, [editor, editable]);
 
   useEffect(() => {
+    if (!editor) return;
+    const syncTableState = () => setInTable(editor.isActive("table"));
+    editor.on("selectionUpdate", syncTableState);
+    editor.on("transaction", syncTableState);
+    syncTableState();
+    return () => {
+      editor.off("selectionUpdate", syncTableState);
+      editor.off("transaction", syncTableState);
+    };
+  }, [editor]);
+
+  useEffect(() => {
+    if (!contextMenu) return;
+    const close = (e?: MouseEvent) => {
+      if (e && contextMenuRef.current?.contains(e.target as Node)) return;
+      setContextMenu(null);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
+    const onMouseDown = (e: MouseEvent) => close(e);
+    window.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [contextMenu]);
+
+  useEffect(() => {
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
@@ -323,6 +358,53 @@ export function RichTextEditor({
         />
       ) : null}
 
+      {editor && inTable ? (
+        <div className="nb-inset-x flex flex-wrap items-center gap-1 border-b py-1">
+          <ToolbarButton
+            onClick={() => editor.chain().focus().addRowBefore().run()}
+            label="Add row above"
+          >
+            <ArrowUp size={15} />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().addRowAfter().run()}
+            label="Add row below"
+          >
+            <ArrowDown size={15} />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().addColumnBefore().run()}
+            label="Add column left"
+          >
+            <ArrowLeft size={15} />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().addColumnAfter().run()}
+            label="Add column right"
+          >
+            <ArrowRight size={15} />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().deleteRow().run()}
+            label="Delete row"
+          >
+            <Trash2 size={15} />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().deleteColumn().run()}
+            label="Delete column"
+          >
+            <Trash2 size={15} />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().deleteTable().run()}
+            label="Delete table"
+          >
+            <Trash2 size={15} />
+          </ToolbarButton>
+        </div>
+      ) : null}
+
       {/*
         Content area, ported from the frontapp's
         `features/shared/editor/RichTextEditor.tsx` at `4c97c34^`: a
@@ -332,12 +414,67 @@ export function RichTextEditor({
       <div
         className="cursor-text p-2 sm:p-4"
         onClick={() => editor?.chain().focus().run()}
+        onContextMenu={(e) => {
+          const target = e.target as HTMLElement | null;
+          if (!editor || !target?.closest("table")) return;
+          e.preventDefault();
+          const coords = editor.view.posAtCoords({
+            left: e.clientX,
+            top: e.clientY,
+          });
+          if (coords) {
+            editor.chain().focus().setTextSelection(coords.pos).run();
+          } else {
+            editor.chain().focus().run();
+          }
+          setContextMenu({ x: e.clientX, y: e.clientY });
+        }}
       >
         {editor ? <EditorDragHandle editor={editor} /> : null}
         <div className="mx-auto w-full max-w-[720px]">
           <EditorContent editor={editor} />
         </div>
       </div>
+
+      {contextMenu ? (
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setContextMenu(null)}
+          />
+          <div
+            ref={contextMenuRef}
+            role="menu"
+            className="fixed z-50 w-52 rounded-lg border bg-popover p-1.5 text-popover-foreground shadow-lg ring-1 ring-foreground/5"
+            style={{ top: contextMenu.y, left: contextMenu.x }}
+          >
+            {[
+              { label: "Add row above", icon: ArrowUp, action: () => editor?.chain().focus().addRowBefore().run() },
+              { label: "Add row below", icon: ArrowDown, action: () => editor?.chain().focus().addRowAfter().run() },
+              { label: "Add column left", icon: ArrowLeft, action: () => editor?.chain().focus().addColumnBefore().run() },
+              { label: "Add column right", icon: ArrowRight, action: () => editor?.chain().focus().addColumnAfter().run() },
+              { label: "Delete row", icon: Trash2, action: () => editor?.chain().focus().deleteRow().run() },
+              { label: "Delete column", icon: Trash2, action: () => editor?.chain().focus().deleteColumn().run() },
+              { label: "Delete table", icon: Trash2, action: () => editor?.chain().focus().deleteTable().run() },
+            ].map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                role="menuitem"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  item.action();
+                  setContextMenu(null);
+                }}
+                className="flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left text-xs transition-colors hover:bg-accent"
+              >
+                <item.icon size={15} className="text-muted-foreground" />
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </>
+      ) : null}
 
       {showFooter ? (
         <div className="nb-inset-x flex items-center gap-3 border-t border-[color-mix(in_srgb,var(--nb-ink)_7%,transparent)] py-2 text-[11px] text-muted-foreground">

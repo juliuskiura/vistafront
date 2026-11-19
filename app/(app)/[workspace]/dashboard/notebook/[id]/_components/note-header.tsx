@@ -18,6 +18,7 @@ import { NoteCardActions } from "../../_components/note-card-actions";
 import { TypeSwatch } from "../../_components/type-swatch";
 import { FieldError, INPUT_CLASS } from "../../_components/form-primitives";
 import { updateNoteMetaAction } from "../../actions";
+import { initialNoteActionState } from "../../action-state";
 
 /**
  * The note's identity block, and the only client component on the page.
@@ -87,6 +88,9 @@ export function NoteHeader({
   const titleRef = useRef<HTMLInputElement | null>(null);
   const [metaPending, setMetaPending] = useState(false);
   const [metaError, setMetaError] = useState<string | null>(null);
+  const [metaFieldErrors, setMetaFieldErrors] = useState<Record<string, string[]> | undefined>(
+    undefined,
+  );
 
   useEffect(() => {
     const el = headRef.current;
@@ -126,15 +130,21 @@ export function NoteHeader({
     e.preventDefault();
     setMetaPending(true);
     setMetaError(null);
+    setMetaFieldErrors(undefined);
     const formData = new FormData(e.currentTarget as HTMLFormElement);
     const result = await (updateNoteMetaAction as unknown as (
+      prev: unknown,
       formData: FormData,
-    ) => Promise<{ status: string; message?: string; fieldErrors?: Record<string, string[]> }>)(formData);
+    ) => Promise<{ status: string; message?: string; fieldErrors?: Record<string, string[]> }>)(
+      initialNoteActionState,
+      formData,
+    );
     setMetaPending(false);
     if (result.status === "success") {
       setEditingTitle(false);
     } else {
-      setMetaError(result.message ?? "Could not save title.");
+      setMetaError(result.message ?? "Could not save.");
+      setMetaFieldErrors(result.fieldErrors);
     }
   };
 
@@ -149,8 +159,12 @@ export function NoteHeader({
     formData.set("note_type", key);
     formData.set("tags", note.tag_names.join(","));
     const result2 = await (updateNoteMetaAction as unknown as (
+      prev: unknown,
       formData: FormData,
-    ) => Promise<{ status: string; message?: string; fieldErrors?: Record<string, string[]> }>)(formData);
+    ) => Promise<{ status: string; message?: string; fieldErrors?: Record<string, string[]> }>)(
+      initialNoteActionState,
+      formData,
+    );
     setMetaPending(false);
     if (result2.status === "error") {
       setMetaError(result2.message ?? "Could not change note type.");
@@ -180,8 +194,10 @@ export function NoteHeader({
             {editingTitle ? (
               <form
                 onSubmit={handleTitleSubmit}
-                className="flex items-center gap-2"
+                className="flex flex-wrap items-center gap-2"
               >
+                <input type="hidden" name="workspace_domain" value={workspaceDomain} />
+                <input type="hidden" name="nanoid" value={note.nanoid} />
                 <input
                   ref={titleRef}
                   type="text"
@@ -190,12 +206,36 @@ export function NoteHeader({
                   autoFocus
                   className={INPUT_CLASS}
                   maxLength={255}
+                  aria-invalid={!!metaFieldErrors?.title}
                 />
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={metaPending}
+                <FieldError errors={metaFieldErrors?.title} />
+                <select
+                  name="note_type"
+                  defaultValue={String(note.note_type)}
+                  className={INPUT_CLASS}
                 >
+                  {noteTypes.length === 0 ? (
+                    <option value={String(note.note_type)}>
+                      {note.note_type_display ?? String(note.note_type)}
+                    </option>
+                  ) : (
+                    noteTypes.map((t) => (
+                      <option key={t.nanoid} value={String(t.key)}>
+                        {t.name}
+                      </option>
+                    ))
+                  )}
+                </select>
+                <FieldError errors={metaFieldErrors?.note_type} />
+                <input
+                  type="text"
+                  name="tags"
+                  defaultValue={note.tag_names.join(", ")}
+                  placeholder="tags"
+                  className={INPUT_CLASS}
+                />
+                <FieldError errors={metaFieldErrors?.tags} />
+                <Button type="submit" size="sm" disabled={metaPending}>
                   Save
                 </Button>
                 <Button
