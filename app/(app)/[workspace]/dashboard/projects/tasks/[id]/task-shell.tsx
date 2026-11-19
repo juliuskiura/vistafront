@@ -60,6 +60,7 @@ interface Props {
   projects: PickerOption[];
   parentTask?: any;
   noteTypes?: any[];
+  notes?: any[];
 }
 
 export function TaskDetailShell({
@@ -70,6 +71,7 @@ export function TaskDetailShell({
   projects,
   parentTask,
   noteTypes = [],
+  notes = [],
 }: Props) {
   const router = useRouter();
   const projectBase = task.project
@@ -95,6 +97,7 @@ export function TaskDetailShell({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [subtaskOpen, setSubtaskOpen] = useState(false);
   const [noteSheetOpen, setNoteSheetOpen] = useState(false);
+  const [notesSheetOpen, setNotesSheetOpen] = useState(false);
   const [noteContent, setNoteContent] = useState("");
   const [headerOpen, setHeaderOpen] = useState(true);
   const [typeDialogOpen, setTypeDialogOpen] = useState(false);
@@ -112,7 +115,16 @@ export function TaskDetailShell({
   }, [noteState]);
   const [error, setError] = useState<string | null>(null);
 
-  const trailing = undefined;
+  const trailing = (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      onClick={() => setNotesSheetOpen(true)}
+    >
+      View Addon Notes{notes.length ? ` (${notes.length})` : ""}
+    </Button>
+  );
 
   const actionsGroup = {
     label: "Actions",
@@ -272,6 +284,38 @@ export function TaskDetailShell({
             onOpenChange={setTypeDialogOpen}
             workspaceDomain={workspaceDomain}
           />
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={notesSheetOpen} onOpenChange={setNotesSheetOpen}>
+        <SheetContent side="right" className="w-full sm:w-[720px] lg:w-[960px] p-6 overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Attached Notes</SheetTitle>
+            <SheetDescription>
+              Notes linked to this task.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="space-y-3 p-4">
+            {notes.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No notes attached yet.</p>
+            ) : (
+              <ul className="space-y-2">
+                {notes.map((note: any) => (
+                  <li key={note.nanoid}>
+                    <Link
+                      href={`/${workspaceDomain}/dashboard/notebook/${note.nanoid}`}
+                      className="block rounded-md border bg-card px-3 py-2 text-sm font-medium transition-colors hover:bg-accent"
+                    >
+                      {note.title}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Button type="button" variant="outline" onClick={() => { setNotesSheetOpen(false); setNoteSheetOpen(true); }}>
+              Attach a Note
+            </Button>
+          </div>
         </SheetContent>
       </Sheet>
 
