@@ -95,14 +95,25 @@ export default async function SchedulePage({
   const now = new Date();
   const todayHref = buildHref(now.getFullYear(), now.getMonth());
 
+  const items = (initial.items ?? []).map((item) => {
+    if (!item?.url) return item;
+    if (item.url.startsWith(`/${activeDomain}/`)) return item;
+    if (item.url.startsWith("/")) {
+      return { ...item, url: `/${activeDomain}${item.url}` };
+    }
+    return item;
+  });
+
   return (
     <ScheduleCalendar
       year={year}
       month={month}
-      items={initial.items}
+      items={items}
       prevHref={prevHref}
       nextHref={nextHref}
       todayHref={todayHref}
+      workspaceDomain={active.domain}
+      workspace={active.domain}
     />
   );
 }

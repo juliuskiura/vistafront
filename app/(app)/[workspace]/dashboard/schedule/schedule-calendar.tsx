@@ -19,6 +19,8 @@ interface Props {
   prevHref: string;
   nextHref: string;
   todayHref: string;
+  workspace?: string;
+  workspaceDomain?: string;
 }
 
 const MONTHS = [
@@ -72,9 +74,13 @@ export function ScheduleCalendar({
   prevHref,
   nextHref,
   todayHref,
+  workspace,
+  workspaceDomain,
 }: Props) {
   const router = useRouter();
   const [openDate, setOpenDate] = useState<string | null>(null);
+
+  const ws = (workspaceDomain ?? workspace ?? "").toLowerCase();
 
   const todayKey = useMemo(() => {
     const d = new Date();
@@ -253,12 +259,17 @@ export function ScheduleCalendar({
                   key={`sheet-${item.type}-${item.nanoid}-${i}`}
                   type="button"
                   className="group flex w-full items-center gap-3 rounded-lg border bg-card p-3 text-left text-sm transition-colors hover:bg-muted"
-                  onClick={() => {
-                    if (item.url) {
-                      setOpenDate(null);
-                      router.push(item.url);
-                    }
-                  }}
+                   onClick={() => {
+                     if (item.url) {
+                       const url = item.url;
+                       const href =
+                         ws && url.startsWith("/") && !url.startsWith(`/${ws}/`)
+                           ? `/${ws}${url}`
+                           : url;
+                       setOpenDate(null);
+                       router.push(href);
+                     }
+                   }}
                 >
                   <span
                     className={`h-2.5 w-2.5 shrink-0 rounded-full ${
