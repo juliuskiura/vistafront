@@ -64,6 +64,7 @@ export function ProjectDetailShell({
   const [parentPickerOpen, setParentPickerOpen] = useState(false);
   const [subtaskParent, setSubtaskParent] = useState<Task | null>(null);
   const [noteSheetOpen, setNoteSheetOpen] = useState(false);
+  const [addTaskOpen, setAddTaskOpen] = useState(false);
   const [typeDialogOpen, setTypeDialogOpen] = useState(false);
   const [noteContent, setNoteContent] = useState("");
   const [headerOpen, setHeaderOpen] = useState(true);
@@ -87,8 +88,8 @@ export function ProjectDetailShell({
     },
     {
       label: "Add Tasks",
-      href: `${basePath}/${project.nanoid}?tab=tasks`,
       icon: ListTodo,
+      onClick: () => setAddTaskOpen(true),
     },
     {
       label: "Add Subtasks",
@@ -186,6 +187,23 @@ export function ProjectDetailShell({
           ) : null}
         </DialogContent>
       </Dialog>
+      <Dialog open={addTaskOpen} onOpenChange={setAddTaskOpen}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Add task</DialogTitle>
+            <DialogDescription>A task belongs to this project.</DialogDescription>
+          </DialogHeader>
+          <TaskForm
+            workspaceDomain={workspaceDomain}
+            projects={[{ nanoid: project.nanoid, name: project.name }]}
+            members={members}
+            defaultProject={project.nanoid}
+            submitLabel="Add task"
+            onSuccess={() => setAddTaskOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
       <Sheet open={noteSheetOpen} onOpenChange={setNoteSheetOpen}>
         <SheetContent side="right" className="w-full sm:w-[720px] lg:w-[960px] p-6 overflow-y-auto">
           <SheetHeader>
