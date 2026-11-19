@@ -68,7 +68,7 @@ export function NoteDetail({
       */}
       <div className="nb-inset-x max-w-3xl space-y-6 border-t border-[var(--nb-rule)] py-6 sm:py-7">
         <NoteAttachments attachments={attachments} />
-        <NoteRelations relations={note.relations} />
+        <NoteRelations relations={note.relations} workspaceDomain={workspaceDomain} />
       </div>
     </>
   );

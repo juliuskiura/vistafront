@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Paperclip } from "@/lib/icons";
 import { formatMediumDate } from "@/lib/dates";
 import type { NoteAttachment, NoteRelation } from "@/lib/api";
@@ -85,6 +86,7 @@ export function NoteAttachments({ attachments }: NoteAttachmentsProps) {
 
 interface NoteRelationsProps {
   relations: NoteRelation[];
+  workspaceDomain: string;
 }
 
 /**
@@ -93,7 +95,24 @@ interface NoteRelationsProps {
  * `relatable_key` names the target model, so the chip can say what kind of
  * thing it points at rather than presenting an unlabelled string.
  */
-export function NoteRelations({ relations }: NoteRelationsProps) {
+
+function relationHref(workspace: string, rel: NoteRelation): string | null {
+  const key = rel.relatable_key;
+  const id = rel.object_nanoid ?? rel.relatable_nanoid;
+  if (!key || !id) return null;
+  const routes: Record<string, (value: string, ws: string) => string> = {
+    project: (value, ws) => `/${ws}/dashboard/projects/${value}`,
+    task: (value, ws) => `/${ws}/dashboard/projects/tasks/${value}`,
+    company: (value, ws) => `/${ws}/dashboard/companies/${value}`,
+    contact: (value, ws) => `/${ws}/dashboard/contacts/${value}`,
+    deal: (value, ws) => `/${ws}/dashboard/deals/${value}`,
+    pipeline: (value, ws) => `/${ws}/dashboard/pipeline/${value}`,
+  };
+  const build = routes[key];
+  return build ? build(id, workspace) : null;
+}
+
+export function NoteRelations({ relations, workspaceDomain }: NoteRelationsProps) {
   if (relations.length === 0) return null;
 
   return (
@@ -102,8 +121,9 @@ export function NoteRelations({ relations }: NoteRelationsProps) {
         Related to
       </h2>
       <ul className="flex flex-wrap gap-1.5">
-        {relations.map((rel, index) => (
-          <li key={`${rel.nanoid}-${rel.object_nanoid ?? index}`}>
+        {relations.map((rel, index) => {
+          const href = relationHref(workspaceDomain, rel);
+          const chip = (
             <span className="inline-flex items-center gap-1.5 rounded-full border bg-card px-2 py-0.5 text-[11px]">
               {rel.label}
               {rel.relatable_key ? (
@@ -112,8 +132,19 @@ export function NoteRelations({ relations }: NoteRelationsProps) {
                 </span>
               ) : null}
             </span>
-          </li>
-        ))}
+          );
+          return (
+            <li key={`${rel.nanoid}-${rel.object_nanoid ?? index}`}>
+              {href ? (
+                <Link href={href} className="transition-opacity hover:opacity-80">
+                  {chip}
+                </Link>
+              ) : (
+                chip
+              )}
+            </li>
+          );
+        })}
       </ul>
     </section>
   );
