@@ -21,6 +21,7 @@ import {
 } from "@/components/workspace/workspace-inner-nav";
 import { Banner } from "@/components/banner";
 import { Button } from "@/components/ui/button";
+import { Fab } from "@/components/ui/fab";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,6 +37,7 @@ import {
 } from "@/components/ui/sheet";
 import { RichTextEditor } from "@/components/editor";
 import { attachNoteAction } from "@/app/(app)/[workspace]/dashboard/notebook/actions";
+import { NoteTypeDialog } from "@/app/(app)/[workspace]/dashboard/notebook/_components/note-type-dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Dialog,
@@ -95,6 +97,7 @@ export function TaskDetailShell({
   const [noteSheetOpen, setNoteSheetOpen] = useState(false);
   const [noteContent, setNoteContent] = useState("");
   const [headerOpen, setHeaderOpen] = useState(true);
+  const [typeDialogOpen, setTypeDialogOpen] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const [noteState, noteAction, notePending] = useActionState(attachNoteAction, {
     status: "idle",
@@ -210,18 +213,18 @@ export function TaskDetailShell({
               />
             </button>
 
-            {headerOpen ? (
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium">Title</label>
-                  <input
-                    name="title"
-                    required
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium">Type</label>
+            <div className={headerOpen ? "space-y-4" : "hidden"}>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium">Title</label>
+                <input
+                  name="title"
+                  required
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium">Type</label>
+                <div className="flex items-end gap-2">
                   <select
                     name="note_type"
                     defaultValue={noteTypes[0]?.key ?? "general"}
@@ -233,9 +236,17 @@ export function TaskDetailShell({
                       </option>
                     ))}
                   </select>
+                  <Fab
+                    size="sm"
+                    variant="outline-primary"
+                    onClick={() => setTypeDialogOpen(true)}
+                    aria-label="Create new note type"
+                  >
+                    <Plus size={16} />
+                  </Fab>
                 </div>
               </div>
-            ) : null}
+            </div>
 
             <div className="space-y-1.5">
               <label className="text-xs font-medium">Content</label>
@@ -256,6 +267,11 @@ export function TaskDetailShell({
               {notePending ? "Attaching…" : "Attach note"}
             </Button>
           </form>
+          <NoteTypeDialog
+            open={typeDialogOpen}
+            onOpenChange={setTypeDialogOpen}
+            workspaceDomain={workspaceDomain}
+          />
         </SheetContent>
       </Sheet>
 
