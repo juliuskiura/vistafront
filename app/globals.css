@@ -97,6 +97,7 @@
     --color-success: var(--success);
     --color-success-foreground: var(--success-foreground);
     --color-warning: var(--warning);
+    --color-warning-foreground: #ffc17a;
     --color-info: var(--info);
     --color-gold: var(--gold);
     --color-gold-foreground: var(--gold-foreground);
@@ -216,8 +217,8 @@
   --destructive-foreground: var(--color-destructive-200);
   --success: var(--color-success-500);
   --success-foreground: var(--color-success-50);
-  /* --warning: oklch(0.8000 0.1500 80.0000); */
-  --warning: oklch(0.5988 0.1226 93.09)
+  --warning: #d97706;
+  --warning-foreground: #fde8d0;
   --info: oklch(0.6200 0.1800 250.0000);
   --info-foreground: oklch(0.9850 0 0);
   --radius: 0.625rem;
