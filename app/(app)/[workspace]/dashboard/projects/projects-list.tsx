@@ -17,7 +17,7 @@ import {
 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { RichText } from "@/app/(app)/[workspace]/dashboard/projects/_components/rich-text";
+import { excerptFromHtml } from "@/lib/api/sanitize-note-html";
 
 interface Props {
   projects: Project[];
@@ -366,7 +366,7 @@ export function ProjectsList({
               <Link
                 key={proj.nanoid}
                 href={`/${workspaceDomain}/dashboard/projects/${proj.nanoid}`}
-                onClick={() => console.log("card clicked", proj.nanoid, workspaceDomain)}
+               
                 className="group p-5 bg-white border border-slate-200 rounded-xl hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between space-y-4"
               >
                 <div>
@@ -409,10 +409,9 @@ export function ProjectsList({
                   </h3>
 
                   {/* Description snippet */}
-                  <RichText
-                    html={proj.description}
-                    className="text-xs text-muted-foreground leading-relaxed max-w-2xl mt-3 line-clamp-2"
-                  />
+                  <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed mb-3">
+                    {excerptFromHtml(proj.description ?? "")}
+                  </p>
 
                   {/* Stakeholders (Company & Client) */}
                   <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500 pt-1">
