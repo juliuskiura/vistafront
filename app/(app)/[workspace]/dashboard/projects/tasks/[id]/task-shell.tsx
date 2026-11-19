@@ -98,6 +98,11 @@ export function TaskDetailShell({
   const [subtaskOpen, setSubtaskOpen] = useState(false);
   const [noteSheetOpen, setNoteSheetOpen] = useState(false);
   const [notesSheetOpen, setNotesSheetOpen] = useState(false);
+  navItems.push({
+    label: `View Addon Notes${notes.length ? ` (${notes.length})` : ""}`,
+    icon: FileText,
+    onClick: () => setNotesSheetOpen(true),
+  });
   const [noteContent, setNoteContent] = useState("");
   const [headerOpen, setHeaderOpen] = useState(true);
   const [typeDialogOpen, setTypeDialogOpen] = useState(false);
@@ -115,16 +120,7 @@ export function TaskDetailShell({
   }, [noteState]);
   const [error, setError] = useState<string | null>(null);
 
-  const trailing = (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      onClick={() => setNotesSheetOpen(true)}
-    >
-      View Addon Notes{notes.length ? ` (${notes.length})` : ""}
-    </Button>
-  );
+
 
   const actionsGroup = {
     label: "Actions",
@@ -169,7 +165,6 @@ export function TaskDetailShell({
         brandIcon={FolderKanban}
         items={navItems}
         groups={[actionsGroup]}
-        trailing={trailing}
       />
       <div className="flex-1 p-4 md:p-6">{children}</div>
 
