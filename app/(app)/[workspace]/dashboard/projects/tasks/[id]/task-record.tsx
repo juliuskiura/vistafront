@@ -107,6 +107,7 @@ export function TaskRecord({
                 <RichText
                   html={task.description}
                   className="text-xs text-slate-600 leading-relaxed max-w-2xl"
+                  words={200}
                 />
               ) : null}
 

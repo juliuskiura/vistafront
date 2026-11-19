@@ -132,6 +132,7 @@ export function ProjectHeader({
         <RichText
           html={project.description}
           className="text-xs text-muted-foreground leading-relaxed max-w-2xl mt-3"
+          words={200}
         />
       ) : null}
 
