@@ -1,4 +1,4 @@
-import { getProject, listTasks, listWorkspaceMembers } from "@/lib/api";
+import { getProject, listTasks, listWorkspaceMembers, listNoteTypes } from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
 import { requireFeature } from "@/lib/features/guard";
 import { ProjectDetailShell } from "./project-shell";
@@ -15,11 +15,12 @@ export default async function ProjectDetailLayout({
   await requireFeature(active, "projectmanager.projects");
 
   const project = await getProject(id, active.domain);
-  const [members, tasks] = await Promise.all([
+  const [members, tasks, noteTypes] = await Promise.all([
     listWorkspaceMembers(active.nanoid, active.domain).catch(() => []),
     listTasks({ project: project.nanoid, workspace: active.domain }).catch(
       () => [],
     ),
+    listNoteTypes(active.domain).catch(() => []),
   ]);
 
   const memberOptions = members.map((member: any) => ({
@@ -35,6 +36,7 @@ export default async function ProjectDetailLayout({
       project={project}
       tasks={tasks}
       members={memberOptions}
+      noteTypes={noteTypes}
     >
       {children}
     </ProjectDetailShell>

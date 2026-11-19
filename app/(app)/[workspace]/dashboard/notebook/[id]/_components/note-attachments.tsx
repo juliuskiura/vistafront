@@ -102,8 +102,8 @@ export function NoteRelations({ relations }: NoteRelationsProps) {
         Related to
       </h2>
       <ul className="flex flex-wrap gap-1.5">
-        {relations.map((rel) => (
-          <li key={rel.nanoid}>
+        {relations.map((rel, index) => (
+          <li key={`${rel.nanoid}-${rel.object_nanoid ?? index}`}>
             <span className="inline-flex items-center gap-1.5 rounded-full border bg-card px-2 py-0.5 text-[11px]">
               {rel.label}
               {rel.relatable_key ? (

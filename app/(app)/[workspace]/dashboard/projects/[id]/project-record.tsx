@@ -1,9 +1,10 @@
 "use client";
 
-import type { Project, Task } from "@/lib/api";
+import Link from "next/link";
 import { ProjectTabs } from "./_components/project-tabs";
 import { OverviewTab } from "./_components/overview-tab";
 import { TasksTab } from "./_components/tasks-tab";
+import type { Project, Task, Note } from "@/lib/api";
 import type { PickerOption } from "../forms/project-form";
 
 interface Props {
@@ -14,6 +15,7 @@ interface Props {
   members: PickerOption[];
   /** The current project, as a single-option picker for the task form. */
   projectOptions: PickerOption[];
+  notes?: Note[];
 }
 
 /**
@@ -29,6 +31,7 @@ export function ProjectRecord({
   tasks,
   members,
   projectOptions,
+  notes = [],
 }: Props) {
   return (
     <div className="space-y-6">
@@ -38,6 +41,7 @@ export function ProjectRecord({
         workspaceDomain={workspaceDomain}
         activeTab={activeTab}
         taskCount={tasks.length}
+        noteCount={notes.length}
       />
 
       {activeTab === "overview" ? (
@@ -51,6 +55,27 @@ export function ProjectRecord({
           members={members}
           projectOptions={projectOptions}
         />
+      ) : null}
+
+      {activeTab === "notes" ? (
+        <div className="space-y-3">
+          {notes.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No notes attached yet.</p>
+          ) : (
+            <ul className="space-y-2">
+              {notes.map((note) => (
+                <li key={note.nanoid} className="rounded-md border p-3">
+                  <Link
+                    href={`/${workspaceDomain}/dashboard/notebook/${note.nanoid}`}
+                    className="text-sm font-medium hover:underline"
+                  >
+                    {note.title}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       ) : null}
     </div>
   );

@@ -4,9 +4,11 @@ import {
   getProject,
   listTasks,
   listWorkspaceMembers,
+  listNotes,
   type Project,
   type Task,
   type WorkspaceMember,
+  type Note,
 } from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
 import { requireFeature } from "@/lib/features/guard";
@@ -15,7 +17,7 @@ import { Banner } from "@/components/banner";
 import { ProjectRecord } from "./project-record";
 
 /** The tabs the record offers, in order. */
-const VALID_TABS = ["overview", "tasks"] as const;
+const VALID_TABS = ["overview", "tasks", "notes"] as const;
 
 type ProjectTab = (typeof VALID_TABS)[number];
 
@@ -69,13 +71,18 @@ export default async function ProjectDetailPage({
   // The picker data every tab can need: the members who can be assigned a
   // task, the companies and contacts the project form offers, and the
   // project's own tasks.
-  const [members, tasks] = await Promise.all([
+  const [members, tasks, notes] = await Promise.all([
     listWorkspaceMembers(active.nanoid, active.domain).catch(
       () => [] as WorkspaceMember[],
     ),
     listTasks({ project: project.nanoid, workspace: active.domain }).catch(
       () => [] as Task[],
     ),
+    listNotes({
+      relatable: "project",
+      object_nanoid: project.nanoid,
+      workspace: active.domain,
+    }).catch(() => [] as Note[]),
   ]);
 
   const memberOptions = members.map((member) => ({
@@ -97,6 +104,7 @@ export default async function ProjectDetailPage({
         tasks={tasks}
         members={memberOptions}
         projectOptions={projectOptions}
+        notes={notes}
       />
     </div>
   );

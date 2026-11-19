@@ -7,11 +7,13 @@ interface Props {
   workspaceDomain: string;
   activeTab: string;
   taskCount: number;
+  noteCount?: number;
 }
 
 const TABS = [
   { key: "overview", label: "Overview" },
   { key: "tasks", label: "Tasks" },
+  { key: "notes", label: "Addon Notes" },
 ] as const;
 
 /**
@@ -26,9 +28,11 @@ export function ProjectTabs({
   workspaceDomain,
   activeTab,
   taskCount,
+  noteCount,
 }: Props) {
   const counts: Record<string, number> = {
     tasks: taskCount,
+    notes: noteCount ?? 0,
   };
 
   return (

@@ -12,8 +12,10 @@ import {
   toggleNoteArchive,
   toggleNoteFavorite,
   updateNote,
+  listRelatableModels,
   type Note,
 } from "@/lib/api";
+import { connectNote } from "@/lib/api/notebook";
 
 import {
   colorHexSchema,
@@ -116,9 +118,61 @@ export async function createNoteAction(
   redirect(`/${workspace_domain}/dashboard/notebook/${created.nanoid}`);
 }
 
-/* ──────────────────────────────────────────────────────────────────────
- * Update
- * ────────────────────────────────────────────────────────────────────── */
+/**
+ * Create a note and attach it to an arbitrary record (project, task, company…)
+ * identified by `relatable_key` + `object_nanoid`. Reusable across features
+ * so each feature does not need its own action.
+ */
+export async function attachNoteAction(
+  _prev: NoteActionState,
+  formData: FormData,
+): Promise<NoteActionState> {
+  const payload = toPayload(formData);
+  const parsed = CreateNoteSchema.safeParse(payload);
+  if (!parsed.success) return invalid(parsed.error);
+
+  const { workspace_domain, title, note_type, tags, content } = parsed.data;
+  const relatableKey = String(formData.get("relatable_key") ?? "").trim();
+  const objectNanoid = String(formData.get("object_nanoid") ?? "").trim();
+
+  let created: Note;
+  try {
+    created = await createNote(
+      {
+        title,
+        note_type,
+        content: content ? safeParseJson(content) : {},
+        tags,
+      },
+      workspace_domain,
+    );
+  } catch (error) {
+    console.error("attachNoteAction failed:", error);
+    return {
+      status: "error",
+      message: "We could not create the note. Please try again.",
+    };
+  }
+
+  if (relatableKey && objectNanoid) {
+    try {
+      const relatableModels = await listRelatableModels(workspace_domain);
+      const relatable = relatableModels.find((m) => m.key === relatableKey);
+      if (relatable) {
+        await connectNote(
+          created.nanoid,
+          { relatable_nanoid: relatable.nanoid, object_nanoid: objectNanoid },
+          workspace_domain,
+        );
+      }
+    } catch (error) {
+      console.error("attachNoteAction connect failed:", error);
+    }
+  }
+
+  revalidatePath(`/${workspace_domain}/dashboard/notebook`);
+  return { status: "success", message: "Note attached." };
+}
 
 export async function updateNoteMetaAction(
   _prev: NoteActionState,
