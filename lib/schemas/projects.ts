@@ -51,10 +51,9 @@ const optionalText = (max = 200) =>
     .optional()
     .default("");
 
-const optionalLongText = (max = 20000) =>
+const optionalLongText = () =>
   z
     .string()
-    .max(max, `Must be ${max} characters or fewer.`)
     .optional()
     .default("");
 

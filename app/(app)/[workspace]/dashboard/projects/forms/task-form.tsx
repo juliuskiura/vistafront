@@ -77,6 +77,8 @@ export function TaskForm({
     initialProjectActionState,
   );
   const [description, setDescription] = useState(task?.description ?? "");
+  const [title, setTitle] = useState(task?.title ?? "");
+  const [dueDate, setDueDate] = useState(task?.due_date ?? "");
   const [dueDateError, setDueDateError] = useState<string | null>(null);
 
   const today = new Date().toISOString().slice(0, 10);
@@ -121,14 +123,15 @@ export function TaskForm({
 
       <div className="space-y-1.5">
         <Label htmlFor="title">Title</Label>
-        <Input
-          id="title"
-          name="title"
-          defaultValue={task?.title ?? ""}
-          placeholder="What needs doing?"
-          required
-          maxLength={255}
-        />
+           <Input
+              id="title"
+              name="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="What needs doing?"
+              required
+              maxLength={255}
+            />
         {errors.title ? (
           <p className="text-xs text-destructive">{errors.title[0]}</p>
         ) : null}
@@ -252,14 +255,17 @@ export function TaskForm({
 
          <div className="space-y-1.5">
            <Label htmlFor="due_date">Due date</Label>
-           <Input
-             id="due_date"
-             name="due_date"
-             type="date"
-             min={minDueDate}
-             defaultValue={task?.due_date ?? ""}
-             onChange={(event) => handleDueDateChange(event.target.value)}
-           />
+            <Input
+              id="due_date"
+              name="due_date"
+              type="date"
+              min={minDueDate}
+              value={dueDate}
+              onChange={(event) => {
+                setDueDate(event.target.value);
+                handleDueDateChange(event.target.value);
+              }}
+            />
            {dueDateError ? (
              <p className="text-xs text-destructive">{dueDateError}</p>
            ) : null}

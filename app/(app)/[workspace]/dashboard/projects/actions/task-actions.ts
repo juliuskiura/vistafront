@@ -76,6 +76,9 @@ export async function createTaskAction(
   }
 
    revalidatePath(`/${data.workspace_domain}/dashboard/projects`);
+   if (data.project) {
+     revalidatePath(`/${data.workspace_domain}/dashboard/projects/${data.project}`);
+   }
    if (data.parent) {
      revalidatePath(
        `/${data.workspace_domain}/dashboard/projects/tasks/${data.parent}`,
@@ -143,11 +146,14 @@ export async function updateTaskAction(
     };
   }
 
-  revalidatePath(`/${data.workspace_domain}/dashboard/projects`);
-  revalidatePath(
-    `/${data.workspace_domain}/dashboard/projects/tasks/${data.nanoid}`,
-  );
-  return { status: "success", message: "Task saved." };
+   revalidatePath(`/${data.workspace_domain}/dashboard/projects`);
+   if (data.project) {
+     revalidatePath(`/${data.workspace_domain}/dashboard/projects/${data.project}`);
+   }
+   revalidatePath(
+     `/${data.workspace_domain}/dashboard/projects/tasks/${data.nanoid}`,
+   );
+   return { status: "success", message: "Task saved." };
 }
 
 /**
