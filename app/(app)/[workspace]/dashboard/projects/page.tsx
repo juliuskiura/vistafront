@@ -1,22 +1,11 @@
-import { getProject, listAllProjects, listTasks } from "@/lib/api";
+import { listAllProjects } from "@/lib/api";
+import type { Project } from "@/lib/api/types";
 import { listProjectCategories } from "@/lib/api/projectmanager";
-import type { Task } from "@/lib/api";
 import { requireWorkspace } from "@/lib/auth/server";
 import { requireFeature } from "@/lib/features/guard";
-import { Banner } from "@/components/banner";
 import { ProjectsList } from "./projects-list";
+import { getProjectStats } from "@/lib/api/projectmanager/projects";
 
-/**
- * The projects list (Server Component).
- *
- * The whole set is fetched, not just the first page: the backend applies
- * no filtering to projects, so the search and the status/priority filters
- * run in the browser over everything that is here. A single 25-row page
- * would have hidden every project past the 25th.
- *
- * Tasks are fetched alongside projects so the kanban view can render all
- * workspace tasks grouped by status.
- */
 export default async function ProjectsPage({
   params,
 }: {
@@ -26,37 +15,55 @@ export default async function ProjectsPage({
   const active = await requireWorkspace(slug);
   await requireFeature(active, "projectmanager.projects");
 
-  const [{ projects: summaries, total, truncated }, tasks, categories] =
+  const [{ projects: summaries, total, truncated }, stats, categories] =
     await Promise.all([
       listAllProjects({ workspace: active.domain }),
-      listTasks({ workspace: active.domain }).catch(() => [] as Task[]),
+      getProjectStats(active.domain),
       listProjectCategories(active.domain).catch(() => []),
     ]);
 
-  const projects: Awaited<ReturnType<typeof getProject>>[] = await Promise.all(
-    summaries.map(async (p) => {
-      try {
-        return await getProject(p.nanoid, active.domain);
-      } catch {
-        return {
-          ...p,
-          description: "",
-          start_date: null,
-          updated_at: p.created_at,
-        } as Awaited<ReturnType<typeof getProject>>;
-      }
-    }),
+  const projects = summaries.map((p) => ({
+    ...p,
+    description: "",
+    start_date: null,
+    updated_at: p.created_at,
+  })) as Project[];
+
+  const workspaceStats = {
+    totalProjects: stats.workspace.total_projects,
+    activeProjects: stats.workspace.active_projects,
+    totalTasks: stats.workspace.total_tasks,
+    doneTasks: stats.workspace.completed_tasks,
+    overallProgress: stats.workspace.overall_progress,
+    totalSubtasks: stats.workspace.total_subtasks,
+    doneSubtasks: stats.workspace.completed_subtasks,
+    pendingReviewsCount: stats.workspace.pending_reviews,
+  };
+
+  const projectStats = Object.fromEntries(
+    Object.entries(stats.projects).map(([key, value]) => [
+      key,
+      {
+        totalTasks: value.top_level_tasks,
+        doneTasks: value.completed_top_level_tasks,
+        taskCompletionRate: value.top_level_completion_rate,
+        totalSubtasks: value.subtasks,
+        doneSubtasks: value.completed_subtasks,
+        isOverdue: value.is_overdue,
+      },
+    ]),
   );
 
   return (
     <div className="flex-1">
       <ProjectsList
         projects={projects}
-        tasks={tasks}
         categories={categories}
         workspaceDomain={active.domain}
         total={total}
         truncated={truncated}
+        workspaceStats={workspaceStats}
+        projectStats={projectStats}
       />
     </div>
   );

@@ -1420,6 +1420,33 @@ export interface CreateActivityEventBody {
   detail?: string;
 }
 
+export interface ProjectStat {
+  top_level_tasks: number;
+  completed_top_level_tasks: number;
+  top_level_completion_rate: number;
+  subtasks: number;
+  completed_subtasks: number;
+  subtask_completion_rate: number;
+  is_overdue: boolean;
+}
+
+export interface ProjectStatsWorkspace {
+  total_projects: number;
+  active_projects: number;
+  overdue_projects: number;
+  total_tasks: number;
+  completed_tasks: number;
+  overall_progress: number;
+  total_subtasks: number;
+  completed_subtasks: number;
+  pending_reviews: number;
+}
+
+export interface ProjectStatsResponse {
+  workspace: ProjectStatsWorkspace;
+  projects: Record<string, ProjectStat>;
+}
+
 export interface ProjectCategory {
   nanoid: string;
   workspace: string | null;

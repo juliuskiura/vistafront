@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 
-import type { Project, ProjectCategory, Task } from "@/lib/api";
+import type { Project, ProjectCategory } from "@/lib/api";
+import type { WorkspaceTaskStats, ProjectTaskStats } from "@/lib/projects/stats";
 import { formatMediumDate } from "@/lib/dates";
 import {
   Building,
@@ -11,23 +12,21 @@ import {
   CheckCircle2,
   CheckSquare,
   Filter,
-  Plus,
   Search,
-  User as UserIcon,
 } from "@/lib/icons";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { excerptFromHtml } from "@/lib/api/sanitize-note-html";
 
 interface Props {
   projects: Project[];
-  tasks: Task[];
   categories: ProjectCategory[];
   workspaceDomain: string;
   /** How many projects the workspace really has. */
   total: number;
   /** True when the workspace has more projects than were fetched. */
   truncated: boolean;
+  workspaceStats: WorkspaceTaskStats;
+  projectStats: Record<string, ProjectTaskStats>;
 }
 
 const getStatusBadge = (status: Project["status"]) => {
@@ -64,26 +63,18 @@ const getPriorityBadge = (priority: Project["priority"]) => {
 
 export function ProjectsList({
   projects,
-  tasks,
   categories,
   workspaceDomain,
   total,
   truncated,
+  workspaceStats: wsStats,
+  projectStats,
 }: Props) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState("all");
-
-  const topLevelTasks = useMemo(
-    () => tasks.filter((t) => !t.parent),
-    [tasks],
-  );
-  const subtasks = useMemo(
-    () => tasks.filter((t) => !!t.parent),
-    [tasks],
-  );
 
   const companies = useMemo(() => {
     const map = new Map<string, string>();
@@ -128,54 +119,28 @@ export function ProjectsList({
     selectedCompanyFilter,
   ]);
 
-  const workspaceStats = useMemo(() => {
-    const totalProjects = projects.length;
-    const activeProjects = projects.filter(
-      (p) => p.status === "in_progress" || p.status === "planning",
-    ).length;
-    const totalTasks = topLevelTasks.length;
-    const doneTasks = topLevelTasks.filter((t) => t.status === "done").length;
-    const overallProgress =
-      totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
-    const totalSubtasks = subtasks.length;
-    const doneSubtasks = subtasks.filter((t) => t.status === "done").length;
-    const pendingReviewsCount = topLevelTasks.filter(
-      (t) => t.status === "review",
-    ).length;
-    return {
-      totalProjects,
-      activeProjects,
-      totalTasks,
-      doneTasks,
-      overallProgress,
-      totalSubtasks,
-      doneSubtasks,
-      pendingReviewsCount,
-    };
-  }, [projects, topLevelTasks, subtasks]);
+  const workspaceStats = wsStats;
 
-  const getProjectStats = (project: Project) => {
-    const projTasks = topLevelTasks.filter((t) => t.project === project.nanoid);
-    const totalTasks = projTasks.length;
-    const doneTasks = projTasks.filter((t) => t.status === "done").length;
-    const taskCompletionRate =
-      totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
-    const projSubtasks = tasks.filter(
-      (t) => t.project === project.nanoid && !!t.parent,
-    );
-    const totalSubtasks = projSubtasks.length;
-    const doneSubtasks = projSubtasks.filter((t) => t.status === "done").length;
-    const isOverdue =
-      !!project.deadline &&
-      new Date(project.deadline) < new Date() &&
-      project.status !== "completed";
+  const getProjectStats = (project: Project): {
+    totalTasks: number;
+    doneTasks: number;
+    taskCompletionRate: number;
+    totalSubtasks: number;
+    doneSubtasks: number;
+    isOverdue: boolean;
+  } => {
+    const s = projectStats[project.nanoid];
+    if (s) return s;
     return {
-      totalTasks,
-      doneTasks,
-      taskCompletionRate,
-      totalSubtasks,
-      doneSubtasks,
-      isOverdue,
+      totalTasks: 0,
+      doneTasks: 0,
+      taskCompletionRate: 0,
+      totalSubtasks: 0,
+      doneSubtasks: 0,
+      isOverdue:
+        !!project.deadline &&
+        new Date(project.deadline) < new Date() &&
+        project.status !== "completed",
     };
   };
 

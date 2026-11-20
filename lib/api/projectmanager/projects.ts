@@ -4,6 +4,7 @@ import type {
   CreateProjectBody,
   Paginated,
   Project,
+  ProjectStatsResponse,
   ProjectSummary,
   UpdateProjectBody,
 } from "../types";
@@ -120,6 +121,16 @@ export async function listAllProjects(opts: {
     total: first.count,
     truncated: first.count > max,
   };
+}
+
+/**
+ * Aggregated project/task statistics for a workspace.
+ */
+export function getProjectStats(workspace: string): Promise<ProjectStatsResponse> {
+  return serverFetch<ProjectStatsResponse>(
+    "/apis/projectmanager/projects/stats/",
+    { workspace },
+  );
 }
 
 /**
